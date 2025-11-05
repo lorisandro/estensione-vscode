@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wmic shadowcopy:*)",
+      "Bash(vssadmin list shadows:*)",
+      "Bash(dir:*)",
+      "Bash(nul)",
+      "Bash(where:*)",
+      "Bash(powershell -Command:*)",
+      "WebSearch",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init -p)",
+      "Bash(move Test business-playbook)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

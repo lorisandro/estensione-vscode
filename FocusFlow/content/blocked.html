@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Blocked - FocusFlow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen flex items-center justify-center p-4">
+
+  <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center fade-in">
+
+    <!-- Icon -->
+    <div class="mb-6">
+      <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full mx-auto flex items-center justify-center">
+        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <h1 class="text-3xl font-bold text-gray-800 mb-3">Site Blocked</h1>
+
+    <!-- Blocked site -->
+    <p class="text-gray-600 mb-2">
+      <span class="font-semibold" id="blockedSite">website.com</span> is blocked
+    </p>
+
+    <p class="text-gray-500 text-sm mb-6">
+      You're in Focus Mode. Stay on track!
+    </p>
+
+    <!-- Motivational quote -->
+    <div class="bg-indigo-50 rounded-lg p-4 mb-6">
+      <p class="text-indigo-800 italic text-sm" id="quote">
+        "The secret of getting ahead is getting started."
+      </p>
+      <p class="text-indigo-600 text-xs mt-2">— Mark Twain</p>
+    </div>
+
+    <!-- Actions -->
+    <div class="space-y-3">
+      <button id="goBackBtn" class="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3 px-6 rounded-lg font-medium hover:shadow-lg transition">
+        Go Back
+      </button>
+
+      <button id="disableFocusBtn" class="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition">
+        Disable Focus Mode
+      </button>
+    </div>
+
+    <!-- Tip -->
+    <p class="text-xs text-gray-400 mt-6">
+      💡 Tip: Use the Pomodoro timer to take regular breaks
+    </p>
+  </div>
+
+  <script src="blocked.js"></script>
+</body>
+</html>
