@@ -113,6 +113,30 @@ The repository contains 8 comprehensive business strategy guides in Italian:
 
 ## Development Workflow
 
+### Git Workflow - IMPORTANT:
+
+**After EVERY prompt/task completion:**
+1. Create a commit with a descriptive message
+2. Automatically push to GitHub
+3. Use the format:
+   ```bash
+   git add . && git commit -m "descriptive message" && git push
+   ```
+
+**Commit message format:**
+- Use clear, descriptive messages that explain WHAT was done
+- Include context if needed
+- Examples:
+  - "Add Pomodoro timer feature to FocusFlow"
+  - "Fix blocking logic for wildcard domains"
+  - "Update strategy document with new pricing"
+
+**Why:** This ensures:
+- All work is backed up immediately
+- Clear history of changes
+- Easy rollback if needed
+- Continuous deployment mindset
+
 ### For FocusFlow:
 
 1. **Making changes:**
