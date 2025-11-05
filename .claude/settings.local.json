@@ -15,7 +15,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(gh repo create:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(node create-icons.js:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

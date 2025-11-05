@@ -13,17 +13,35 @@ This is a multi-project repository focused on building profitable digital produc
 ## Repository Structure
 
 ```
-Test/
-├── Strategy Documents (00-08-*.md)    # Business strategy guides
-├── FocusFlow/                          # Chrome Extension (active development)
-│   ├── manifest.json
-│   ├── claude.md                       # Project-specific documentation
-│   ├── popup/                          # Extension popup UI
-│   ├── background/                     # Service worker
-│   ├── content/                        # Content scripts
-│   └── options/                        # Settings page
-└── linkedboost/                        # LinkedIn tool (early stage)
-    └── package.json                    # React + TypeScript + Vite
+business-playbook/
+├── 00-START-HERE-INDICE.md            # Master guide index (READ FIRST)
+├── 01-08-*.md                          # 8 business strategy guides (Italian)
+├── CLAUDE.md                           # This file (repo-wide guidance)
+│
+├── FocusFlow/                          # Chrome Extension (Vanilla JS)
+│   ├── manifest.json                   # Extension config (Manifest V3)
+│   ├── claude.md                       # FocusFlow-specific docs (SSOT)
+│   ├── README.md                       # Public documentation
+│   ├── popup/                          # Main UI (popup.html/js/css)
+│   ├── background/                     # Service worker (background.js)
+│   ├── content/                        # Blocked page (blocked.html/js)
+│   ├── options/                        # Settings page (options.html/js)
+│   └── icons/                          # Extension icons (16/48/128px)
+│
+└── linkedboost/                        # LinkedIn Extension (React + TS)
+    ├── package.json                    # Dependencies + npm scripts
+    ├── vite.config.ts                  # Multi-entry Vite build
+    ├── src/
+    │   ├── popup/                      # React popup app
+    │   ├── options/                    # React settings app
+    │   ├── background/                 # Background service worker (TS)
+    │   ├── content/                    # Content script (TS)
+    │   ├── utils/                      # Shared utilities
+    │   └── types/                      # TypeScript definitions
+    ├── public/
+    │   ├── manifest.json               # Extension manifest
+    │   └── icons/                      # Extension icons
+    └── dist/                           # Build output (load this in Chrome)
 ```
 
 ## Key Projects
@@ -157,16 +175,31 @@ The repository contains 8 comprehensive business strategy guides in Italian:
 
 ### For linkedboost:
 
-1. **Setup (when code exists):**
+1. **Setup:**
    ```bash
    cd linkedboost
    npm install  # Dependencies already installed
    ```
 
-2. **Will need to add scripts to package.json:**
-   - `npm run dev` - Development server (Vite)
-   - `npm run build` - Production build
-   - `npm run preview` - Preview production build
+2. **Development:**
+   ```bash
+   npm run dev      # Watch mode - rebuilds on file changes
+   npm run build    # Production build to dist/
+   npm run preview  # Preview production build
+   ```
+
+3. **Build Output:**
+   - Vite builds to `dist/` folder
+   - Service worker and content scripts go to root of dist/
+   - React components bundle to `dist/assets/`
+   - Load `dist/` folder as unpacked extension in Chrome
+
+4. **Architecture:**
+   - **Popup**: React app (src/popup/) - main UI when clicking extension
+   - **Options**: React app (src/options/) - settings page
+   - **Background**: Service worker (src/background/index.ts) - background logic
+   - **Content**: Content script (src/content/index.ts) - injected into LinkedIn pages
+   - Vite config handles multi-entry build (popup, options, background, content)
 
 ## Project Management Philosophy
 
@@ -182,11 +215,18 @@ Based on the strategy documents, the approach is:
 
 ### FocusFlow Development:
 - Keep code simple (vanilla JS is sufficient)
-- No complex frameworks needed - speed and small size are priorities
+- No build step - direct file editing
 - Privacy-first: all data stays local in browser
 - Follow Chrome Extension Manifest V3 requirements
-- Clear comments for complex logic
 - Test on multiple devices
+- **Icons required before loading**: Create icon-16.png, icon-48.png, icon-128.png in icons/ folder
+
+### LinkedBoost Development:
+- Uses Vite + React + TypeScript build system
+- **Always run `npm run build` after changes** before testing in Chrome
+- Watch mode (`npm run dev`) auto-rebuilds on file save
+- LinkedIn-specific: Be aware of LinkedIn's DOM structure changes
+- **Safety**: Default to conservative limits (30-50 connections/day, 5+ sec delays)
 
 ### General Approach:
 - These are revenue-generating projects, not learning exercises
@@ -194,10 +234,17 @@ Based on the strategy documents, the approach is:
 - Launch fast, iterate based on user feedback
 - Build in public when possible for marketing
 
+### Chrome Extension Common Issues:
+- **Service worker inactive**: Background scripts need to be re-registered after errors
+- **CORS**: Use chrome.runtime.sendMessage for cross-component communication
+- **Storage limits**: chrome.storage.sync has 100KB limit, use .local for larger data
+- **Manifest V3**: No remote code execution, all scripts must be bundled
+
 ### Key Resources:
 - Chrome Extension docs: https://developer.chrome.com/docs/extensions/
 - Manifest V3 guide: https://developer.chrome.com/docs/extensions/mv3/
 - ExtensionPay (monetization): https://extensionpay.com/docs
+- Vite extension guide: https://vitejs.dev/guide/
 
 ## Working with This Repository
 
