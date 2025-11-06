@@ -1,402 +1,548 @@
-# 🚀 START HERE - PERCORSO COMPLETO
+# 🎯 START HERE - PERCORSO PASSIVE INCOME
 
-## COME USARE QUESTA GUIDA
+**OBIETTIVO:** $3,000-10,000/mese passive income entro 6-12 mesi
 
-Hai 8 file. Ecco l'ordine ESATTO da seguire per massimizzare risultati.
-
----
-
-## 📍 FASE 0: ORIENTAMENTO (30 minuti - OGGI)
-
-### ➡️ Leggi QUESTO file per capire il percorso completo
+**STRATEGIA:** Claude Code powered development → Velocity advantage → Market dominance
 
 ---
 
-## 🎯 PERCORSO RAPIDO (Se hai bisogno di soldi SUBITO)
+## 📍 SE LEGGI UN SOLO FILE, LEGGI QUESTO:
 
-### GIORNO 1 (2-3 ore):
+### **→ `MASTER-PLAN.md`** ⭐⭐⭐⭐⭐
 
-**1. Leggi: `08-VALIDAZIONE-REALITY-CHECK.md`** (30 min)
-- Sezione: "Reality Check: Tempi Realistici"
-- Sezione: "Honest Assessment: Difficulty Levels"
-- **PERCHÉ**: Aspettative realistiche prima di iniziare
+**IL documento centrale.**
 
-**2. Leggi: `06-QUICK-WINS-IMMEDIATI.md`** (45 min)
-- **TUTTO il file**
-- Scegli 1 Quick Win che ti piace
-- **PERCHÉ**: Cash in 24-72 ore
+Contiene:
+- ✅ Piano completo 90 giorni al primo $1k MRR
+- ✅ Timeline giorno-per-giorno
+- ✅ Prodotto scelto (Micro SaaS)
+- ✅ Quick Wins per cash flow
+- ✅ Launch strategy
+- ✅ Scale tactics
+- ✅ Metriche + projections
+- ✅ Come usare Claude Code in OGNI fase
 
-**3. AZIONE: Setup Quick Win scelto** (1-2 ore)
-- Esempio: Bug fixing su Fiverr
-- O: Automation service setup
-- **GOAL**: Pronto ad accettare primo cliente
+**Tempo lettura:** 30-45 minuti
 
-### GIORNO 2-7 (3 ore/giorno):
-
-**4. Segui: `05-ACTION-PLAN-30-GIORNI.md`**
-- Sezione: "Week 1: Foundation"
-- **FOCUS**: Outreach + primi clienti
-- **GOAL**: Primo cliente entro 7 giorni
+**Quando:** ADESSO
 
 ---
 
-## 📈 PERCORSO STANDARD (Build Sostenibile)
+## 🗺️ MAPPA DEI DOCUMENTI
 
-### SETTIMANA 1: FONDAMENTA
+Questa repo contiene 10+ file. Ecco cosa leggere e quando.
 
-**GIORNO 1 (3 ore):**
+### CORE DOCUMENTS (Must Read)
 
-**1. Leggi: `01-ANALISI-MERCATO-2025.md`** (45 min)
-- Tutto il file
-- **FOCUS**: Tariffe, nicchie redditizie
-- **PERCHÉ**: Capisci il mercato e dove posizionarti
+```yaml
+1. MASTER-PLAN.md ⭐⭐⭐⭐⭐
+   → IL piano centrale
+   → Read: Oggi, prima di tutto
+   → Result: Sai esattamente cosa fare ogni giorno
 
-**2. Leggi: `08-VALIDAZIONE-REALITY-CHECK.md`** (45 min)
-- Sezioni chiave:
-  - "Validation Check: Tariffe e Guadagni"
-  - "Reality Check: Common Mistakes"
-  - "Is This For You?"
-- **PERCHÉ**: Aspettative realistiche + evita errori
+2. 06-QUICK-WINS-IMMEDIATI.md ⭐⭐⭐⭐
+   → Fase 1: Cash flow immediato
+   → Read: Dopo MASTER-PLAN
+   → Result: $500-1,500 nei primi 7-14 giorni
 
-**3. Leggi: `02-STRATEGIE-CONCRETE-START.md`** (90 min)
-- Tutto il file
-- **SCEGLI 1 STRATEGIA**:
-  - Strategia 1 (Freelance Rapido) ← Raccomandato
-  - Strategia 2 (Micro SaaS)
-  - Strategia 3 (Automation Agency)
-- **PERCHÉ**: Definisci approccio principale
+3. PASSIVE-INCOME-PRODUCTS.md ⭐⭐⭐⭐
+   → Deep dive: Perché Micro SaaS > Altri prodotti
+   → Read: Settimana 2-3 (prima di build)
+   → Result: Conviction su prodotto da costruire
 
-**GIORNO 2-3 (6 ore totale):**
+4. 03-CLAUDE-CODE-LEVERAGING.md ⭐⭐⭐⭐
+   → Come usare Claude Code (tuo vantaggio competitivo)
+   → Read: Mentre esegui (consulta)
+   → Result: 3-5x speed su sviluppo
 
-**4. Leggi: `03-CLAUDE-CODE-LEVERAGING.md`** (60 min)
-- Focus sezioni:
-  - "Workflow Ottimale"
-  - "Templates Prompt Efficaci"
-  - "Best Practices"
-- **PERCHÉ**: Impari a usare il tuo superpotere (Claude Code)
+5. 08-VALIDAZIONE-REALITY-CHECK.md ⭐⭐⭐
+   → Dati reali, aspettative oneste
+   → Read: Oggi (prima di iniziare)
+   → Result: No bullshit, aspettative realistiche
+```
 
-**5. Segui: `05-ACTION-PLAN-30-GIORNI.md`** (5 ore)
-- **GIORNO 1-2 del piano**:
-  - Setup portfolio (con Claude Code)
-  - Setup piattaforme (Fiverr/Upwork/LinkedIn)
-- **PERCHÉ**: Base operativa pronta
+### SUPPORTING DOCUMENTS (Read When Needed)
 
-**GIORNO 4-7 (12 ore totale):**
+```yaml
+6. 05-ACTION-PLAN-30-GIORNI.md ⭐⭐⭐
+   → Daily tasks dettagliate (legacy, pre-MASTER-PLAN)
+   → Read: Se vuoi ancora più dettaglio
+   → Note: MASTER-PLAN è più aggiornato
 
-**6. Continua: `05-ACTION-PLAN-30-GIORNI.md`**
-- **GIORNO 3-7 del piano**:
-  - Build demo projects
-  - Marketing assets
-  - Primi 20 outreach
+7. 04-ESEMPI-CONCRETI-PROGETTI.md ⭐⭐
+   → Esempi progetti (Chrome Ext, SaaS, CLI, etc)
+   → Read: Settimana 3-4 (curiosità)
+   → Note: MASTER-PLAN già sceglie per te (SaaS)
 
-**7. Consulta: `03-CLAUDE-CODE-LEVERAGING.md`**
-- Mentre costruisci progetti
-- Usa i prompt templates
-- **RISULTATO**: 3 progetti demo + outreach attivo
+8. 07-TATTICHE-STRATEGIE-OBIETTIVI.md ⭐⭐
+   → Scale da $2k → $5k → $10k+
+   → Read: Mese 3+ (quando hai first revenue)
+   → Result: Tattiche avanzate scaling
 
-### SETTIMANA 2-4: ACQUISIZIONE CLIENTI
+9. 01-ANALISI-MERCATO-2025.md ⭐
+   → Tariffe, nicchie, market research
+   → Read: Opzionale (background)
+   → Note: MASTER-PLAN già incorpora insights
 
-**8. Segui: `05-ACTION-PLAN-30-GIORNI.md`**
-- Week 2-4 del piano completo
-- **Routine giornaliera**:
-  - Morning: Outreach (10 connessioni LinkedIn)
-  - Afternoon: Build/delivery
-  - Evening: Content (1 post social)
+10. 02-STRATEGIE-CONCRETE-START.md ⭐
+    → 3 strategie (Freelance vs SaaS vs Agency)
+    → Read: Opzionale
+    → Note: MASTER-PLAN già sceglie (Hybrid)
+```
 
-**9. Consulta quando serve:**
-- **`07-TATTICHE-STRATEGIE-OBIETTIVI.md`**
-  - Se non raggiungi obiettivo $2k
-  - Sezione: "Tattica #1 - Volume Play"
-  - Troubleshooting specifico
+### PROJECT-SPECIFIC DOCS
 
-- **`06-QUICK-WINS-IMMEDIATI.md`**
-  - Se hai buco nel calendario
-  - Per riempire gap revenue
-  - Quick cash boosts
+```yaml
+FocusFlow/claude.md
+→ Chrome Extension productivity tool
+→ Read: Se vuoi buildare extension invece di SaaS
+→ Note: SaaS ha più revenue potential (vedi MASTER-PLAN)
 
-**GOAL SETTIMANA 4**: $1,500-2,500 guadagnati
-
----
-
-## 🎓 FASE AVANZATA (Dopo primi $2k)
-
-### MESE 2: SCALE A $5K
-
-**10. Leggi: `07-TATTICHE-STRATEGIE-OBIETTIVI.md`** (90 min)
-- **Obiettivo 2: $5,000/mese**
-- Sezioni focus:
-  - Tattica #3 (Retainer Conversion)
-  - Tattica #4 (Productized Service)
-- **SCEGLI** quale tattica per te
-
-**11. Implementa tattica scelta** (tutto il mese)
-- Segui step-by-step dalla tattica
-- Track KPI settimanalmente
-- Adjust based on results
-
-**GOAL MESE 2**: $3,000-5,000
-
-### MESE 3-6: BUILD PASSIVE INCOME
-
-**12. Leggi: `04-ESEMPI-CONCRETI-PROGETTI.md`** (2 ore)
-- **TUTTO il file**
-- Scegli 1 progetto:
-  - Chrome Extension (più facile)
-  - Micro SaaS (più potenziale)
-  - CLI Tool (niche)
-  - Automation Templates (veloce)
-
-**13. Build progetto scelto** (parallelo a freelance)
-- Dedica 10-15 ore/settimana
-- Usa `03-CLAUDE-CODE-LEVERAGING.md` per velocità
-- Timeline: 3-6 settimane a MVP
-
-**14. Launch + Iterate**
-- Segui launch strategy dal file 04
-- Primi utenti/clienti
-- Iterate based on feedback
-
-**GOAL MESE 6**:
-- Freelance: $4,000-6,000
-- Passive: $500-1,500
-- **TOTAL: $4,500-7,500**
+linkedboost/COSA_FA_LINKEDBOOST.md
+→ LinkedIn automation extension
+→ Read: Curiosità, ma NON focus principale
+→ Note: Tool personale, non per monetizzare
+```
 
 ---
 
-## 🚀 FASE MASTERY (6-12 mesi)
+## 🚀 PERCORSO RACCOMANDATO
 
-### OBIETTIVO: $10K/MESE
+### OGGI (Giorno 1) - 3 ore
 
-**15. Leggi: `07-TATTICHE-STRATEGIE-OBIETTIVI.md`**
-- **Obiettivo 3: $10,000/mese**
-- Tattiche avanzate:
-  - Tattica #6 (Enterprise)
-  - Tattica #7 (Agency)
-  - Tattica #8 (Product Portfolio)
+```markdown
+MATTINA (2 ore):
+□ Leggi: MASTER-PLAN.md (tutto)
+□ Leggi: 08-VALIDAZIONE-REALITY-CHECK.md (prime 50 righe)
+□ DECIDE: Committo al piano? Y/N
 
-**16. Deep dive specializzazione**
-- Pick 1 tattica e master it
-- 6 mesi di focus
-- Non distrarti con shiny objects
+POMERIGGIO (1 ora):
+Se YES:
+□ Leggi: 06-QUICK-WINS-IMMEDIATI.md → Win #1
+□ SETUP: Fiverr gig per bug fixing (1 ora)
+```
 
-**17. Optimize & Automate**
-- Delega low-value tasks
-- Sistematizza processi
-- Scale senza aumentare ore
-
-**GOAL ANNO 1**: $8,000-12,000/mese
+**Outcome:** Chiaro su piano + Primo gig live
 
 ---
 
-## 📋 QUICK REFERENCE: QUANDO LEGGERE COSA
+### SETTIMANA 1 (Giorno 2-7) - FASE 1
 
-### Prima di iniziare:
-→ `08-VALIDAZIONE-REALITY-CHECK.md` (aspettative)
-→ `01-ANALISI-MERCATO-2025.md` (mercato)
+```markdown
+OBIETTIVO: $500-1,500 cash + Skills practice
 
-### Setup fase:
-→ `02-STRATEGIE-CONCRETE-START.md` (scegli strategia)
-→ `05-ACTION-PLAN-30-GIORNI.md` (esecuzione)
+ROUTINE GIORNALIERA (4h/giorno):
+□ 2h: Quick Win client work (seguendo 06-QUICK-WINS)
+□ 1h: Outreach (LinkedIn, Twitter, Reddit)
+□ 1h: Portfolio building (con Claude Code)
 
-### Execution fase:
-→ `03-CLAUDE-CODE-LEVERAGING.md` (velocità)
-→ `06-QUICK-WINS-IMMEDIATI.md` (cash flow)
+FILE DA CONSULTARE:
+→ 06-QUICK-WINS-IMMEDIATI.md (daily reference)
+→ 03-CLAUDE-CODE-LEVERAGING.md (prompt templates)
+→ MASTER-PLAN.md (check Phase 1 checklist)
 
-### Growth fase:
-→ `07-TATTICHE-STRATEGIE-OBIETTIVI.md` (scale)
-→ `04-ESEMPI-CONCRETI-PROGETTI.md` (passive income)
+METRICS:
+□ Outreach sent: Target 50+
+□ Proposals/applications: Target 10+
+□ First client: Target by Day 5-7
+□ Revenue: Target $200-500
+```
 
-### Troubleshooting:
-→ `08-VALIDAZIONE-REALITY-CHECK.md` (errori comuni)
-→ `07-TATTICHE-STRATEGIE-OBIETTIVI.md` (KPI tracking)
-
----
-
-## ⚡ TL;DR - PERCORSO MINIMO VIABLE
-
-Se hai ZERO tempo e vuoi solo iniziare:
-
-### OGGI (3 ore):
-1. ✅ `06-QUICK-WINS-IMMEDIATI.md` → Scegli 1 quick win
-2. ✅ `03-CLAUDE-CODE-LEVERAGING.md` → Template prompt section
-3. ✅ **AZIONE**: Setup offerta + 10 outreach
-
-### QUESTA SETTIMANA:
-1. ✅ `05-ACTION-PLAN-30-GIORNI.md` → Week 1 only
-2. ✅ **AZIONE**: 50 outreach + demo projects
-
-### QUESTO MESE:
-1. ✅ `05-ACTION-PLAN-30-GIORNI.md` → Full plan
-2. ✅ `07-TATTICHE-STRATEGIE-OBIETTIVI.md` → Tattica #1
-3. ✅ **GOAL**: $1,500-2,500 earned
-
-### MESE 2-3:
-1. ✅ `07-TATTICHE-STRATEGIE-OBIETTIVI.md` → Scale tattiche
-2. ✅ `04-ESEMPI-CONCRETI-PROGETTI.md` → Build 1 product
-3. ✅ **GOAL**: $3,000-5,000/mese
+**Outcome:** First cash + Momentum
 
 ---
 
-## 🎯 I 3 FILE PIÙ IMPORTANTI (80/20)
+### SETTIMANA 2-6 (Mese 2) - FASE 2
 
-Se devi leggere SOLO 3 file:
+```markdown
+OBIETTIVO: Build MVP SaaS mentre fai Quick Wins
 
-### 1. `05-ACTION-PLAN-30-GIORNI.md`
-**PERCHÉ**: Step-by-step completo, niente decisioni da prendere
-**QUANDO**: Oggi, subito
-**RISULTATO**: Primi $2k in 30 giorni
+SPLIT TIME:
+□ Morning (3h): Quick Win clients → Cash flow
+□ Afternoon (4h): SaaS development → Future passive income
 
-### 2. `03-CLAUDE-CODE-LEVERAGING.md`
-**PERCHÉ**: Il tuo competitive advantage principale
-**QUANDO**: Mentre esegui il piano
-**RISULTATO**: 3-5x più veloce dei competitor
+SEGUI: MASTER-PLAN.md → FASE 2 step-by-step
 
-### 3. `07-TATTICHE-STRATEGIE-OBIETTIVI.md`
-**PERCHÉ**: Roadmap completa da $2k a $10k+
-**QUANDO**: Dopo primi $2k, per scaling
-**RISULTATO**: Framework chiaro per crescita
+FILES:
+→ MASTER-PLAN.md (daily checklist)
+→ PASSIVE-INCOME-PRODUCTS.md (conviction boost)
+→ 03-CLAUDE-CODE-LEVERAGING.md (dev velocity)
+
+METRICS:
+□ Quick Wins revenue: $1,500-2,500
+□ SaaS dev hours: 80-100h total
+□ MVP completion: Week 6
+□ Beta users: 10 by end of Week 6
+```
+
+**Outcome:** Cash flow secured + MVP ready
 
 ---
 
-## 📊 TRACKING PROGRESS
+### MESE 2 (Settimana 7-10) - FASE 3
+
+```markdown
+OBIETTIVO: Launch + Prime paying customers
+
+SEGUI: MASTER-PLAN.md → FASE 3 (Launch + Marketing)
+
+FILES:
+→ MASTER-PLAN.md (launch checklist)
+→ 07-TATTICHE-STRATEGIE-OBIETTIVI.md (se serve troubleshoot)
+
+METRICS:
+□ Product Hunt: Top 10 product of day
+□ Signups: 100-200
+□ Paying customers: 10-20
+□ MRR: $400-800
+□ Quick Wins: $1,000-1,500 (phase out)
+```
+
+**Outcome:** Product live + First MRR
+
+---
+
+### MESE 3-6 - FASE 4
+
+```markdown
+OBIETTIVO: Scale to $3k-5k MRR
+
+SEGUI: MASTER-PLAN.md → FASE 4 (Scale)
+
+FILES:
+→ MASTER-PLAN.md (scale tactics)
+→ 07-TATTICHE-STRATEGIE-OBIETTIVI.md (advanced)
+
+METRICS:
+□ MRR: $3,000-5,000
+□ Customers: 100-150
+□ Churn: <8%/month
+□ Quick Wins: Phased out
+□ Time: 20-30h/week (increasingly passive)
+```
+
+**Outcome:** Sustainable passive income
+
+---
+
+## 🎯 TL;DR - MINIMAL VIABLE PATH
+
+Se vuoi SOLO l'essenziale:
+
+### READ (4 ore totale):
+```
+1. MASTER-PLAN.md (2h) → Everything you need
+2. 06-QUICK-WINS-IMMEDIATI.md (1h) → Cash flow
+3. 03-CLAUDE-CODE-LEVERAGING.md (1h) → Speed
+```
+
+### EXECUTE (90 giorni):
+```
+→ Follow MASTER-PLAN.md day-by-day
+→ Consult altri docs when needed
+→ Track metrics weekly
+```
+
+### RESULT:
+```
+Month 1: $800-1,500
+Month 2: $1,500-2,500
+Month 3: $2,500-4,000
+Month 6: $3,500-5,000+ (mostly passive)
+```
+
+---
+
+## 📋 DECISION TREE: QUALE FILE LEGGERE?
+
+### "Voglio capire il piano completo"
+→ **MASTER-PLAN.md**
+
+### "Voglio cash SUBITO (24-72h)"
+→ **06-QUICK-WINS-IMMEDIATI.md**
+
+### "Voglio sapere PERCHÉ Micro SaaS e non Chrome Extension"
+→ **PASSIVE-INCOME-PRODUCTS.md**
+
+### "Come uso Claude Code per andare veloce?"
+→ **03-CLAUDE-CODE-LEVERAGING.md**
+
+### "È realistico? O è hype?"
+→ **08-VALIDAZIONE-REALITY-CHECK.md**
+
+### "Ho $2k/mese, come scalo a $5k-10k?"
+→ **07-TATTICHE-STRATEGIE-OBIETTIVI.md**
+
+### "Voglio vedere esempi concreti progetti"
+→ **04-ESEMPI-CONCRETI-PROGETTI.md**
+
+### "Voglio daily tasks super dettagliate"
+→ **05-ACTION-PLAN-30-GIORNI.md** (legacy, ma ancora utile)
+
+---
+
+## ⚠️ ANTI-PATTERN: NON FARE QUESTO
+
+```yaml
+❌ Leggere tutti i file prima di iniziare
+  → Paralisi da analisi
+  → Leggi MASTER-PLAN + START
+
+❌ Costruire senza Quick Wins prima
+  → Zero cash flow
+  → Stress finanziario
+  → Abbandoni dopo 1 mese
+
+❌ Ignorare metriche
+  → Non sai se sta funzionando
+  → Non puoi ottimizzare
+  → Sprechi tempo su cose che non funzionano
+
+❌ Perfectionism
+  → "Devo finire di leggere tutto"
+  → "Devo avere portfolio perfetto"
+  → "Devo imparare ancora X prima"
+  → RESULT: Zero action, zero revenue
+
+❌ Distrazioni (shiny object syndrome)
+  → "Forse Chrome Extension è meglio?"
+  → "Forse agency invece?"
+  → "Forse aspetto nuovo framework?"
+  → RESULT: Switch continui, niente completato
+```
+
+---
+
+## ✅ SUCCESS PATTERN: FAI QUESTO
+
+```yaml
+✅ Read-Act-Learn Loop
+  → Leggi MASTER-PLAN (2h)
+  → Agisci su Phase 1 (oggi)
+  → Impari dall'azione
+  → Adjust + Continua
+
+✅ Bias verso azione
+  → Done > Perfect
+  → Real client > Demo project
+  → $1 earned > $0 teorizzato
+
+✅ Track metrics religiosamente
+  → Weekly review
+  → Cosa funziona → More of that
+  → Cosa non funziona → Stop
+
+✅ Use Claude Code aggressivamente
+  → 10x content production
+  → 5x dev speed
+  → 3x support speed
+  → = Competitive advantage
+
+✅ Commit to timeline
+  → 90 days minimum
+  → Esegui anche se dubbi
+  → Results speak dopo, non prima
+```
+
+---
+
+## 🎬 IL TUO NEXT STEP - ORA
+
+### OPZIONE 1: Full Commitment (Raccomandato)
+
+```markdown
+ADESSO (prossime 3 ore):
+1. □ Apri MASTER-PLAN.md
+2. □ Leggi tutto (45 min)
+3. □ Apri 06-QUICK-WINS-IMMEDIATI.md
+4. □ Scegli Win #1 (Bug Fixing)
+5. □ Setup Fiverr gig (1h)
+6. □ 10 LinkedIn outreach (30 min)
+
+DOMANI:
+→ Segui MASTER-PLAN.md → Phase 1, Day 2
+
+QUESTA SETTIMANA:
+→ Segui MASTER-PLAN.md → Phase 1, Week 1
+→ Target: First client by Day 5-7
+
+RISULTATO Settimana 1: $200-500 earned
+```
+
+### OPZIONE 2: Cautious Start
+
+```markdown
+ADESSO (1 ora):
+1. □ Leggi MASTER-PLAN.md (intro + Phase 1 only)
+2. □ Leggi 08-VALIDAZIONE-REALITY-CHECK.md (aspettative)
+3. □ DECIDE: Voglio provare? Y/N
+
+SE YES domani:
+→ Follow Opzione 1
+
+SE NO:
+→ Almeno sai cosa sarebbe servito
+→ Torna quando ready
+```
+
+### OPZIONE 3: Already Experienced
+
+```markdown
+SE hai già:
+- Portfolio
+- Clienti
+- Revenue $1k+/mese
+
+ALLORA:
+SKIP Phase 1 → Vai diretto a Phase 2
+
+READ:
+□ MASTER-PLAN.md → Phase 2 (Build Product)
+□ PASSIVE-INCOME-PRODUCTS.md → Product choice
+□ 03-CLAUDE-CODE-LEVERAGING.md → Dev velocity
+
+START:
+→ Build SaaS MVP now (4 settimane)
+→ Launch Month 2
+→ Scale Month 3-6
+```
+
+---
+
+## 📊 PROGRESS TRACKING
 
 ### Stampa questa checklist:
 
-**FASE 1: SETUP (Week 1)**
-- [ ] Letto file 01, 08 (orientamento)
-- [ ] Scelto strategia principale
-- [ ] Portfolio website live
-- [ ] Fiverr/Upwork setup
-- [ ] LinkedIn ottimizzato
-- [ ] 3 demo projects built
-- [ ] 50 outreach inviati
+```markdown
+PHASE 1: CASH FLOW (Week 1-2)
+□ MASTER-PLAN.md letto
+□ 06-QUICK-WINS letto
+□ Fiverr gig live
+□ 50+ outreach sent
+□ First client closed
+□ $500+ earned
+□ Ready for Phase 2
 
-**FASE 2: FIRST CLIENTS (Week 2-4)**
-- [ ] Primo cliente chiuso
-- [ ] Primo progetto delivered
-- [ ] Prima recensione ottenuta
-- [ ] $500+ earned
-- [ ] 100+ outreach totale
-- [ ] 3+ proposals sent
-- [ ] Pipeline: 5 warm leads
+PHASE 2: BUILD MVP (Week 3-6)
+□ PASSIVE-INCOME-PRODUCTS.md letto
+□ Tech stack setup (Next.js + Supabase)
+□ MVP core features done
+□ Stripe integration done
+□ Landing page live
+□ 10 beta users
+□ Ready for Phase 3
 
-**FASE 3: CONSISTENT REVENUE (Month 2-3)**
-- [ ] $2,000+ earned
-- [ ] 5+ clienti totale
-- [ ] 10+ recensioni
-- [ ] 1 retainer convertito
-- [ ] Tattica scaling scelta
-- [ ] Prezzi aumentati 20%
+PHASE 3: LAUNCH (Week 7-10)
+□ Product Hunt launch
+□ 100+ signups
+□ 10+ paying customers
+□ $400+ MRR
+□ Marketing machine running
+□ Ready for Phase 4
 
-**FASE 4: PASSIVE LAYER (Month 4-6)**
-- [ ] $3,000+ freelance
-- [ ] 1 prodotto launched
-- [ ] 50+ users/customers prodotto
-- [ ] $500+ passive income
-- [ ] Content marketing attivo
-- [ ] Processi documentati
-
-**FASE 5: SCALE (Month 7-12)**
-- [ ] $5,000+ total revenue
-- [ ] Mix retainer + passive
-- [ ] 30-40 ore/week (sustainable)
-- [ ] Location independent
-- [ ] Delegation started (optional)
-
----
-
-## 🚨 RED FLAGS - QUANDO FERMARTI E RILEGGERE
-
-### Se dopo 2 settimane hai 0 risposte:
-→ Rileggi `07-TATTICHE-STRATEGIE-OBIETTIVI.md` → Troubleshooting
-→ Rileggi `08-VALIDAZIONE-REALITY-CHECK.md` → Common Mistakes
-
-### Se lavori 50+ ore ma guadagni <$2k:
-→ Rileggi `03-CLAUDE-CODE-LEVERAGING.md` → Efficiency
-→ Rileggi `07-TATTICHE-STRATEGIE-OBIETTIVI.md` → Pricing Strategy
-
-### Se hai clienti ma sono incubo:
-→ Rileggi `08-VALIDAZIONE-REALITY-CHECK.md` → Mistake #3
-→ Aumenta prezzi, filtra meglio
-
-### Se ti senti burnout:
-→ Rileggi `07-TATTICHE-STRATEGIE-OBIETTIVI.md` → Problem: Burnout
-→ Riduci volume, aumenta prezzi
-
----
-
-## 💡 ULTIMO CONSIGLIO
-
-### Non leggere tutto prima di iniziare
-
-**ERRORE**: Leggere tutti 8 file, poi "pianificare" per settimane
-**RISULTATO**: Paralisi da analisi, 0 action
-
-**CORRETTO**:
-1. Leggi file 06 (1 ora)
-2. Inizia quick win (2 ore)
-3. Leggi resto mentre esegui
-
-### Mantra:
-
-```
-Action oggi > Perfect plan domani
-Done > Perfect
-1 cliente reale > 10 demo projects
-$1 earned > $0 teorizzato
+PHASE 4: SCALE (Month 3-6)
+□ $1,500+ MRR
+□ $3,000+ MRR
+□ $5,000+ MRR (goal)
+□ <8% churn
+□ 20-30h/week time
+□ Sustainable passive income ✅
 ```
 
 ---
 
-## 🎬 IL TUO PROSSIMO STEP - ADESSO
+## 💰 EXPECTED OUTCOMES (Timeline)
 
-**Chiudi questo file.**
+```yaml
+Week 2:
+  Quick Wins: $500-800
+  SaaS: $0
+  Total: $500-800
+  Status: "First money, momentum building"
 
-**Apri: `06-QUICK-WINS-IMMEDIATI.md`**
+Week 6:
+  Quick Wins: $1,500-2,000
+  SaaS: $0 (MVP in beta)
+  Total: $1,500-2,000
+  Status: "Cash flow secured, product ready"
 
-**Leggi Win #1 o #2.**
+Week 10:
+  Quick Wins: $1,000
+  SaaS: $400-800 MRR
+  Total: $1,400-1,800
+  Status: "First MRR, scaling begins"
 
-**Setup offerta (1 ora).**
+Month 3:
+  Quick Wins: $500 (phasing out)
+  SaaS: $1,500-2,500 MRR
+  Total: $2,000-3,000
+  Status: "Passive income primary source"
 
-**Invia 10 outreach.**
+Month 6:
+  Quick Wins: $0
+  SaaS: $3,500-5,000 MRR
+  Total: $3,500-5,000
+  Status: "Sustainable passive income achieved"
 
-**Fine.**
-
-**Domani continui con `05-ACTION-PLAN-30-GIORNI.md`.**
-
----
-
-## 📞 SUMMARY: L'ORDINE DEFINITIVO
-
-```
-PERCORSO VELOCE (Cash subito):
-06 → 05 → 03 → 07 (as needed)
-
-PERCORSO STANDARD (Build sostenibile):
-08 → 01 → 02 → 05 → 03 → 07 → 04
-
-PERCORSO MINIMO (Zero sbatti):
-05 (tutto) + 03 (consulta) + 07 (troubleshoot)
-
-FILES CRITICI:
-05 (Action Plan) ⭐⭐⭐⭐⭐
-03 (Claude Code) ⭐⭐⭐⭐⭐
-07 (Tattiche) ⭐⭐⭐⭐
-06 (Quick Wins) ⭐⭐⭐
-04 (Progetti) ⭐⭐⭐
-
-FILES SUPPORTO:
-01 (Analisi Mercato) ⭐⭐
-02 (Strategie) ⭐⭐
-08 (Validazione) ⭐⭐
+Month 12:
+  SaaS: $7,000-12,000 MRR
+  Time: 15-20h/week
+  Status: "Freedom, scale or sell options"
 ```
 
 ---
 
-**ORA VAI.** 🚀
+## 🔥 MOTIVATION REMINDER
 
-**Prossimo file: `06-QUICK-WINS-IMMEDIATI.md`**
+```
+Stai leggendo questo perché vuoi cambiare.
 
-**Tempo: ORA**
+Cambiare cosa?
+→ Dipendenza da stipendio
+→ Boss che decide la tua vita
+→ Scambiare tempo per soldi
+→ Non avere controllo
 
-**Let's get that money.** 💰
+Questo piano funziona.
+
+DATI REALI (da 08-VALIDAZIONE-REALITY-CHECK.md):
+✓ Micro SaaS può fare $1k-10k+ MRR (verificato)
+✓ Freelance $40-100/ora è realistico (verificato)
+✓ Claude Code dà 3-5x speed (verificato)
+✓ 90 giorni a $1k MRR è feasible (dati reali)
+
+MA funziona SOLO se:
+1. Inizi OGGI
+2. Segui il piano
+3. Non ti arrendi a Week 3 quando è duro
+4. Tracki metriche
+5. Aggiusti based on data
+
+Se fai questo → 6 mesi dopo la tua vita è diversa.
+
+Se leggi e non fai → 6 mesi dopo sei qui a leggere un altro "plan".
+
+Scegli.
+```
+
+---
+
+## 🎯 FINAL WORD
+
+### Close questo file.
+
+### Open: **`MASTER-PLAN.md`**
+
+### Read it completamente.
+
+### Then execute Phase 1, Day 1.
+
+### TODAY.
+
+---
+
+**START NOW.** 🚀
+
+**Il tuo primo $1k MRR ti aspetta.** 💰
+
+**Let's build.** ⚡
