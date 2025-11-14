@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.starterstory.com)",
+      "WebFetch(domain:shipfa.st)",
+      "WebFetch(domain:divjoy.com)",
+      "WebFetch(domain:shipixen.com)",
+      "WebFetch(domain:www.zerobounce.net)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
