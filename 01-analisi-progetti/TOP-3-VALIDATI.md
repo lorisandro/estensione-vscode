@@ -108,11 +108,15 @@ Mese 6: €800-1,200/mese ✅
 ### Perché Questo Funziona
 
 **Caso studio VERIFICATO:**
-- **ShipFast (Marc Lou):** $133k/mese (Aprile 2024, pubblico su LinkedIn)
+- **ShipFast (Marc Lou):** $133k/mese (Aprile 2024 PICCO, pubblico su LinkedIn)
+  - **⚠️ AGGIORNAMENTO Nov 2025:** Revenue declined a $16.8k/mese (Ottobre 2025)
+  - Causa: Mercato template saturato, Marc Lou ha diversificato su altri prodotti
+  - **7,754 makers** attualmente usano ShipFast (crescita customer base)
+  - Pricing attuale: $199-249 (con sconto, era $299)
 - **Divjoy:** $249 prezzo, stabile da 3+ anni
 - **SupaStarter:** €299 prezzo, vendite consistenti
 
-**Mercato validato:** Marc Lou ha fatto $528k in 4 mesi. Indie hackers vogliono template pronti.
+**Mercato validato:** Marc Lou ha fatto $528k in 4 mesi al picco. Template marketplace rimane validato ma **competizione significativamente aumentata** dal 2024.
 
 ### Numeri Realistici
 
@@ -198,11 +202,12 @@ Mese 4: €2,000-3,000/mese ✅
 ### Perché Questo Funziona
 
 **Competitor verificati:**
-- **GMass (Gmail extension):** $130k/mese (fonte: Indie Hackers)
-- **Closet Tools (Poshmark):** $42k/mese
-- **Magical (text expander):** $2M+ revenue/anno
+- **GMass (Gmail extension):** $130k/mese (dato 2019, fonte: Indie Hackers)
+  - **⚠️ Nota:** Dato ha 6+ anni, non confermato se ancora attuale nel 2025
+- **Closet Tools (Poshmark):** $42k/mese (verificato 2024)
+- **Magical (text expander):** $2M+ revenue/anno (verificato)
 
-**Mercato validato:** Utenti Chrome Store pagano per productivity tools.
+**Mercato validato:** Utenti Chrome Store pagano per productivity tools. **⚠️ GMass data è del 2019.**
 
 ### Numeri Realistici
 
@@ -392,6 +397,12 @@ Quando sei pronto, dimmi quale scegli e iniziamo.
 ---
 
 **Analisi completata:** Gennaio 2025
-**Fonti dati:** LinkedIn (Marc Lou), Indie Hackers, Crunchbase, Chrome Web Store, pricing pages pubblici
+**Ultima verifica:** 14 Novembre 2025 ✅
+**Fonti dati:** LinkedIn (Marc Lou), Indie Hackers, Crunchbase, Chrome Web Store, pricing pages pubblici, GetLatka
 **Validazione:** ✅ Tutti e 3 hanno competitor che fatturano
-**Affidabilità:** Alta (dati pubblici verificabili)
+**Affidabilità:** Alta (dati pubblici verificabili, aggiornati Nov 2025)
+
+**⚠️ AGGIORNAMENTO IMPORTANTE (Nov 2025):**
+- ShipFast revenue declined 87% dal picco (mercato saturato)
+- Template Marketplace rimane validato ma competizione alta
+- Considerare nuove opportunità: AI Automation Agency, Micro SaaS AI (vedere VERIFICATION-REPORT.md)

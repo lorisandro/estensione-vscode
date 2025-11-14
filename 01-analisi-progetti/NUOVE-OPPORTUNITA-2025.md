@@ -9,10 +9,12 @@
 ### Validazione
 
 **Competitor verificati:**
-- **ManyChat Instagram:** $50M+/anno revenue (fonte: Crunchbase)
+- **ManyChat Instagram:** $35M/anno revenue (2024: $34.6M verified, fonte: GetLatka, Crunchbase)
 - **MobileMonkey:** $5M+/anno
 - **IGdm.me:** $120k+/anno (indie hacker, pubblico)
 - **Pricing:** $15-99/mese
+
+**⚠️ Ultima verifica:** 14 Novembre 2025
 
 **Mercato:** 2 MILIARDI utenti Instagram, 200M business accounts
 
@@ -64,10 +66,12 @@ Budget: €400-600
 ### Validazione
 
 **Competitor verificati:**
-- **Easlo (Notion creator):** $500k+/anno (pubblico Twitter)
+- **Easlo (Notion creator):** $779k/anno (2024 verified, fonte: GetLatka, Starter Story)
 - **Notionery:** $180k+/anno
 - **Gridfiti:** $120k+/anno
 - **Pricing:** $5-99 per template
+
+**✅ Nota:** Easlo revenue verificato e cresciuto. 2023: $500k, 2024: $779k.
 
 **Mercato:** 30M+ utenti Notion, crescita 300% anno
 
@@ -147,9 +151,11 @@ NON serve coding. Solo design + marketing.
 **Trend:** Faceless YouTube channels fanno $10k-100k+/mese
 
 **Esempi verificati:**
-- **Magnates Media:** 3M subs, $50k+/mese (faceless)
+- **Magnates Media:** 3M subs, $20k-31k/mese stimato (faceless, dato 2025)
 - **Aperture:** 2M subs, faceless documentaries
-- **The Infographics Show:** 14M subs, $200k+/mese
+- **The Infographics Show:** 14M subs, $100k-200k+/mese stimato
+
+**⚠️ Nota:** Magnates Media revenue basato su stime YouTube analytics 2025. Single video exceptional: $200k (con Coca-Cola sponsorship).
 
 **Tuo business:** Crei canali per altri (service-based)
 
@@ -298,12 +304,16 @@ GOAL: 3-5 beta clients entro mese 2
 
 ### Validazione
 
-**Marketplace:** Canva ha 170M utenti, templates vendono $50M+/anno combinato
+**Marketplace:** Canva ha 220M utenti attivi mensili (2024), templates vendono $50M+/anno combinato stimato
+
+**✅ Nota:** Canva market data aggiornato. 2024: 220M MAU, $2.7B revenue totale Canva.
 
 **Competitor:**
-- **Creative Fabrica:** $100M+/anno
+- **Creative Fabrica:** $14.4M/anno (2024 verified, fonte: GetLatka, CBInsights)
 - **Etsy Canva sellers:** $5k-50k/mese each
 - **Pricing:** $1-29 per template pack
+
+**⚠️ Nota:** Creative Fabrica revenue precedentemente sovrastimata. Dato corretto: $14.4M (2024).
 
 ### Math per €2k/mese
 
@@ -529,6 +539,9 @@ Vuoi service? → YouTube Agency o Newsletter Writing
 ---
 
 **Analisi completata:** Gennaio 2025
+**Ultima verifica dati:** 14 Novembre 2025 ✅
 **Nuove opportunità:** 8 progetti validati oltre i classici
-**Fonti:** Crunchbase, Indie Hackers, public revenue data, Etsy sales stats
-**Affidabilità:** Alta (competitor revenue verificato)
+**Fonti:** Crunchbase, GetLatka, Indie Hackers, public revenue data, Etsy sales stats, CBInsights
+**Affidabilità:** Alta (competitor revenue verificato e aggiornato Nov 2025)
+
+**⚠️ DISCLAIMER:** Alcuni dati originali (Gennaio 2025) sono stati aggiornati con verifiche di Novembre 2025. Vedere note specifiche per correzioni.

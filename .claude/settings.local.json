@@ -6,7 +6,8 @@
       "WebFetch(domain:shipfa.st)",
       "WebFetch(domain:divjoy.com)",
       "WebFetch(domain:shipixen.com)",
-      "WebFetch(domain:www.zerobounce.net)"
+      "WebFetch(domain:www.zerobounce.net)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

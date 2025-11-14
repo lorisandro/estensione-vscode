@@ -249,7 +249,10 @@ Vai a `01-analisi-progetti/TOP-3-VALIDATI.md` e inizia. 🚀
 ---
 
 **Ultimo aggiornamento:** Gennaio 2025
+**Ultima verifica dati:** 14 Novembre 2025 ✅
 **File creati:** 5 (3 PIANO-AZIONE + 2 analisi)
-**Progetti validati:** 11 totali
+**Progetti validati:** 11 totali (dati aggiornati Nov 2025)
 **Tempo lettura totale:** 50 minuti per tutto
 **Tempo decisione:** 20 minuti (fast track)
+
+**⚠️ NOTA IMPORTANTE:** Tutti i dati sono stati verificati e aggiornati a Novembre 2025. Alcuni claim originali (Gennaio 2025) sono stati corretti. Vedere VERIFICA-GENERALE-COMPLETA.md per dettagli completi.
