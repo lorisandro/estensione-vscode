@@ -64,6 +64,7 @@
 📋 email-verification-api/PIANO-AZIONE.md
 📋 template-marketplace/PIANO-AZIONE.md
 📋 chrome-extension/PIANO-AZIONE.md
+📋 gumroad-stipendio/PIANO-AZIONE.md        ← NUOVO! (Framer + Notion + Midjourney)
 ```
 
 ### **📂 03-guide/** (Tutorial Pratici)
@@ -206,7 +207,7 @@ Timeline: 6-12 mesi primi €3k/mese
 
 Dopo Step 2, hai scelto 1-2 progetti. Ora:
 
-#### **Se hai scelto Email API, Template, o Chrome Extension:**
+#### **Se hai scelto Email API, Template, Chrome Extension, o Gumroad:**
 ```
 📋 Leggi PIANO-AZIONE completo (400+ righe):
    → 02-piani-azione/[progetto]/PIANO-AZIONE.md
@@ -260,8 +261,10 @@ business-playbook/
 │   │   └── PIANO-AZIONE.md               ← Setup, build, launch, scale
 │   ├── template-marketplace/
 │   │   └── PIANO-AZIONE.md               ← Next.js template, marketing
-│   └── chrome-extension/
-│       └── PIANO-AZIONE.md               ← Manifest V3, monetization
+│   ├── chrome-extension/
+│   │   └── PIANO-AZIONE.md               ← Manifest V3, monetization
+│   └── gumroad-stipendio/
+│       └── PIANO-AZIONE.md               ← Framer + Notion templates (NUOVO)
 │
 ├── 📂 03-guide/                           ← Tutorial Pratici
 │   └── GUMROAD-GUIDA-COMPLETA.md         ← Vendere prodotti digitali
