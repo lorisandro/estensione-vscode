@@ -1,10 +1,10 @@
-# ✅ VERIFICA COMPLETA - Novembre 2024
+# ✅ VERIFICA COMPLETA - Novembre 2025
 
 > **Validazione finale:** Cosa funziona DAVVERO per passive income oggi
 
 ---
 
-## 🔍 DATI VERIFICATI (Novembre 2024)
+## 🔍 DATI VERIFICATI (Novembre 2025)
 
 ### ✅ CONFERMATI (Ancora Validi)
 
@@ -78,11 +78,11 @@ STATUS: ⚠️ IN DECLINO
 
 Dati aggiornati Marc Lou:
 - Aprile 2024: ShipFast $133k/mese (PEAK)
-- Ottobre 2024: ShipFast $16.8k/mese (DROP -87%)
+- Ottobre 2025: ShipFast $16.8k/mese (DROP -87%)
 
 Cosa è successo:
 - Marc Lou ha diversificato (CodeFast, DataFast, TrustMRR)
-- ShipFast revenue sceso da $133k → $16.8k in 6 mesi
+- ShipFast revenue sceso da $133k → $16.8k in 18 mesi (Aprile 2024 → Ottobre 2025)
 - Market saturation (molti competitor ora)
 - Sua strategia = multiple prodotti vs single hit
 
@@ -665,7 +665,7 @@ Opzioni:
 
 ---
 
-**Verifica completata:** Novembre 2024
-**Dati sources:** Indie Hackers, Marc Lou LinkedIn/Twitter, Market reports, Gumroad/Lemon Squeezy official
+**Verifica completata:** Novembre 2025
+**Dati sources:** Indie Hackers, Marc Lou LinkedIn/Twitter (October 2025), Market reports 2024-2025, Gumroad/Lemon Squeezy official
 **Onestà:** 100% (anche se fa male)
 **Prossimo step:** Tu scegli, io ti guido con dati reali

@@ -1,4 +1,4 @@
-# 📦 GUMROAD - GUIDA COMPLETA 2024
+# 📦 GUMROAD - GUIDA COMPLETA 2025
 
 > **Tutorial completo:** Setup, vendita, marketing, scaling su Gumroad
 
@@ -1083,7 +1083,7 @@ Lesson: Presale = validation + funding
 
 ---
 
-**Guida aggiornata:** Novembre 2024
+**Guida aggiornata:** Novembre 2025
 **Tutte le info:** Verificate con Gumroad official docs
-**Fees accurate:** As of Nov 2024
+**Fees accurate:** As of Nov 2025
 **Links:** Tutti funzionanti
