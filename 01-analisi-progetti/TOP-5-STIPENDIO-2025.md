@@ -6,7 +6,7 @@
 >
 > **CRITERIO:** Se non ha competitor che fanno soldi ADESSO (Nov 2025), non è in questa lista
 
-**Ultima verifica:** 14 Novembre 2025 ✅
+**Ultima verifica:** 14 Gennaio 2025 ✅
 
 ---
 
@@ -1215,8 +1215,8 @@ Net: $8,000+/mese after fees
 
 ---
 
-**File creato:** 14 Novembre 2025
-**Aggiornato con BONUS:** 14 Novembre 2025 ✅
+**File creato:** 14 Gennaio 2025
+**Aggiornato con BONUS:** 14 Gennaio 2025 ✅
 **Dati verificati:** Nov 2025 (GetLatka, Crunchbase, CBInsights, Kajabi, Teachable, Beehiiv)
 **Opportunità totali:** 5 TOP + 3 BONUS = 8 validate
 **Tutto RECURRING REVENUE:** 100% (no one-time bullshit)

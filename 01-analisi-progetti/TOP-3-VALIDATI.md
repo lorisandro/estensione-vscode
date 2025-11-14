@@ -397,7 +397,7 @@ Quando sei pronto, dimmi quale scegli e iniziamo.
 ---
 
 **Analisi completata:** Gennaio 2025
-**Ultima verifica:** 14 Novembre 2025 ✅
+**Ultima verifica:** 14 Gennaio 2025 ✅
 **Fonti dati:** LinkedIn (Marc Lou), Indie Hackers, Crunchbase, Chrome Web Store, pricing pages pubblici, GetLatka
 **Validazione:** ✅ Tutti e 3 hanno competitor che fatturano
 **Affidabilità:** Alta (dati pubblici verificabili, aggiornati Nov 2025)

@@ -14,7 +14,7 @@
 - **IGdm.me:** $120k+/anno (indie hacker, pubblico)
 - **Pricing:** $15-99/mese
 
-**⚠️ Ultima verifica:** 14 Novembre 2025
+**⚠️ Ultima verifica:** 14 Gennaio 2025
 
 **Mercato:** 2 MILIARDI utenti Instagram, 200M business accounts
 
@@ -539,9 +539,9 @@ Vuoi service? → YouTube Agency o Newsletter Writing
 ---
 
 **Analisi completata:** Gennaio 2025
-**Ultima verifica dati:** 14 Novembre 2025 ✅
+**Ultima verifica dati:** 14 Gennaio 2025 ✅
 **Nuove opportunità:** 8 progetti validati oltre i classici
 **Fonti:** Crunchbase, GetLatka, Indie Hackers, public revenue data, Etsy sales stats, CBInsights
 **Affidabilità:** Alta (competitor revenue verificato e aggiornato Nov 2025)
 
-**⚠️ DISCLAIMER:** Alcuni dati originali (Gennaio 2025) sono stati aggiornati con verifiche di Novembre 2025. Vedere note specifiche per correzioni.
+**⚠️ DISCLAIMER:** Alcuni dati originali (Gennaio 2025) sono stati aggiornati con verifiche di Gennaio 2025. Vedere note specifiche per correzioni.

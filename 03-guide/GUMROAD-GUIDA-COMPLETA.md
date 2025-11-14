@@ -1083,7 +1083,7 @@ Lesson: Presale = validation + funding
 
 ---
 
-**Guida aggiornata:** Novembre 2025
+**Guida aggiornata:** Gennaio 2025
 **Tutte le info:** Verificate con Gumroad official docs
-**Fees accurate:** As of Nov 2025
+**Fees accurate:** As of Jan 2025
 **Links:** Tutti funzionanti

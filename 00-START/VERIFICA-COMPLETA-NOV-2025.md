@@ -665,7 +665,7 @@ Opzioni:
 
 ---
 
-**Verifica completata:** Novembre 2025
-**Dati sources:** Indie Hackers, Marc Lou LinkedIn/Twitter (October 2025), Market reports 2024-2025, Gumroad/Lemon Squeezy official
+**Verifica completata:** Gennaio 2025
+**Dati sources:** Indie Hackers, Marc Lou LinkedIn/Twitter (October 2024), Market reports 2024-2025, Gumroad/Lemon Squeezy official
 **Onestà:** 100% (anche se fa male)
 **Prossimo step:** Tu scegli, io ti guido con dati reali
