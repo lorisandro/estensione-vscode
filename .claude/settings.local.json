@@ -7,7 +7,8 @@
       "WebFetch(domain:divjoy.com)",
       "WebFetch(domain:shipixen.com)",
       "WebFetch(domain:www.zerobounce.net)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
