@@ -473,37 +473,37 @@ Challenge #5: LOW Pricing Power (Race to Bottom)
 
 ---
 
-## 🛠️ Tools & Platforms (LINK DIRETTI)
+## 🛠️ Strumenti e Piattaforme (LINK DIRETTI)
 
-### AI Generation:
-- **[Midjourney](https://midjourney.com/)** - AI image generation (€30/mese Standard, €60 Pro)
-- **[Discord](https://discord.com/)** - Access Midjourney (free)
+### Generazione AI:
+- **[Midjourney](https://midjourney.com/)** - Generazione immagini AI (€30/mese Standard, €60 Pro)
+- **[Discord](https://discord.com/)** - Accesso Midjourney (gratis)
 
-### Design & Layout:
-- **[Canva Pro](https://www.canva.com/pro/)** - Text overlay, mockups (€12/mese)
-- **[Adobe Photoshop](https://www.adobe.com/products/photoshop.html)** - Advanced editing (€25/mese)
-- **[Photopea](https://www.photopea.com/)** - Free Photoshop alternative (browser-based)
+### Design e Layout:
+- **[Canva Pro](https://www.canva.com/pro/)** - Sovrapposizione testo, mockup (€12/mese)
+- **[Adobe Photoshop](https://www.adobe.com/products/photoshop.html)** - Editing avanzato (€25/mese)
+- **[Photopea](https://www.photopea.com/)** - Alternativa gratuita a Photoshop (browser-based)
 
 ### Marketplace:
-- **[Etsy](https://www.etsy.com/)** - Primary platform (6.5% + 3% fees)
-- **[Etsy Seller Dashboard](https://www.etsy.com/sell)** - Upload & manage listings
+- **[Etsy](https://www.etsy.com/)** - Piattaforma principale (commissioni 6.5% + 3%)
+- **[Etsy Seller Dashboard](https://www.etsy.com/sell)** - Caricamento e gestione inserzioni
 
-### Research Tools:
-- **[eRank](https://erank.com/)** - Keyword research, competitor analysis (€6/mese Pro)
-- **[Marmalead](https://marmalead.com/)** - Etsy SEO tool (€19/mese)
-- **[Everbe](https://everbe.io/)** - Product research (€20/mese)
+### Strumenti di Ricerca:
+- **[eRank](https://erank.com/)** - Ricerca parole chiave, analisi competitor (€6/mese Pro)
+- **[Marmalead](https://marmalead.com/)** - Strumento SEO Etsy (€19/mese)
+- **[Everbe](https://everbe.io/)** - Ricerca prodotti (€20/mese)
 
 ### Marketing:
-- **[Pinterest](https://www.pinterest.com/)** - Primary traffic source (free)
-- **[Tailwind](https://www.tailwindapp.com/)** - Pinterest automation (€10-15/mese)
+- **[Pinterest](https://www.pinterest.com/)** - Fonte traffico principale (gratis)
+- **[Tailwind](https://www.tailwindapp.com/)** - Automazione Pinterest (€10-15/mese)
 
-### Mockups:
-- **[Placeit](https://placeit.net/)** - Room setting mockups (€15/mese)
-- **[Smartmockups](https://smartmockups.com/)** - Frame mockups (free tier)
+### Mockup:
+- **[Placeit](https://placeit.net/)** - Mockup ambientazioni (€15/mese)
+- **[Smartmockups](https://smartmockups.com/)** - Mockup cornici (free tier)
 
-### Learning:
-- **[Growing Your Craft Blog](https://www.growingyourcraft.com/blog/)** - Etsy seller tips
-- **[r/EtsySellers](https://www.reddit.com/r/EtsySellers/)** - Reddit community
+### Risorse di Apprendimento:
+- **[Growing Your Craft Blog](https://www.growingyourcraft.com/blog/)** - Consigli per venditori Etsy
+- **[r/EtsySellers](https://www.reddit.com/r/EtsySellers/)** - Community Reddit
 
 ---
 

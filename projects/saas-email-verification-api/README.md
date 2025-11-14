@@ -437,37 +437,37 @@ Winner: SaaS per long-term passive income (recurring revenue compounds)
 
 ---
 
-## 🛠️ Tools & Platforms (LINK DIRETTI)
+## 🛠️ Strumenti e Piattaforme (LINK DIRETTI)
 
-### Development:
-- **[Claude Code](https://claude.ai/code)** - AI coding assistant (€20/mese Pro)
+### Sviluppo:
+- **[Claude Code](https://claude.ai/code)** - Assistente AI per codifica (€20/mese Pro)
 - **[Next.js](https://nextjs.org/)** - API routes + dashboard
-- **[TypeScript](https://www.typescriptlang.org/)** - Type safety
+- **[TypeScript](https://www.typescriptlang.org/)** - Sicurezza dei tipi
 
-### Backend & Database:
+### Backend e Database:
 - **[Supabase](https://supabase.com/)** - PostgreSQL + Auth (free tier)
-- **[Upstash Redis](https://upstash.com/)** - Rate limiting
-- **[Vercel](https://vercel.com/)** - API hosting (serverless)
+- **[Upstash Redis](https://upstash.com/)** - Limitazione rate
+- **[Vercel](https://vercel.com/)** - Hosting API (serverless)
 
-### Payments:
-- **[Stripe](https://stripe.com/)** - Subscriptions + webhooks
+### Pagamenti:
+- **[Stripe](https://stripe.com/)** - Abbonamenti + webhook
 
-### Email Services:
-- **[Resend](https://resend.com/)** - Transactional emails
-- **[Postmark](https://postmarkapp.com/)** - Email delivery (alternativo)
+### Servizi Email:
+- **[Resend](https://resend.com/)** - Email transazionali
+- **[Postmark](https://postmarkapp.com/)** - Invio email (alternativo)
 
-### Monitoring:
-- **[Sentry](https://sentry.io/)** - Error tracking
-- **[Plausible](https://plausible.io/)** - Web analytics
+### Monitoraggio:
+- **[Sentry](https://sentry.io/)** - Tracciamento errori
+- **[Plausible](https://plausible.io/)** - Analitica web
 
-### Competitor Research:
-- **[ZeroBounce](https://www.zerobounce.net/)** - Competitor pricing reference
-- **[Hunter.io](https://hunter.io/)** - Market leader analysis
-- **[NeverBounce](https://neverbounce.com/)** - Alternative competitor
+### Ricerca Competitor:
+- **[ZeroBounce](https://www.zerobounce.net/)** - Riferimento prezzi competitor
+- **[Hunter.io](https://hunter.io/)** - Analisi market leader
+- **[NeverBounce](https://neverbounce.com/)** - Competitor alternativo
 
 ### Marketing:
-- **[Product Hunt](https://www.producthunt.com/)** - Launch platform
-- **[Indie Hackers](https://www.indiehackers.com/)** - SaaS community
+- **[Product Hunt](https://www.producthunt.com/)** - Piattaforma lancio
+- **[Indie Hackers](https://www.indiehackers.com/)** - Community SaaS
 
 ---
 

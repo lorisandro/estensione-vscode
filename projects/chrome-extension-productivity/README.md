@@ -397,32 +397,32 @@ Risk #4: Low Pricing Power (vs SaaS)
 
 ---
 
-## 🛠️ Tools & Platforms (LINK DIRETTI)
+## 🛠️ Strumenti e Piattaforme (LINK DIRETTI)
 
-### Development:
-- **[Claude Code](https://claude.ai/code)** - AI coding assistant (€20/mese Pro)
-- **[Chrome Extensions Documentation](https://developer.chrome.com/docs/extensions/)** - Official docs
-- **[Manifest V3 Guide](https://developer.chrome.com/docs/extensions/mv3/intro/)** - Latest version
+### Sviluppo:
+- **[Claude Code](https://claude.ai/code)** - Assistente AI per codifica (€20/mese Pro)
+- **[Chrome Extensions Documentation](https://developer.chrome.com/docs/extensions/)** - Documentazione ufficiale
+- **[Manifest V3 Guide](https://developer.chrome.com/docs/extensions/mv3/intro/)** - Versione più recente
 
 ### UI/Design:
 - **[Tailwind CSS](https://tailwindcss.com/)** - Styling
-- **[Vite](https://vitejs.dev/)** - Build tool (optional, per React extensions)
+- **[Vite](https://vitejs.dev/)** - Build tool (opzionale, per estensioni React)
 
-### Monetization:
-- **[ExtensionPay](https://extensionpay.com/)** - Payment handling (Stripe integration)
-- **[Gumroad](https://gumroad.com/)** - License key alternative
-- **[Stripe](https://stripe.com/)** - Direct payment processing
+### Monetizzazione:
+- **[ExtensionPay](https://extensionpay.com/)** - Gestione pagamenti (integrazione Stripe)
+- **[Gumroad](https://gumroad.com/)** - Alternativa chiavi licenza
+- **[Stripe](https://stripe.com/)** - Elaborazione pagamenti diretta
 
-### Distribution:
-- **[Chrome Web Store](https://chrome.google.com/webstore/category/extensions)** - Official store
-- **Chrome Developer Dashboard** - Submission & analytics ($5 one-time fee)
+### Distribuzione:
+- **[Chrome Web Store](https://chrome.google.com/webstore/category/extensions)** - Store ufficiale
+- **Chrome Developer Dashboard** - Invio e analitica (commissione una tantum $5)
 
-### Competitor Research:
-- **[ExtensionPay Blog](https://extensionpay.com/articles/browser-extensions-make-money)** - Revenue case studies
-- **[Chrome Web Store Stats](https://chrome-stats.com/)** - Extension analytics
+### Ricerca Competitor:
+- **[ExtensionPay Blog](https://extensionpay.com/articles/browser-extensions-make-money)** - Case study revenue
+- **[Chrome Web Store Stats](https://chrome-stats.com/)** - Analitica estensioni
 
 ### Marketing:
-- **[Product Hunt](https://www.producthunt.com/)** - Launch platform
+- **[Product Hunt](https://www.producthunt.com/)** - Piattaforma lancio
 - **[Indie Hackers](https://www.indiehackers.com/)** - Community
 
 ---

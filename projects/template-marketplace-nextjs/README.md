@@ -201,34 +201,34 @@ vs Chrome Extension:
 Winner: Template Marketplace per speed + profit potential
 ```
 
-## 🛠️ Tools & Platforms (LINK DIRETTI)
+## 🛠️ Strumenti e Piattaforme (LINK DIRETTI)
 
-### Development Tools:
-- **[Claude Code](https://claude.ai/code)** - AI coding assistant (€20/mese Pro)
-- **[Next.js](https://nextjs.org/)** - React framework
-- **[TypeScript](https://www.typescriptlang.org/)** - Type safety
-- **[Tailwind CSS](https://tailwindcss.com/)** - Utility-first CSS
-- **[Shadcn/ui](https://ui.shadcn.com/)** - Component library
+### Strumenti di Sviluppo:
+- **[Claude Code](https://claude.ai/code)** - Assistente AI per codifica (€20/mese Pro)
+- **[Next.js](https://nextjs.org/)** - Framework React
+- **[TypeScript](https://www.typescriptlang.org/)** - Sicurezza dei tipi
+- **[Tailwind CSS](https://tailwindcss.com/)** - CSS utility-first
+- **[Shadcn/ui](https://ui.shadcn.com/)** - Libreria componenti
 
-### Backend & Infrastructure:
+### Backend e Infrastruttura:
 - **[Supabase](https://supabase.com/)** - Database + Auth (free tier generoso)
-- **[Vercel](https://vercel.com/)** - Hosting & deployment (free tier)
-- **[Upstash Redis](https://upstash.com/)** - Rate limiting
+- **[Vercel](https://vercel.com/)** - Hosting e deployment (free tier)
+- **[Upstash Redis](https://upstash.com/)** - Limitazione rate
 
-### Payments & Monetization:
-- **[Stripe](https://stripe.com/)** - Payment processing
-- **[Gumroad](https://gumroad.com/)** - Digital product sales (10% fee)
+### Pagamenti e Monetizzazione:
+- **[Stripe](https://stripe.com/)** - Elaborazione pagamenti
+- **[Gumroad](https://gumroad.com/)** - Vendita prodotti digitali (commissione 10%)
 
 ### Email:
-- **[Resend](https://resend.com/)** - Transactional emails
-- **[SendGrid](https://sendgrid.com/)** - Email service alternativo
+- **[Resend](https://resend.com/)** - Email transazionali
+- **[SendGrid](https://sendgrid.com/)** - Servizio email alternativo
 
-### Analytics:
-- **[PostHog](https://posthog.com/)** - Product analytics
-- **[Plausible](https://plausible.io/)** - Privacy-focused analytics
+### Analisi Dati:
+- **[PostHog](https://posthog.com/)** - Analitica prodotto
+- **[Plausible](https://plausible.io/)** - Analitica privacy-focused
 
 ### Marketing:
-- **[Product Hunt](https://www.producthunt.com/)** - Launch platform
+- **[Product Hunt](https://www.producthunt.com/)** - Piattaforma lancio
 - **[Indie Hackers](https://www.indiehackers.com/)** - Community
 - **[Twitter/X](https://twitter.com/)** - Build in public
 
