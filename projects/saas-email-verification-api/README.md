@@ -4,7 +4,7 @@
 
 - **ROI Score:** 88/100
 - **Budget Iniziale:** €500-1,000
-- **Time to €2k/mese:** 9-15 mesi
+- **Tempo a €2k/mese:** 9-15 mesi
 - **Utile Anno 1:** €12,000-36,000
 - **Competizione:** 🟡 Media (competitors profittevoli esistono)
 - **Scalabilità:** ⭐⭐⭐⭐⭐
@@ -53,13 +53,13 @@ Post 24 mesi: VERO PASSIVO (10h/settimana)
 
 ## 📁 Documenti
 
-1. [Market Research](01-MARKET-RESEARCH.md) - TAM $50M+, Email marketing industry
-2. [Competitor Analysis](02-COMPETITOR-ANALYSIS.md) - ZeroBounce, Hunter.io, NeverBounce + PRICING
-3. [Business Plan](03-BUSINESS-PLAN.md) - Subscription model, path to €2k MRR
-4. [Financial Projections](04-FINANCIAL-PROJECTIONS.md) - 24 mesi MRR growth realistic
-5. [Marketing Strategy](05-MARKETING-STRATEGY.md) - SEO, cold outreach, partnerships
-6. [Roadmap](06-ROADMAP.md) - 16 settimane MVP + 12 mesi growth
-7. [Resources](07-RESOURCES.md) - APIs, tools, competitor links
+1. [Ricerca Mercato](01-MARKET-RESEARCH.md) - TAM $50M+, Industria email marketing
+2. [Analisi Competitor](02-COMPETITOR-ANALYSIS.md) - ZeroBounce, Hunter.io, NeverBounce + PREZZI
+3. [Piano Business](03-BUSINESS-PLAN.md) - Modello abbonamenti, percorso a €2k MRR
+4. [Proiezioni Finanziarie](04-FINANCIAL-PROJECTIONS.md) - 24 mesi crescita MRR realistica
+5. [Strategia Marketing](05-MARKETING-STRATEGY.md) - SEO, approccio diretto, partnership
+6. [Roadmap](06-ROADMAP.md) - 16 settimane MVP + 12 mesi crescita
+7. [Risorse](07-RESOURCES.md) - API, strumenti, link competitor
 
 ## 🔗 Link Rapidi (COMPETITOR VERIFICATI con PRICING)
 
@@ -87,14 +87,14 @@ Vendite Template (una tantum):
 
 Abbonamenti SaaS (ricorrenti):
 - €40/mese vendita oggi
-- €40/mese ricorrente (finché non churn)
+- €40/mese ricorrente (finché non abbandono)
 - Livello passività: 80% (fatturato composto)
 
 Esempio:
 Mese 1: 10 clienti × €40 = €400 MRR
 Mese 2: 10 esistenti + 10 nuovi = 20 × €40 = €800 MRR
 Mese 3: 18 mantenuti + 12 nuovi = 30 × €40 = €1,200 MRR
-Mese 6: 45 clienti × €40 = €1,800 MRR (churn 10%/mese)
+Mese 6: 45 clienti × €40 = €1,800 MRR (abbandono 10%/mese)
 Mese 12: 80 clienti × €40 = €3,200 MRR ✅
 
 COMPOSTO = Vero reddito passivo
@@ -159,14 +159,14 @@ Assunzione churn: 10%/mese (servono +5-8 nuovi/mese per mantenere)
 ## 🛠️ Tech Stack (Con Claude Code)
 
 ```yaml
-Core API (Claude Code builds in 4-6 settimane):
+Core API (Claude Code costruisce in 4-6 settimane):
 - Next.js 14 API routes (serverless)
-- TypeScript (type safety)
-- Email validation logic:
-  * Syntax check (RFC 5322 regex)
-  * DNS MX record verification
-  * SMTP validation (optional, slower)
-  * Disposable email detection (database)
+- TypeScript (sicurezza tipi)
+- Logica validazione email:
+  * Controllo sintassi (RFC 5322 regex)
+  * Verifica record DNS MX
+  * Validazione SMTP (opzionale, più lento)
+  * Rilevamento email usa e getta (database)
   * Role-based detection (admin@, info@, support@)
   * Deliverability score (0-100 algorithm)
 
@@ -220,28 +220,28 @@ Time saved: 9-14 settimane = 2-3 mesi first-mover advantage
 ## 🎯 Cliente Target (B2B = Maggiore Disponibilità a Pagare)
 
 ```yaml
-Primary (80% revenue):
-- SaaS founders (email list hygiene)
-- Marketing agencies (client campaigns)
-- Cold email tools (users)
-- E-commerce (customer database clean)
-- CRM providers (data quality)
+Primario (80% fatturato):
+- Fondatori SaaS (pulizia liste email)
+- Agenzie marketing (campagne clienti)
+- Strumenti email diretto (utenti)
+- E-commerce (pulizia database clienti)
+- Fornitori CRM (qualità dati)
 
-Characteristics:
-- Budget: €50-500/mese tools
-- Technical: Can integrate API (or use dashboard)
-- Pain acute: Bounce rate = deliverability down = revenue loss
-- LTV high: B2B churn low (10%/mese vs 20-30% B2C)
+Caratteristiche:
+- Budget: €50-500/mese strumenti
+- Tecnico: Possono integrare API (o usare dashboard)
+- Problema acuto: Tasso rimbalzo = consegna in calo = perdita fatturato
+- LTV alto: Abbandono B2B basso (10%/mese vs 20-30% B2C)
 
-Secondary (20% revenue):
-- Email verification tools (white-label our API)
-- Marketing automation platforms (integration)
-- Data enrichment companies (part of pipeline)
+Secondario (20% fatturato):
+- Strumenti verifica email (marchio bianco nostra API)
+- Piattaforme automazione marketing (integrazione)
+- Aziende arricchimento dati (parte della pipeline)
 
-Geography:
-- Primary: USA, UK, Canada (English-speaking, high willingness-to-pay)
-- Secondary: EU, Australia
-- Avoid: Low-GDP countries (pricing pressure)
+Geografia:
+- Primaria: USA, UK, Canada (anglofoni, alta disponibilità a pagare)
+- Secondaria: UE, Australia
+- Evitare: Paesi basso PIL (pressione prezzi)
 ```
 
 ## 📈 Percorso verso Reddito Passivo (ONESTO)
@@ -270,23 +270,23 @@ Output:
 ### Fase 2: LAUNCH + TRACTION (Mesi 5-9, 10% Passive)
 
 ```yaml
-Effort: 30h/settimana
-Activities:
-- Product Hunt launch
-- SEO content (2 blog posts/settimana)
-- Cold outreach (50 emails/giorno)
-- Partnership outreach (Zapier, Make.com)
-- Customer support (email, live chat)
-- Bug fixes + feature requests
+Impegno: 30h/settimana
+Attività:
+- Lancio Product Hunt
+- Contenuti SEO (2 post blog/settimana)
+- Approccio diretto (50 email/giorno)
+- Ricerca partnership (Zapier, Make.com)
+- Supporto clienti (email, chat dal vivo)
+- Correzione bug + richieste funzionalità
 
-Revenue: €200-800/mese MRR
-Customers: 5-20
-Passive: 10% (sales automatic da SEO/Product Hunt, ma marketing intensive)
+Fatturato: €200-800/mese MRR
+Clienti: 5-20
+Passivo: 10% (vendite automatiche da SEO/Product Hunt, ma marketing intensivo)
 
-Challenges:
-❌ First customers hard (cold start problem)
-❌ Support time-consuming (onboarding questions)
-❌ Feature requests overwhelming (prioritize ruthlessly)
+Sfide:
+❌ Primi clienti difficili (problema avvio a freddo)
+❌ Supporto dispendioso in termini di tempo (domande onboarding)
+❌ Richieste funzionalità travolgenti (prioritizzare senza pietà)
 ```
 
 ### Fase 3: SCALING (Mesi 10-15, 30% Passive)

@@ -4,7 +4,7 @@
 
 - **ROI Score:** 75/100
 - **Budget Iniziale:** €150-300
-- **Time to €2k/mese:** 15-24 mesi
+- **Tempo a €2k/mese:** 15-24 mesi
 - **Utile Anno 1:** €3,000-12,000
 - **Competizione:** 🔴 Alta (milioni di listings)
 - **Scalabilità:** ⭐⭐⭐⭐⭐
@@ -97,37 +97,37 @@ Post 24 mesi: MAINTENANCE (5h/settimana)
 - Passive: 90% (almost zero work)
 ```
 
-**Brutal Truth:** Primi 12 mesi = HARD WORK per €500-1,000/mese. NOT "get rich quick". But after 18-24 mesi = true passive.
+**Verità Brutale:** Primi 12 mesi = DURO LAVORO per €500-1,000/mese. NON "arricchirsi velocemente". Ma dopo 18-24 mesi = vero passivo.
 
 ## 📁 Documenti
 
-1. [Market Research](01-MARKET-RESEARCH.md) - Etsy 91.5M buyers, printables market
-2. [Competitor Analysis](02-COMPETITOR-ANALYSIS.md) - Top shops revenue, strategies
-3. [Business Plan](03-BUSINESS-PLAN.md) - Volume game strategy, niche selection
-4. [Financial Projections](04-FINANCIAL-PROJECTIONS.md) - 24 mesi realistic (slow build)
-5. [Marketing Strategy](05-MARKETING-STRATEGY.md) - Pinterest primary, Etsy SEO
-6. [Roadmap](06-ROADMAP.md) - 18 mesi to €2k/mese detailed
-7. [Resources](07-RESOURCES.md) - eRank, Marmalead, Midjourney prompts
+1. [Ricerca Mercato](01-MARKET-RESEARCH.md) - Etsy 91.5M compratori, mercato stampabili
+2. [Analisi Competitor](02-COMPETITOR-ANALYSIS.md) - Fatturato top negozi, strategie
+3. [Piano Business](03-BUSINESS-PLAN.md) - Strategia gioco volume, selezione nicchia
+4. [Proiezioni Finanziarie](04-FINANCIAL-PROJECTIONS.md) - 24 mesi realistico (costruzione lenta)
+5. [Strategia Marketing](05-MARKETING-STRATEGY.md) - Pinterest primario, SEO Etsy
+6. [Roadmap](06-ROADMAP.md) - 18 mesi a €2k/mese dettagliato
+7. [Risorse](07-RESOURCES.md) - eRank, Marmalead, prompt Midjourney
 
-## 🔗 Quick Links (ETSY DATA VERIFICATI)
+## 🔗 Link Rapidi (DATI ETSY VERIFICATI)
 
-### Market Size (REAL DATA 2024):
-- **91.5 million** active buyers (Q2 2024)
-- **7.5 million** active sellers (Q2 2024)
-- **$13.2 billion** Gross Merchandise Sales (2023)
-- Printables category: Estimated 5-10% GMS = $600M-1.3B market
+### Dimensione Mercato (DATI REALI 2024):
+- **91.5 milioni** compratori attivi (Q2 2024)
+- **7.5 milioni** venditori attivi (Q2 2024)
+- **$13.2 miliardi** Vendite Lorde Merce (2023)
+- Categoria stampabili: Stimato 5-10% GMS = mercato $600M-1.3B
 
-### Top Etsy Printables Shops (Public Data):
-- TheCrownPrints: **180,000+** lifetime sales (estimated $500k-1M+ lifetime revenue)
-- PrintableSky: **50,000+** sales
-- InkAndDrop: **40,000+** sales
+### Top Negozi Stampabili Etsy (Dati Pubblici):
+- TheCrownPrints: **180,000+** vendite a vita (stimato $500k-1M+ fatturato a vita)
+- PrintableSky: **50,000+** vendite
+- InkAndDrop: **40,000+** vendite
 
-**Note:** Top shops = outliers (years of work, thousands of listings). Realistic for new shop: 1,000-5,000 sales in 24 mesi.
+**Nota:** Top negozi = eccezioni (anni di lavoro, migliaia di inserzioni). Realistico per nuovo negozio: 1,000-5,000 vendite in 24 mesi.
 
-### Tools for Research:
-- [eRank](https://erank.com/) - Keyword research, competitor analysis ($5.99/mese Pro)
-- [Marmalead](https://marmalead.com/) - Etsy SEO tool ($19/mese)
-- [Everbe](https://everbe.io/) - Product research ($19.99/mese)
+### Strumenti per Ricerca:
+- [eRank](https://erank.com/) - Ricerca parole chiave, analisi competitor ($5.99/mese Pro)
+- [Marmalead](https://marmalead.com/) - Strumento SEO Etsy ($19/mese)
+- [Everbe](https://everbe.io/) - Ricerca prodotto ($19.99/mese)
 
 ## 💰 Modello di Fatturato (Gioco del Volume)
 
@@ -298,29 +298,29 @@ minimalist composition, printable --ar 2:3 --v 6"
 ## 🎯 Cliente Target (B2C = Prezzi Bassi, Alto Volume)
 
 ```yaml
-Demographics:
-- Age: 25-45 (millennials, Gen Z)
-- Gender: 70-80% female
-- Income: Middle class ($40k-80k/anno)
-- Location: USA (60%), UK, Canada, Australia
+Demografia:
+- Età: 25-45 (millennials, Gen Z)
+- Genere: 70-80% femminile
+- Reddito: Classe media ($40k-80k/anno)
+- Località: USA (60%), UK, Canada, Australia
 
-Psychographics:
-- DIY enthusiasts (save money vs buy physical art)
-- Home decorators (Pinterest users heavy)
-- Budget-conscious (want trendy decor, can't afford $100+ frames)
-- Gift givers (printables for parties, weddings)
+Psicografia:
+- Entusiasti fai-da-te (risparmiare denaro vs acquistare arte fisica)
+- Decoratori casa (utenti Pinterest pesanti)
+- Attenti al budget (vogliono decor trendy, non possono permettersi cornici $100+)
+- Donatori regali (printables per feste, matrimoni)
 
-Buying Behavior:
-- Impulse purchases ($5-10 = low barrier)
-- Search: "boho wall art printable", "nursery prints digital"
-- Pinterest → Etsy journey (high converting)
-- Bundle buyers (multi-print sets perform well)
+Comportamento Acquisto:
+- Acquisti impulsivi ($5-10 = barriera bassa)
+- Ricerca: "arte murale boho stampabile", "stampe cameretta digitali"
+- Percorso Pinterest → Etsy (conversione alta)
+- Acquirenti bundle (set multi-stampa funzionano bene)
 
-Pain Points:
-- Physical art expensive ($50-200 framed)
-- Shipping slow/costly
-- Want instant gratification (download now, print today)
-- Customization (can size to their frame)
+Problemi:
+- Arte fisica costosa ($50-200 incorniciata)
+- Spedizione lenta/costosa
+- Vogliono gratificazione istantanea (scarica ora, stampa oggi)
+- Personalizzazione (possono ridimensionare alla loro cornice)
 ```
 
 ## 📈 Percorso verso VERO Reddito Passivo
@@ -507,61 +507,61 @@ Challenge #5: LOW Pricing Power (Race to Bottom)
 
 ---
 
-## 🚀 Quando Scegliere Etsy Printables
+## 🚀 Quando Scegliere Stampabili Etsy
 
 ```yaml
-CHOOSE ETSY IF:
-✅ You have patience (18-24 mesi to €2k OK)
-✅ You have another income source (not desperate for cash)
-✅ You want TRUE passive (90% autopilot post-24 mesi)
-✅ You like design/creative work (not coding)
-✅ You want low maintenance (5h/sett max)
-✅ You want diversification (add to portfolio of income streams)
+SCEGLI ETSY SE:
+✅ Hai pazienza (18-24 mesi a €2k va bene)
+✅ Hai altra fonte di reddito (non disperato per denaro)
+✅ Vuoi VERO passivo (90% autopilota post-24 mesi)
+✅ Ti piace design/lavoro creativo (non programmazione)
+✅ Vuoi bassa manutenzione (5h/sett max)
+✅ Vuoi diversificazione (aggiungere a portfolio flussi di reddito)
 
-SKIP ETSY IF:
-❌ You need cash in 6-12 mesi (too slow)
-❌ You find repetitive work boring (burnout risk)
-❌ You want high per-sale revenue (Etsy = volume game)
-❌ You want premium positioning (Etsy = budget-conscious buyers)
-❌ You hate marketing (Pinterest grind required)
+SALTA ETSY SE:
+❌ Hai bisogno di contanti in 6-12 mesi (troppo lento)
+❌ Trovi il lavoro ripetitivo noioso (rischio burnout)
+❌ Vuoi alto fatturato per vendita (Etsy = gioco volume)
+❌ Vuoi posizionamento premium (Etsy = acquirenti attenti al budget)
+❌ Odi il marketing (grind Pinterest richiesto)
 ```
 
 ## 📝 Verdetto Finale
 
-**Etsy Printables = Miglior VERO Reddito Passivo Lungo Termine**
+**Stampabili Etsy = Miglior VERO Reddito Passivo Lungo Termine**
 
-**BUT slowest path to €2k/mese (18-24 mesi).**
+**MA percorso più lento a €2k/mese (18-24 mesi).**
 
 ### **Raccomandazione Strategica:**
 
 ```yaml
-Scenario A: SOLO Etsy (Not Recommended)
-- Timeline: 18-24 mesi to €2k
-- Effort: 30-40h/sett primi 12 mesi
-- Risk: Burnout before profitability
-- Verdict: ❌ Too slow as primary income
+Scenario A: SOLO Etsy (Non Raccomandato)
+- Tempistica: 18-24 mesi a €2k
+- Impegno: 30-40h/sett primi 12 mesi
+- Rischio: Burnout prima della redditività
+- Verdetto: ❌ Troppo lento come reddito primario
 
-Scenario B: HYBRID (Client Work + Etsy) ✅ RECOMMENDED
-- Primary: Client work (Web Dev/Design) = €2k/mese by mese 6
-- Secondary: Etsy building (10-15h/sett parallel)
-- Timeline: Etsy hits €1k/mese by mese 18 (bonus income)
-- Total income mese 18: €3k+ (€2k client + €1k Etsy)
-- Verdict: ✅ Best strategy (cash flow + passive building)
+Scenario B: IBRIDO (Lavoro Clienti + Etsy) ✅ RACCOMANDATO
+- Primario: Lavoro clienti (Web Dev/Design) = €2k/mese entro mese 6
+- Secondario: Costruzione Etsy (10-15h/sett parallelo)
+- Tempistica: Etsy raggiunge €1k/mese entro mese 18 (reddito bonus)
+- Reddito totale mese 18: €3k+ (€2k clienti + €1k Etsy)
+- Verdetto: ✅ Migliore strategia (flusso cassa + costruzione passivo)
 
-Scenario C: Portfolio Approach ✅ ADVANCED
-- Income Stream #1: Templates (€2k/mese by mese 9)
-- Income Stream #2: Etsy (€1k/mese by mese 18)
-- Income Stream #3: SaaS (€1k/mese by mese 24)
-- Total: €4k/mese, diversified, semi-passive
-- Verdict: ✅ Ideal long-term (multiple streams = safety)
+Scenario C: Approccio Portfolio ✅ AVANZATO
+- Flusso Reddito #1: Template (€2k/mese entro mese 9)
+- Flusso Reddito #2: Etsy (€1k/mese entro mese 18)
+- Flusso Reddito #3: SaaS (€1k/mese entro mese 24)
+- Totale: €4k/mese, diversificato, semi-passivo
+- Verdetto: ✅ Ideale lungo termine (flussi multipli = sicurezza)
 ```
 
-**Bottom Line:** Etsy printables = TRUE passive long-term (sell while you sleep, literally). BUT patience required (18-24 mesi). Combine con altra income source per best results.
+**Conclusione:** Stampabili Etsy = VERO passivo lungo termine (vendi mentre dormi, letteralmente). MA pazienza richiesta (18-24 mesi). Combina con altra fonte reddito per migliori risultati.
 
-**Next Step:** Se decide GO → See [Roadmap](06-ROADMAP.md) for 18-month detailed plan.
+**Prossimo Passo:** Se decidi VAI → Vedi [Roadmap](06-ROADMAP.md) per piano dettagliato 18 mesi.
 
 ---
 
 **Ultima Analisi:** Gennaio 2025
-**Fonte Dati:** Etsy Q2 2024 earnings, real seller case studies 2024, eRank market data
-**Status:** VALUTA (recommended as secondary income stream, not primary) ⚠️
+**Fonte Dati:** Bilanci Etsy Q2 2024, casi studio venditori reali 2024, dati mercato eRank
+**Stato:** VALUTA (raccomandato come flusso reddito secondario, non primario) ⚠️

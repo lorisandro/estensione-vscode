@@ -4,9 +4,9 @@
 
 - **ROI Score:** 92/100
 - **Budget Iniziale:** €300-500
-- **Time to €2k/mese:** 4-8 mesi
+- **Tempo a €2k/mese:** 4-8 mesi
 - **Utile Anno 1:** €20,000-80,000
-- **Competizione:** 🟡 Media (ma differentiation possibile)
+- **Competizione:** 🟡 Media (ma differenziazione possibile)
 - **Scalabilità:** ⭐⭐⭐⭐⭐
 - **Livello Passività:** ⚠️ Semi-passivo (10-15h/sett manutenzione)
 
@@ -20,25 +20,25 @@
 
 ## 📁 Documenti
 
-1. [Market Research](01-MARKET-RESEARCH.md) - TAM/SAM/SOM, trends 2025
-2. [Competitor Analysis](02-COMPETITOR-ANALYSIS.md) - ShipFast, Divjoy, SaaSBold + LINK
-3. [Business Plan](03-BUSINESS-PLAN.md) - Modello business, ROI, execution plan
-4. [Financial Projections](04-FINANCIAL-PROJECTIONS.md) - Proiezioni 12-24 mesi REALISTICHE
-5. [Marketing Strategy](05-MARKETING-STRATEGY.md) - Product Hunt, SEO, build-in-public
-6. [Roadmap](06-ROADMAP.md) - Timeline 90 giorni + 12 mesi
-7. [Resources](07-RESOURCES.md) - Tools, link, community, learning
+1. [Ricerca Mercato](01-MARKET-RESEARCH.md) - TAM/SAM/SOM, tendenze 2025
+2. [Analisi Competitor](02-COMPETITOR-ANALYSIS.md) - ShipFast, Divjoy, SaaSBold + LINK
+3. [Piano Business](03-BUSINESS-PLAN.md) - Modello business, ROI, piano esecuzione
+4. [Proiezioni Finanziarie](04-FINANCIAL-PROJECTIONS.md) - Proiezioni 12-24 mesi REALISTICHE
+5. [Strategia Marketing](05-MARKETING-STRATEGY.md) - Product Hunt, SEO, costruzione in pubblico
+6. [Roadmap](06-ROADMAP.md) - Tempistica 90 giorni + 12 mesi
+7. [Risorse](07-RESOURCES.md) - Strumenti, link, community, formazione
 
 ## 🔗 Link Rapidi (COMPETITOR VERIFICATI)
 
 ### Top Competitor con Fatturato Pubblico:
-- [ShipFast](https://shipfa.st/) - **$133k/mese** (April 2024, verified)
-- [Divjoy](https://divjoy.com/) - **$249** pricing (revenue non public ma stabile)
-- [SaaSBold](https://saasbold.com/) - **$149** pricing
-- [Shipixen](https://shipixen.com/) - **$97** pricing
-- [SupaStarter](https://supastarter.dev/) - **€299** pricing
+- [ShipFast](https://shipfa.st/) - **$133k/mese** (Aprile 2024, verificato)
+- [Divjoy](https://divjoy.com/) - **$249** prezzo (fatturato non pubblico ma stabile)
+- [SaaSBold](https://saasbold.com/) - **$149** prezzo
+- [Shipixen](https://shipixen.com/) - **$97** prezzo
+- [SupaStarter](https://supastarter.dev/) - **€299** prezzo
 
-### Caso di Studio Dettagliato:
-- [Marc Lou - Come $528K in 4 Mesi](https://www.starterstory.com/marc-lou-shipfast)
+### Caso Studio Dettagliato:
+- [Marc Lou - Come Ha Fatto $528K in 4 Mesi](https://www.starterstory.com/marc-lou-shipfast)
 - [Dettaglio Fatturato ShipFast](https://www.builderkit.ai/blog/marc-lous-shipfast-story)
 
 ## 💰 Potenziale di Fatturato REALISTICO
@@ -113,7 +113,7 @@ Avatar Cliente:
 ```yaml
 FASE 1 (Mese 1-3): COSTRUZIONE + LANCIO
 - Costruire template: 4-6 settimane
-- Asset marketing: 1-2 settimane
+- Risorse marketing: 1-2 settimane
 - Lancio Product Hunt
 - Obiettivo: 30-50 vendite = €4,500-7,500
 
@@ -124,9 +124,9 @@ FASE 2 (Mese 4-6): TRAZIONE
 - Programma affiliazione
 - Obiettivo: 15-20 vendite/mese = €2,500-3,500/mese
 
-FASE 3 (Mese 7-12): SCALATA
+FASE 3 (Mese 7-12): CRESCITA
 - Varianti template multiple
-- Upsell (supporto personalizzato, consulenza)
+- Vendite aggiuntive (supporto personalizzato, consulenza)
 - Partnership (creatori YouTube, corsi)
 - Test pubblicità a pagamento
 - Obiettivo: €4,000-8,000/mese sostenibile
@@ -145,57 +145,57 @@ INDISPENSABILE:
 ✅ Template DEVE risparmiare tempo (demo mostra "costruito in 1 giorno")
 ✅ Documentazione cristallina (non-tecnici possono usare)
 ✅ Design moderno (non datato in 6 mesi)
-✅ Qualità codice (TypeScript, best practices)
+✅ Qualità codice (TypeScript, migliori pratiche)
 ✅ Supporto reattivo (<24h risposta)
 
-BELLO DA AVERE:
+DESIDERABILE:
 - Tutorial video
 - Community Discord
-- Sviluppo personalizzato (upsell)
-- Aggiornamenti a vita (punto di vendita)
+- Sviluppo personalizzato (vendita aggiuntiva)
+- Aggiornamenti a vita (punto di forza vendita)
 ```
 
 ## ⚠️ Rischi e Mitigazione
 
 ```yaml
 Rischio 1: Mercato saturato (molti template esistono)
-Mitigazione: Differenziazione (migliori docs, miglior design, miglior supporto)
+Mitigazione: Differenziazione (migliore documentazione, miglior design, miglior supporto)
             + Costruire in pubblico (pubblico pre-lancio)
 
-Rischio 2: Cambiamenti tech stack (aggiornamenti Next.js)
-Mitigazione: Aggiornamenti manutenzione mensili (fattore in 10-15h/mese)
-            + Addebitare per aggiornamenti dopo 12 mesi (upsell)
+Rischio 2: Cambiamenti stack tecnologico (aggiornamenti Next.js)
+Mitigazione: Aggiornamenti manutenzione mensili (contare 10-15h/mese)
+            + Addebitare per aggiornamenti dopo 12 mesi (vendita aggiuntiva)
 
 Rischio 3: Pagamento una tantum (non ricorrente)
-Mitigazione: Upsell: consulenza €200-500/chiamata
+Mitigazione: Vendite aggiuntive: consulenza €200-500/chiamata
             + Supporto premium €49/mese
-            + Nuovi template (cross-sell)
+            + Nuovi template (vendita incrociata)
 
 Rischio 4: Pirateria (codice può essere condiviso)
-Mitigazione: Sistema chiavi licenza (gumroad integrato)
+Mitigazione: Sistema chiavi licenza (integrato con Gumroad)
             + Valore aggiunto: Discord privato, aggiornamenti, supporto
-            + Non prevenibile 100%, ma minimizzare
+            + Non prevenibile 100%, ma minimizzabile
 ```
 
 ## 🚀 Perché Questo vs Altre Entrate Passive
 
 ```yaml
-vs SaaS Micro:
+vs Micro SaaS:
 ✅ Più veloce a €2k (4-8 mesi vs 6-12)
-✅ Nessun supporto clienti intensivo (self-service)
+✅ Nessun supporto clienti intensivo (auto-servizio)
 ✅ Maggiore fatturato per vendita (€150 vs €20-50/mese)
 ❌ Non ricorrente (pagamento una tantum)
 
-vs Etsy Printables:
+vs Stampabili Etsy:
 ✅ Prezzi molto più alti (€150 vs €5)
 ✅ Più veloce a €2k (servono 15 vendite/mese vs 400)
 ✅ Meno saturato (barriera tecnica)
 ✅ Clienti migliori (B2B vs B2C)
 
-vs Chrome Extension:
-✅ Miglior potere di prezzo (€150-299 vs €29-49)
+vs Estensione Chrome:
+✅ Migliore potere di prezzo (€150-299 vs €29-49)
 ✅ Meno rischio piattaforma (sito proprio vs Chrome Store)
-✅ Maggior valore percepito (boilerplate completo)
+✅ Maggiore valore percepito (template completo)
 ≈ Tempo sviluppo simile (4-6 settimane entrambi)
 
 Vincitore: Template Marketplace per velocità + potenziale profitto
@@ -225,12 +225,12 @@ Vincitore: Template Marketplace per velocità + potenziale profitto
 
 ### Analisi Dati:
 - **[PostHog](https://posthog.com/)** - Analitica prodotto
-- **[Plausible](https://plausible.io/)** - Analitica privacy-focused
+- **[Plausible](https://plausible.io/)** - Analitica orientata alla privacy
 
 ### Marketing:
 - **[Product Hunt](https://www.producthunt.com/)** - Piattaforma lancio
 - **[Indie Hackers](https://www.indiehackers.com/)** - Community
-- **[Twitter/X](https://twitter.com/)** - Build in public
+- **[Twitter/X](https://twitter.com/)** - Costruzione in pubblico
 
 ---
 
