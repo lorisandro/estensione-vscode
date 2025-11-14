@@ -90,7 +90,12 @@ Tech:
   - Supabase: User data + history
 Pricing: €49-99/mese
 TAM: 5M+ content writers/SEO specialists
-Competitor: Frase ($15-115/mese), SurferSEO ($79-239/mese)
+
+Competitor verificati (2025):
+  - Frase: $14.99-115/mese → https://www.frase.io/pricing
+  - SurferSEO: $79-219/mese → https://surferseo.com/pricing/
+  - SEO.ai: AI content brief generator → https://seo.ai/
+
 Your edge: Più veloce, cheaper, better AI (GPT-4o)
 ```
 
@@ -105,7 +110,12 @@ Tech:
   - Midjourney API: Thumbnail generation (optional)
 Pricing: €29-79/mese
 TAM: 50M+ content creators
-Competitor: Repurpose.io ($79-199/mese)
+
+Competitor verificati (2025):
+  - OpusClip: $15-19.50/mese → https://www.opus.pro/
+  - Repurpose.io: $349/anno → https://repurpose.io/pricing/
+  - Scripsy: AI video summarizer → https://www.scripsy.ai/
+
 Your edge: Better AI, più formati, auto-posting
 ```
 
@@ -119,7 +129,12 @@ Tech:
   - Training data: Scraped public email performance
 Pricing: €39-99/mese
 TAM: 10M+ email marketers
-Competitor: SubjectLine.com ($19/mese, limited)
+
+Competitor verificati (2025):
+  - SubjectLine.com: GRATIS (score out of 100) → https://subjectline.com/
+  - Omnisend: $16-59/mese (con tester gratis) → https://www.omnisend.com/subject-line-tester/
+  - CoSchedule: Free email subject line tester
+
 Your edge: AI predictions, più varianti, batch processing
 ```
 
@@ -134,7 +149,12 @@ Tech:
   - PDF generation: Report export
 Pricing: €79-199/mese (B2B)
 TAM: 30M+ businesses
-Competitor: Crayon ($99-299/mese)
+
+Competitor verificati (2025):
+  - Kompyte: Custom pricing (affordable) → https://www.kompyte.com/
+  - Crayon: Custom pricing (expensive) → https://www.crayon.co/
+  - Klue: Custom pricing (mid-range) → https://klue.com/
+
 Your edge: Cheaper, automated, real-time updates
 ```
 
@@ -149,7 +169,13 @@ Tech:
   - Integration: Instantly.ai, Smartlead
 Pricing: €0.10-0.20 per lead (usage-based)
 TAM: 5M+ sales reps
-Competitor: Clay ($349-800/mese)
+
+Competitor verificati (2025):
+  - Instantly.ai: $37/mese → https://instantly.ai/
+  - Lemlist: $55-79/mese → https://lemlist.com/
+  - Smartlead: $32.5-78.3/mese → https://www.smartlead.ai/
+  - Clay: $349-800/mese (enrichment) → https://clay.com/
+
 Your edge: Cheaper, faster, better personalization
 ```
 
