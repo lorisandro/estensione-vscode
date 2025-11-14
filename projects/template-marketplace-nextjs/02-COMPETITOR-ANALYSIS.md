@@ -12,9 +12,9 @@
 
 **🔗 Link:** [https://shipfa.st/](https://shipfa.st/)
 
-**📊 Revenue VERIFICATO:**
+**📊 Fatturato VERIFICATO:**
 - **$133,000/mese** run rate (April 2024)
-- **$300,000+** total revenue crossed
+- **$300,000+** fatturato totale superato
 - **$40,000** primo mese (September 2023)
 - **$4,000/giorno** current (Gennaio 2025)
 - **91-92%** profit margin
@@ -29,7 +29,7 @@
 - Discord community access
 
 **✅ Punti di Forza:**
-- **Marketing exceptional:** Build in public su Twitter/X (67k+ followers)
+- **Marketing eccezionale:** Costruzione in pubblico su Twitter/X (67k+ followers)
 - **Product Hunt success:** Top launch September 2023
 - **Fast shipping:** Claims "launch in days not weeks" (real testimonials)
 - **Complete stack:** Next.js + Supabase + Stripe + email ready
@@ -52,7 +52,7 @@
 4. **Niche-specific templates** (ShipFast generic, noi: AI tools template, marketplace template, etc.)
 5. **Payment plans** (ShipFast = $299 one-time, noi: $79 starter + $199 pro + $299 agency)
 
-**📈 Marketing Channels:**
+**📈 Canali Marketing:**
 - Twitter/X: Build in public daily (primary)
 - Product Hunt: #1 Product of the Day
 - LinkedIn: Case studies, revenue updates
@@ -66,7 +66,7 @@
 
 **🔗 Link:** [https://divjoy.com/](https://divjoy.com/)
 
-**📊 Revenue Stimato:** Non pubblico (privato)
+**📊 Fatturato Stimato:** Non pubblico (privato)
 **Indicatori:** Operativo da 2019+, consistent updates, strong customer base
 
 **💰 Pricing:**
@@ -86,7 +86,7 @@
 **❌ Punti Deboli:**
 - **Pricing high:** $249 vs ShipFast $299 (similar but less hype)
 - **No community:** No Discord/Slack (solo email support)
-- **Marketing weak:** Minimal social media presence
+- **Marketing debole:** Presenza social media minimale
 - **Outdated blog:** Last post 2022 (no fresh content)
 - **No build in public:** Founder anonymous (no personal brand)
 
@@ -96,7 +96,7 @@
 - **Fresh marketing:** TikTok/YouTube vs loro silent
 - **AI features:** AI code generation for customization (loro manual)
 
-**📈 Marketing Channels:**
+**📈 Canali Marketing:**
 - SEO: Strong (keyword "react starter" ranks)
 - Product Hunt: Launched 2019 (old, no recent boost)
 - Indie Hackers: Minimal presence
@@ -108,7 +108,7 @@
 
 **🔗 Link:** [https://saasbold.com/](https://saasbold.com/)
 
-**📊 Revenue Stimato:** Non pubblico
+**📊 Fatturato Stimato:** Non pubblico
 **Indicatori:** Active development, regular updates
 
 **💰 Pricing:**
@@ -128,7 +128,7 @@
 - **Design dated:** UI looks 2021-2022 aesthetic
 - **No community:** No Discord/forum
 - **Limited social proof:** Few testimonials visible
-- **Marketing minimal:** No build in public strategy
+- **Marketing minimale:** Nessuna strategia costruzione in pubblico
 - **Brand weak:** No founder persona (trust issue)
 
 **🎯 Differenziazione Possibile:**
@@ -143,7 +143,7 @@
 
 **🔗 Link:** [https://shipixen.com/](https://shipixen.com/)
 
-**📊 Revenue Stimato:** Non pubblico (nuovo player 2023)
+**📊 Fatturato Stimato:** Non pubblico (nuovo player 2023)
 
 **💰 Pricing:**
 - **$97** one-time (competitive)
@@ -173,7 +173,7 @@
 
 **🔗 Link:** [https://supastarter.dev/](https://supastarter.dev/)
 
-**📊 Revenue Stimato:** Non pubblico
+**📊 Fatturato Stimato:** Non pubblico
 
 **💰 Pricing:**
 - **€299** (highest price tier)
@@ -196,7 +196,7 @@
 
 ## 📊 TABELLA COMPARATIVA
 
-| Competitor | Revenue/Mese | Pricing | Customers | Forza Principale | Debolezza Principale |
+| Competitor | Fatturato/Mese | Prezzi | Clienti | Forza Principale | Debolezza Principale |
 |------------|--------------|---------|-----------|------------------|---------------------|
 | **ShipFast** | **$133k** ✅ | $299 | 1,851+ | Marketing + brand | Design single style |
 | Divjoy | Unknown | $249 | Unknown | Customization UI | Weak marketing |
@@ -368,7 +368,7 @@ Agency: €299 (tutto + white-label rights + resell license)
 6. **Scalable:** Sell infinite copies, 91%+ margin
 7. **Exit Potential:** If hit €10k/mese, sell for €360k-600k (3-5x ARR multiple)
 
-**Biggest Risk:** Marketing (need build audience O paid ads). Mitigation: Start build-in-public TODAY on Twitter/X + TikTok parallel.
+**Rischio Maggiore:** Marketing (serve costruire pubblico O ads a pagamento). Mitigazione: Iniziare costruzione-in-pubblico OGGI su Twitter/X + TikTok parallelo.
 
 **Next Step:** See [Business Plan](03-BUSINESS-PLAN.md) per execution strategy detailed.
 
