@@ -94,41 +94,41 @@ Tempistica: 12-15 mesi realistico
 ### **Nicchie Profittevoli (Verificate):**
 
 ```yaml
-✅ Productivity/Focus:
-- Pomodoro timers (MarinaraTimer: 400k+ users)
-- Tab managers (OneTab: 2M+ users)
-- Distraction blockers (StayFocusd: 800k+ users)
-- Competition: High, but differentiation possible
+✅ Produttività/Focus:
+- Timer Pomodoro (MarinaraTimer: 400k+ utenti)
+- Gestori tab (OneTab: 2M+ utenti)
+- Bloccatori distrazioni (StayFocusd: 800k+ utenti)
+- Competizione: Alta, ma differenziazione possibile
 
-✅ Developer Tools:
-- JSON formatters (200k-500k+ users typical)
-- Color pickers (ColorZilla: 3M+ users)
-- Code snippet managers
-- Competition: Medium, technical moat
+✅ Strumenti Sviluppatori:
+- Formattatori JSON (200k-500k+ utenti tipici)
+- Selettori colore (ColorZilla: 3M+ utenti)
+- Gestori snippet codice
+- Competizione: Media, barriera tecnica
 
 ✅ E-commerce/Shopping:
-- Price trackers (Honey acquired $4B!)
+- Tracker prezzi (Honey acquisito $4B!)
 - Cashback (Rakuten, Ibotta)
-- Product research (Jungle Scout, Helium 10)
-- Competition: High, but profitable proven
+- Ricerca prodotti (Jungle Scout, Helium 10)
+- Competizione: Alta, ma profittabilità provata
 
-✅ Social Media Automation (⚠️ TOS Risk):
-- LinkedIn tools (risky, LinkedIn bans aggressively)
-- Instagram analytics
-- Twitter/X scheduling
-- Competition: High, legal gray area
+✅ Automazione Social Media (⚠️ Rischio TOS):
+- Strumenti LinkedIn (rischioso, LinkedIn banna aggressivamente)
+- Analisi Instagram
+- Scheduling Twitter/X
+- Competizione: Alta, area legale grigia
 
-✅ Content/Reading:
-- Read later (Pocket alternative)
-- Highlighters (Liner: 3M+ users)
-- Summary/TL;DR tools
-- Competition: Medium
+✅ Contenuto/Lettura:
+- Leggi dopo (alternativa Pocket)
+- Evidenziatori (Liner: 3M+ utenti)
+- Strumenti riassunto/TL;DR
+- Competizione: Media
 
-⚠️ AVOID (Saturated/Low Revenue):
-❌ Ad blockers (free expected)
-❌ VPN extensions (crowded, trust issues)
-❌ Weather/news (no willingness-to-pay)
-❌ Generic "new tab" (infinite free alternatives)
+⚠️ EVITARE (Saturato/Basso Fatturato):
+❌ Ad blocker (gratuito atteso)
+❌ Estensioni VPN (affollato, problemi fiducia)
+❌ Meteo/notizie (nessuna disponibilità a pagare)
+❌ "Nuova tab" generica (infinite alternative gratuite)
 ```
 
 ### **Checklist di Validazione PRIMA di Costruire:**
@@ -183,28 +183,28 @@ Core:
 
 UI:
 - Popup: HTML + Tailwind CSS
-- Options page: settings (timer durations, sounds)
-- Badge: show countdown on icon
+- Pagina opzioni: impostazioni (durate timer, suoni)
+- Badge: mostra conto alla rovescia su icona
 
-Features (Differentiation):
-- Analytics dashboard (time logged per day/week)
-- Goal tracking (daily/weekly targets)
-- Notion integration (sync tasks)
-- Export data (CSV for personal analytics)
-- Themes (dark mode, custom colors)
+Funzionalità (Differenziazione):
+- Dashboard analitica (tempo registrato per giorno/settimana)
+- Tracciamento obiettivi (target giornalieri/settimanali)
+- Integrazione Notion (sincronizza task)
+- Esporta dati (CSV per analisi personali)
+- Temi (modalità scura, colori personalizzati)
 
-Monetization:
-- Free: Basic timer (25/5 Pomodoro)
-- Pro ($4.99/mo O $29.99 lifetime):
-  * Analytics dashboard
-  * Goals + streaks
-  * Notion sync
-  * Themes
-  * Export data
+Monetizzazione:
+- Gratuito: Timer base (25/5 Pomodoro)
+- Pro ($4.99/mese O $29.99 lifetime):
+  * Dashboard analitica
+  * Obiettivi + serie
+  * Sincronizzazione Notion
+  * Temi
+  * Esporta dati
 
-Payment:
-- ExtensionPay (handles Stripe, easy integration)
-- OR Gumroad license keys (manual but works)
+Pagamento:
+- ExtensionPay (gestisce Stripe, integrazione facile)
+- O chiavi licenza Gumroad (manuale ma funziona)
 ```
 
 ## 📈 Percorso verso Reddito Passivo
@@ -212,59 +212,59 @@ Payment:
 ### **Tempistica REALISTICA:**
 
 ```yaml
-Mesi 1-2: BUILD (30-40h)
-- Development (Claude Code)
-- Testing (various Chrome versions)
-- Chrome Store submission
-- Landing page + docs
-Revenue: €0
-Passive: 0%
+Mesi 1-2: COSTRUZIONE (30-40h)
+- Sviluppo (Claude Code)
+- Test (varie versioni Chrome)
+- Invio Chrome Store
+- Landing page + documentazione
+Fatturato: €0
+Passivo: 0%
 
-Mese 3: LAUNCH
-- Product Hunt (boost visibility)
+Mese 3: LANCIO
+- Product Hunt (aumenta visibilità)
 - Reddit (r/chrome, r/productivity)
-- Twitter/X announcement
+- Annuncio Twitter/X
 - IndieHackers
-- Users: 500-2,000 free (if good launch)
-- Paid: 5-20 (1-2% conversion)
-Revenue: €50-300
-Passive: 10% (installs automatic, but marketing active)
+- Utenti: 500-2,000 gratuiti (se buon lancio)
+- Paganti: 5-20 (conversione 1-2%)
+Fatturato: €50-300
+Passivo: 10% (installazioni automatiche, ma marketing attivo)
 
-Mesi 4-6: TRACTION
-- SEO content (blog, comparison pages)
-- YouTube reviews (reach out to tech reviewers)
-- Chrome Web Store SEO (keywords optimized)
-- Users: 5,000-15,000 free
-- Paid: 100-300 (2-3% conversion)
-Revenue: €500-1,500/mese
-Passive: 20% (some organic growth Chrome Store)
+Mesi 4-6: TRAZIONE
+- Contenuti SEO (blog, pagine confronto)
+- Recensioni YouTube (contattare reviewer tech)
+- SEO Chrome Web Store (parole chiave ottimizzate)
+- Utenti: 5,000-15,000 gratuiti
+- Paganti: 100-300 (conversione 2-3%)
+Fatturato: €500-1,500/mese
+Passivo: 20% (crescita organica Chrome Store)
 
-Mesi 7-12: GROWTH
-- Feature updates (user requests)
-- Integrations (Notion, Todoist, etc.)
-- Affiliate program (30% commission)
-- Press/media (pitch to productivity blogs)
-- Users: 15,000-30,000 free
-- Paid: 300-600 (2-4% conversion)
-Revenue: €1,500-3,000/mese
-Passive: 40% (Chrome Store organic strong)
+Mesi 7-12: CRESCITA
+- Aggiornamenti funzionalità (richieste utenti)
+- Integrazioni (Notion, Todoist, ecc.)
+- Programma affiliazione (commissione 30%)
+- Stampa/media (proporre a blog produttività)
+- Utenti: 15,000-30,000 gratuiti
+- Paganti: 300-600 (conversione 2-4%)
+Fatturato: €1,500-3,000/mese
+Passivo: 40% (crescita organica Chrome Store forte)
 
-Mesi 13-18: MATURE
-- Chrome Store reviews (social proof compounds)
-- Word-of-mouth growth
-- International markets (translate)
-- Users: 30,000-60,000 free
-- Paid: 600-1,200
-Revenue: €3,000-6,000/mese
-Passive: 60% (mostly autopilot, updates 1x/mese)
+Mesi 13-18: MATURO
+- Recensioni Chrome Store (prova sociale composta)
+- Crescita passaparola
+- Mercati internazionali (traduci)
+- Utenti: 30,000-60,000 gratuiti
+- Paganti: 600-1,200
+Fatturato: €3,000-6,000/mese
+Passivo: 60% (quasi autopilota, aggiornamenti 1x/mese)
 
-Post 18 mesi: MAINTENANCE
-- Bug fixes: 2-4h/mese
-- Feature updates: 8-12h/mese (optional)
-- Customer support: 4-6h/settimana (emails)
-Total effort: 12-18h/settimana
-Revenue: €3,000-8,000/mese
-Passive: 70% (can't fully ignore but low maintenance)
+Post 18 mesi: MANUTENZIONE
+- Correzioni bug: 2-4h/mese
+- Aggiornamenti funzionalità: 8-12h/mese (opzionale)
+- Supporto clienti: 4-6h/settimana (email)
+Sforzo totale: 12-18h/settimana
+Fatturato: €3,000-8,000/mese
+Passivo: 70% (non può ignorare completamente ma bassa manutenzione)
 ```
 
 ### **Realtà Livello Passività:**
@@ -294,50 +294,50 @@ Verdetto: 60-70% passivo post-18 mesi (12-18h/sett manutenzione)
 ### **Investimento:**
 
 ```yaml
-One-Time:
-- Chrome Developer registration: $5 (lifetime)
-- Landing page domain: €12/anno
-- ExtensionPay setup: €0 (% per transaction)
-Total: ~€20
+Una Tantum:
+- Registrazione Chrome Developer: $5 (a vita)
+- Dominio landing page: €12/anno
+- Setup ExtensionPay: €0 (% per transazione)
+Totale: ~€20
 
-Monthly (Year 1):
-- Claude Code: €20/mese × 2 = €40 (build phase)
+Mensile (Anno 1):
+- Claude Code: €20/mese × 2 = €40 (fase costruzione)
 - Hosting (landing page): €5/mese
-- Marketing tools (optional): €20/mese
-Total: €25-45/mese × 12 = €300-540
+- Strumenti marketing (opzionali): €20/mese
+Totale: €25-45/mese × 12 = €300-540
 
-Total Year 1 Investment: €320-560
+Investimento Totale Anno 1: €320-560
 ```
 
-### **Revenue (Conservative Scenario):**
+### **Fatturato (Scenario Conservativo):**
 
 ```yaml
 Mese 3: €100
 Mese 6: €800
 Mese 9: €1,500
 Mese 12: €2,500
-Total Year 1: €12,000
+Totale Anno 1: €12,000
 
-Costs: -€560
-Profit Year 1: €11,440
+Costi: -€560
+Profitto Anno 1: €11,440
 
 ROI: 2,043%
 ```
 
-### **Revenue (Realistic Scenario):**
+### **Fatturato (Scenario Realistico):**
 
 ```yaml
 Mese 3: €300
 Mese 6: €1,500
 Mese 9: €2,500
 Mese 12: €4,000
-Total Year 1: €22,000
+Totale Anno 1: €22,000
 
-Year 2: €5,000/mese × 12 = €60,000
+Anno 2: €5,000/mese × 12 = €60,000
 
-Total 24 mesi: €82,000
-Investment: -€1,000
-Profit: €81,000
+Totale 24 mesi: €82,000
+Investimento: -€1,000
+Profitto: €81,000
 
 ROI: 8,100%
 ```
@@ -346,53 +346,53 @@ ROI: 8,100%
 
 ```yaml
 vs Template Marketplace:
-✅ Faster user acquisition (Chrome Store millions daily visitors)
-✅ Built-in distribution (vs need build audience)
-❌ Lower pricing power ($5-30 vs $79-299 template)
-❌ More technical maintenance (Chrome updates)
+✅ Acquisizione utenti più rapida (Chrome Store milioni visitatori giornalieri)
+✅ Distribuzione integrata (vs necessità costruire pubblico)
+❌ Potere prezzi inferiore ($5-30 vs $79-299 template)
+❌ Manutenzione tecnica maggiore (aggiornamenti Chrome)
 
 vs SaaS Email Verification:
-✅ Simpler tech stack (no complex backend)
-✅ Faster to build (2-3 settimane vs 6-8 settimane)
-❌ Lower per-user revenue ($5-10 vs $20-50/mese)
-❌ More platform risk (Chrome Store policies)
+✅ Stack tecnologico più semplice (nessun backend complesso)
+✅ Più veloce da costruire (2-3 settimane vs 6-8 settimane)
+❌ Fatturato per utente inferiore ($5-10 vs $20-50/mese)
+❌ Rischio piattaforma maggiore (politiche Chrome Store)
 
 vs Etsy Printables:
-✅ Much faster to €2k (9-15 mesi vs 18-24)
-✅ Higher per-sale revenue ($30 vs $6)
-✅ Less saturated (technical barrier entry)
-❌ More technical (code vs design)
-❌ More maintenance (updates vs static PDFs)
+✅ Molto più veloce a €2k (9-15 mesi vs 18-24)
+✅ Fatturato per vendita superiore ($30 vs $6)
+✅ Meno saturato (barriera ingresso tecnica)
+❌ Più tecnico (codice vs design)
+❌ Più manutenzione (aggiornamenti vs PDF statici)
 
-Best For:
-✅ Want faster than Etsy, simpler than full SaaS
-✅ Comfortable con JavaScript basics (Claude Code helps)
-✅ OK with 12-18h/sett ongoing maintenance
-✅ Want built-in distribution (Chrome Store)
+Migliore Per:
+✅ Vuoi più veloce di Etsy, più semplice di SaaS completo
+✅ A proprio agio con basi JavaScript (Claude Code aiuta)
+✅ OK con manutenzione continua 12-18h/sett
+✅ Vuoi distribuzione integrata (Chrome Store)
 ```
 
-## ⚠️ Risks & Challenges
+## ⚠️ Rischi e Sfide
 
 ```yaml
-Risk #1: Platform Dependency (Chrome Store)
-- Google can change policies (e.g., Manifest V3 forced migration)
-- Extension can be rejected/removed (TOS violation)
-- Mitigation: Build email list, own website (exit strategy)
+Rischio #1: Dipendenza Piattaforma (Chrome Store)
+- Google può cambiare politiche (es., migrazione forzata Manifest V3)
+- Estensione può essere rifiutata/rimossa (violazione TOS)
+- Mitigazione: Costruire lista email, sito proprio (strategia uscita)
 
-Risk #2: Competition Can Clone
-- Chrome extensions = code visible (can be reverse-engineered)
-- Differentiation hard (features can be copied)
-- Mitigation: Brand, community, integrations (moat)
+Rischio #2: Competizione Può Clonare
+- Estensioni Chrome = codice visibile (può essere decodificato)
+- Differenziazione difficile (funzionalità possono essere copiate)
+- Mitigazione: Brand, community, integrazioni (barriera)
 
-Risk #3: Chrome Updates Break Extension
-- Manifest changes require rewrites (happened V2 → V3)
-- API deprecations force updates
-- Mitigation: Budget 8-16h/anno for major updates
+Rischio #3: Aggiornamenti Chrome Rompono Estensione
+- Cambiamenti Manifest richiedono riscritture (successo V2 → V3)
+- Deprecazioni API forzano aggiornamenti
+- Mitigazione: Budget 8-16h/anno per aggiornamenti maggiori
 
-Risk #4: Low Pricing Power (vs SaaS)
-- Users expect cheap ($5-10/mese max B2C)
-- Need high volume (1,000+ users for €2k)
-- Mitigation: Target B2B niches (higher willingness-to-pay)
+Rischio #4: Basso Potere Prezzi (vs SaaS)
+- Utenti si aspettano economico ($5-10/mese max B2C)
+- Serve alto volume (1,000+ utenti per €2k)
+- Mitigazione: Puntare nicchie B2B (maggior disponibilità a pagare)
 ```
 
 ---
@@ -446,30 +446,30 @@ Risk #4: Low Pricing Power (vs SaaS)
 ### **Raccomandazione:**
 
 ```yaml
-CHOOSE Chrome Extension IF:
-✅ Want balance speed + passive (faster than Etsy, more passive than full SaaS)
-✅ Have validated niche (existing extensions doing well)
-✅ Comfortable with 12-18h/sett maintenance long-term
-✅ Want built-in distribution (don't want build audience from zero)
-✅ OK with platform risk (Chrome Store dependency)
+SCEGLI Chrome Extension SE:
+✅ Vuoi equilibrio velocità + passivo (più veloce di Etsy, più passivo di SaaS completo)
+✅ Hai nicchia validata (estensioni esistenti fanno bene)
+✅ A proprio agio con manutenzione 12-18h/sett lungo termine
+✅ Vuoi distribuzione integrata (non vuoi costruire pubblico da zero)
+✅ OK con rischio piattaforma (dipendenza Chrome Store)
 
-Consider Alternatives IF:
-❌ Want 100% passive (→ Etsy better long-term)
-❌ Want premium pricing (→ Templates better)
-❌ Want exit potential (→ SaaS better, higher multiples)
-❌ Scared of technical maintenance (→ Etsy better)
+Considera Alternative SE:
+❌ Vuoi 100% passivo (→ Etsy migliore lungo termine)
+❌ Vuoi prezzi premium (→ Templates migliori)
+❌ Vuoi potenziale uscita (→ SaaS migliore, multipli più alti)
+❌ Spaventato manutenzione tecnica (→ Etsy migliore)
 ```
 
 ### **Uso Strategico:**
 
-**Best as part of portfolio approach:**
-- Year 1: Templates (€2k/mese by mese 9)
-- Year 1-2: Chrome extension (€1k/mese by mese 15, parallel build)
-- Total: €3k/mese, diversified
+**Migliore come parte approccio portfolio:**
+- Anno 1: Templates (€2k/mese entro mese 9)
+- Anno 1-2: Chrome extension (€1k/mese entro mese 15, costruzione parallela)
+- Totale: €3k/mese, diversificato
 
-OR standalone se niche validated strong (existing competitor doing €5k+/mese).
+O standalone se nicchia validata forte (competitor esistente fa €5k+/mese).
 
-**Next Step:** Validate niche FIRST (research Chrome Store, competition, reviews). THEN build. See [Market Research](01-MARKET-RESEARCH.md).
+**Prossimo Passo:** Valida nicchia PRIMA (ricerca Chrome Store, competizione, recensioni). POI costruisci. Vedi [Ricerca Mercato](01-MARKET-RESEARCH.md).
 
 ---
 
