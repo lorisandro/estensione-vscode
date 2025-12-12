@@ -27,7 +27,8 @@
       "Bash(git reset:*)",
       "Bash(powershell -Command \"Get-ChildItem -Path ''E:\\Progetto\\Progetti\\APP e ASSET\\App\\Test\\claude-visual-studio\\dist'' -Recurse | Select-Object FullName\")",
       "Bash(find:*)",
-      "Bash(powershell -Command \"(Get-Content dist/webview/index.js)[59..61]\")"
+      "Bash(powershell -Command \"(Get-Content dist/webview/index.js)[59..61]\")",
+      "Bash(node:*)"
     ]
   }
 }

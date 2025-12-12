@@ -13,46 +13,40 @@ export interface UseVSCodeApiReturn {
 
 // Global singleton for VS Code API - must only be acquired once
 let globalVscodeApi: VSCodeApi | null = null;
-let acquisitionAttempted = false;
 
-function getVSCodeApi(): VSCodeApi | null {
-  // Return cached if available
-  if (globalVscodeApi) {
-    return globalVscodeApi;
-  }
+// Immediately try to get the API on module load, before React renders
+// This runs once when the module is first imported
+(function initVSCodeApi() {
+  if (typeof window === 'undefined') return;
 
-  // Don't try again if we already failed
-  if (acquisitionAttempted) {
-    return null;
-  }
-
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  // Check if API was already acquired and stored on window by VS Code
+  // Check if already available on window (VS Code might set it)
   if ((window as any).vscode) {
     globalVscodeApi = (window as any).vscode;
-    return globalVscodeApi;
+    return;
   }
 
-  // Mark that we're attempting acquisition
-  acquisitionAttempted = true;
+  // Wrap acquireVsCodeApi to prevent the "already acquired" error
+  const originalAcquire = window.acquireVsCodeApi;
+  if (originalAcquire) {
+    let acquired = false;
+    window.acquireVsCodeApi = function() {
+      if (acquired && globalVscodeApi) {
+        return globalVscodeApi;
+      }
+      if (!globalVscodeApi) {
+        globalVscodeApi = originalAcquire();
+        (window as any).vscode = globalVscodeApi;
+      }
+      acquired = true;
+      return globalVscodeApi;
+    };
 
-  // Try to acquire the API, catching any errors
-  if (window.acquireVsCodeApi) {
-    try {
-      globalVscodeApi = window.acquireVsCodeApi();
-      // Store it globally for future reference
-      (window as any).vscode = globalVscodeApi;
-    } catch (e) {
-      // API was already acquired - this is expected during webview restore
-      // VS Code may have already acquired it internally
-      console.warn('VS Code API acquisition failed (may already be acquired):', e);
-      return null;
-    }
+    // Now acquire it
+    globalVscodeApi = window.acquireVsCodeApi();
   }
+})();
 
+function getVSCodeApi(): VSCodeApi | null {
   return globalVscodeApi;
 }
 
