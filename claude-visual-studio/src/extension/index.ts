@@ -13,6 +13,7 @@ import { WebviewPanelProvider } from './webview/WebviewPanelProvider';
 import { SidebarViewProvider } from './webview/SidebarViewProvider';
 import { OpenPreviewCommand } from './commands/OpenPreviewCommand';
 import { MCPBridge } from './mcp/MCPBridge';
+import { ServerManager } from './server/ServerManager';
 
 // Extension-wide state
 let webviewProvider: WebviewPanelProvider | undefined;
@@ -20,6 +21,7 @@ let sidebarProvider: SidebarViewProvider | undefined;
 let openPreviewCommand: OpenPreviewCommand | undefined;
 let fileWatcher: vscode.FileSystemWatcher | undefined;
 let mcpBridge: MCPBridge | undefined;
+let serverManager: ServerManager | undefined;
 
 /**
  * Extension activation function
@@ -100,10 +102,35 @@ async function initializeServices(context: vscode.ExtensionContext): Promise<voi
   // Initialize commands
   openPreviewCommand = new OpenPreviewCommand(webviewProvider);
 
+  // Initialize development server
+  await initializeServer();
+
   // Initialize MCP Bridge for Claude Code integration
   await initializeMCPBridge();
 
   console.log('Services initialized');
+}
+
+/**
+ * Initialize the development server for serving preview content
+ */
+async function initializeServer(): Promise<void> {
+  const config = vscode.workspace.getConfiguration('claudeVisualStudio');
+  const serverPort = config.get<number>('serverPort', 3333);
+
+  // Get workspace folder as root path
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  const rootPath = workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+
+  serverManager = new ServerManager();
+
+  try {
+    await serverManager.start(serverPort, rootPath);
+    console.log(`[Server] Development server started on port ${serverPort}`);
+  } catch (error) {
+    // Port might be in use, log but don't fail activation
+    console.warn(`[Server] Could not start server on port ${serverPort}:`, error);
+  }
 }
 
 /**
@@ -481,6 +508,12 @@ async function handleRefreshPreview(): Promise<void> {
  * Clean up extension resources
  */
 function cleanupResources(): void {
+  // Stop development server
+  if (serverManager) {
+    serverManager.stop();
+    serverManager = undefined;
+  }
+
   // Stop MCP bridge
   if (mcpBridge) {
     mcpBridge.stop();
