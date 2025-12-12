@@ -216,8 +216,8 @@ export class ServerManager {
             delete headers['content-security-policy'];
             delete headers['content-security-policy-report-only'];
 
-            // Set permissive CSP for iframe embedding
-            headers['content-security-policy'] = "frame-ancestors *";
+            // Don't set any CSP - let the content load freely in iframe
+            // VS Code webviews use special schemes that CSP wildcards don't cover
 
             // Set CORS headers
             headers['access-control-allow-origin'] = '*';
