@@ -163,12 +163,6 @@ export class ServerManager {
       console.log(`[ServerManager] ${req.method} ${req.path}`);
       next();
     });
-
-    // Error handling
-    this.app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      console.error('[ServerManager] Error:', err);
-      res.status(500).send('Internal Server Error');
-    });
   }
 
   /**
@@ -242,6 +236,12 @@ export class ServerManager {
         console.error('[ServerManager] Error serving file:', error);
         res.status(500).send('Error reading file');
       }
+    });
+
+    // Error handling middleware (must be defined AFTER all routes)
+    this.app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      console.error('[ServerManager] Error:', err);
+      res.status(500).send('Internal Server Error');
     });
   }
 
