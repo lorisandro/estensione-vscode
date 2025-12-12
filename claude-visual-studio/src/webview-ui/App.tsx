@@ -180,6 +180,38 @@ export const App: React.FC = () => {
     postMessage({ type: 'webview-ready' });
   }, [postMessage]);
 
+  // Listen for drag-related custom events from NavigationBar and forward to iframe
+  useEffect(() => {
+    const handleApplyDragChanges = () => {
+      const iframe = iframeRef.current;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage({
+          type: 'apply-drag-changes',
+        }, '*');
+        console.log('[App] Forwarded apply-drag-changes to iframe');
+      }
+    };
+
+    const handleUndoDragChange = (event: CustomEvent) => {
+      const iframe = iframeRef.current;
+      if (iframe?.contentWindow && event.detail) {
+        iframe.contentWindow.postMessage({
+          type: 'undo-drag-change',
+          payload: event.detail,
+        }, '*');
+        console.log('[App] Forwarded undo-drag-change to iframe:', event.detail);
+      }
+    };
+
+    window.addEventListener('claude-vs-apply-drag-changes', handleApplyDragChanges as EventListener);
+    window.addEventListener('claude-vs-undo-drag-change', handleUndoDragChange as EventListener);
+
+    return () => {
+      window.removeEventListener('claude-vs-apply-drag-changes', handleApplyDragChanges as EventListener);
+      window.removeEventListener('claude-vs-undo-drag-change', handleUndoDragChange as EventListener);
+    };
+  }, []);
+
   return (
     <div style={styles.container}>
       {/* Navigation Bar */}

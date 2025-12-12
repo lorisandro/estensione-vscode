@@ -222,23 +222,20 @@ export const NavigationBar: React.FC = () => {
   }, [screenshotMode, setScreenshotMode]);
 
   const handleApply = useCallback(() => {
-    // Send apply message to iframe to persist changes
-    postMessage({
-      type: 'apply-drag-changes',
-    });
+    // Dispatch custom event to be handled by App.tsx which forwards to iframe
+    window.dispatchEvent(new CustomEvent('claude-vs-apply-drag-changes'));
     applyChanges();
-  }, [postMessage, applyChanges]);
+  }, [applyChanges]);
 
   const handleUndo = useCallback(() => {
     const lastChange = undoLastChange();
     if (lastChange) {
-      // Send undo message to iframe to revert the element position
-      postMessage({
-        type: 'undo-drag-change',
-        payload: lastChange,
-      });
+      // Dispatch custom event with change data to be handled by App.tsx
+      window.dispatchEvent(new CustomEvent('claude-vs-undo-drag-change', {
+        detail: lastChange,
+      }));
     }
-  }, [postMessage, undoLastChange]);
+  }, [undoLastChange]);
 
   const getButtonStyle = useCallback((buttonName: string, isActive = false, isDisabled = false) => {
     const baseStyle = { ...styles.button };

@@ -258,6 +258,11 @@ class ElementInspector {
 
     // Cleanup on unload
     window.addEventListener('beforeunload', this.cleanup.bind(this));
+
+    // Drag mode event listeners
+    document.addEventListener('mousedown', this.handleDragStart.bind(this), true);
+    document.addEventListener('mousemove', this.handleDragMove.bind(this), true);
+    document.addEventListener('mouseup', this.handleDragEnd.bind(this), true);
   }
 
   /**
@@ -270,6 +275,12 @@ class ElementInspector {
       this.setSelectionMode(!!payload?.enabled);
     } else if (type === 'capture-screenshot') {
       this.captureScreenshot(payload);
+    } else if (type === 'set-drag-mode') {
+      this.setDragMode(!!payload?.enabled);
+    } else if (type === 'undo-drag-change') {
+      this.undoDragChange(payload);
+    } else if (type === 'apply-drag-changes') {
+      this.applyDragChanges();
     }
   }
 
@@ -388,11 +399,17 @@ class ElementInspector {
       setSelectionMode: (enabled: boolean) => {
         this.setSelectionMode(enabled);
       },
+      setDragMode: (enabled: boolean) => {
+        this.setDragMode(enabled);
+      },
       getSelectedElement: () => {
         return this.selectedElement ? this.getElementInfo(this.selectedElement) : null;
       },
       isSelectionMode: () => {
         return this.isSelectionMode;
+      },
+      isDragMode: () => {
+        return this.isDragMode;
       },
     };
   }
@@ -479,10 +496,249 @@ class ElementInspector {
    * Handle keyboard events
    */
   private handleKeyDown(event: KeyboardEvent): void {
-    // Escape key to exit selection mode
-    if (event.key === 'Escape' && this.isSelectionMode) {
-      this.setSelectionMode(false);
+    // Escape key to exit selection mode or cancel drag
+    if (event.key === 'Escape') {
+      if (this.isDragging) {
+        this.cancelDrag();
+      } else if (this.isSelectionMode) {
+        this.setSelectionMode(false);
+      }
     }
+  }
+
+  /**
+   * Check if element is draggable (not our inspector elements)
+   */
+  private isDraggableElement(element: HTMLElement): boolean {
+    if (!element || element === document.body || element === document.documentElement) {
+      return false;
+    }
+    if (element.id?.startsWith('__claude-vs-')) {
+      return false;
+    }
+    if (element.tagName === 'HTML' || element.tagName === 'BODY' || element.tagName === 'HEAD' || element.tagName === 'SCRIPT' || element.tagName === 'STYLE') {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Handle drag start
+   */
+  private handleDragStart(event: MouseEvent): void {
+    if (!this.isDragMode || this.isSelectionMode || this.isDragging) {
+      return;
+    }
+
+    const target = event.target as HTMLElement;
+
+    if (!this.isDraggableElement(target)) {
+      return;
+    }
+
+    // Prevent default text selection
+    event.preventDefault();
+
+    this.isDragging = true;
+    this.dragElement = target;
+    this.dragStartX = event.clientX;
+    this.dragStartY = event.clientY;
+
+    // Get current position
+    const rect = target.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(target);
+
+    // Store original position for undo
+    const currentLeft = parseFloat(computedStyle.left) || 0;
+    const currentTop = parseFloat(computedStyle.top) || 0;
+    this.originalPosition = { x: currentLeft, y: currentTop };
+
+    this.elementStartX = rect.left;
+    this.elementStartY = rect.top;
+
+    // Ensure element has position for dragging
+    if (computedStyle.position === 'static') {
+      target.style.position = 'relative';
+    }
+
+    // Add visual feedback
+    target.classList.add('__claude-vs-drag-element__');
+    document.body.classList.add('__claude-vs-dragging__');
+
+    // Show drag overlay at original position
+    if (this.dragOverlay) {
+      this.dragOverlay.style.left = `${rect.left}px`;
+      this.dragOverlay.style.top = `${rect.top}px`;
+      this.dragOverlay.style.width = `${rect.width}px`;
+      this.dragOverlay.style.height = `${rect.height}px`;
+      this.dragOverlay.style.display = 'block';
+    }
+
+    // Send drag start message
+    this.sendMessage({
+      type: 'element-drag-start',
+      data: this.getElementInfo(target),
+      timestamp: Date.now(),
+    });
+
+    console.log('[Element Inspector] Drag started:', target);
+  }
+
+  /**
+   * Handle drag move
+   */
+  private handleDragMove(event: MouseEvent): void {
+    if (!this.isDragging || !this.dragElement) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const deltaX = event.clientX - this.dragStartX;
+    const deltaY = event.clientY - this.dragStartY;
+
+    // Move element using transform for smooth movement
+    const computedStyle = window.getComputedStyle(this.dragElement);
+    const currentLeft = parseFloat(computedStyle.left) || 0;
+    const currentTop = parseFloat(computedStyle.top) || 0;
+
+    // Use left/top for positioning (maintains position after drag)
+    this.dragElement.style.left = `${(this.originalPosition?.x || 0) + deltaX}px`;
+    this.dragElement.style.top = `${(this.originalPosition?.y || 0) + deltaY}px`;
+  }
+
+  /**
+   * Handle drag end
+   */
+  private handleDragEnd(event: MouseEvent): void {
+    if (!this.isDragging || !this.dragElement) {
+      return;
+    }
+
+    const deltaX = event.clientX - this.dragStartX;
+    const deltaY = event.clientY - this.dragStartY;
+
+    // Only record change if element actually moved
+    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+      const computedStyle = window.getComputedStyle(this.dragElement);
+      const newLeft = parseFloat(computedStyle.left) || 0;
+      const newTop = parseFloat(computedStyle.top) || 0;
+
+      // Send drag end message with change data
+      const changeData: DragChangeData = {
+        elementSelector: this.getCSSSelector(this.dragElement),
+        originalPosition: this.originalPosition || { x: 0, y: 0 },
+        newPosition: { x: newLeft, y: newTop },
+      };
+
+      this.sendMessage({
+        type: 'element-drag-end',
+        data: changeData,
+        timestamp: Date.now(),
+      });
+
+      console.log('[Element Inspector] Drag ended:', changeData);
+    }
+
+    // Clean up
+    this.finishDrag();
+  }
+
+  /**
+   * Cancel current drag operation
+   */
+  private cancelDrag(): void {
+    if (!this.isDragging || !this.dragElement) {
+      return;
+    }
+
+    // Restore original position
+    if (this.originalPosition) {
+      this.dragElement.style.left = `${this.originalPosition.x}px`;
+      this.dragElement.style.top = `${this.originalPosition.y}px`;
+    }
+
+    this.finishDrag();
+    console.log('[Element Inspector] Drag cancelled');
+  }
+
+  /**
+   * Clean up after drag operation
+   */
+  private finishDrag(): void {
+    if (this.dragElement) {
+      this.dragElement.classList.remove('__claude-vs-drag-element__');
+    }
+    document.body.classList.remove('__claude-vs-dragging__');
+
+    if (this.dragOverlay) {
+      this.dragOverlay.style.display = 'none';
+    }
+
+    this.isDragging = false;
+    this.dragElement = null;
+    this.originalPosition = null;
+  }
+
+  /**
+   * Set drag mode
+   */
+  setDragMode(enabled: boolean): void {
+    this.isDragMode = enabled;
+
+    if (enabled) {
+      document.body.classList.add('__claude-vs-drag-mode__');
+      // Disable selection mode when drag mode is enabled
+      if (this.isSelectionMode) {
+        this.setSelectionMode(false);
+      }
+    } else {
+      document.body.classList.remove('__claude-vs-drag-mode__');
+      // Cancel any ongoing drag
+      if (this.isDragging) {
+        this.cancelDrag();
+      }
+    }
+
+    // Send mode change notification
+    this.sendMessage({
+      type: 'drag-mode-changed',
+      data: enabled,
+      timestamp: Date.now(),
+    });
+
+    console.log('[Element Inspector] Drag mode:', enabled);
+  }
+
+  /**
+   * Undo a drag change
+   */
+  private undoDragChange(change: DragChangeData): void {
+    if (!change?.elementSelector) {
+      console.warn('[Element Inspector] Invalid undo change data');
+      return;
+    }
+
+    try {
+      const element = document.querySelector(change.elementSelector) as HTMLElement;
+      if (element) {
+        element.style.left = `${change.originalPosition.x}px`;
+        element.style.top = `${change.originalPosition.y}px`;
+        console.log('[Element Inspector] Undo applied:', change.elementSelector);
+      } else {
+        console.warn('[Element Inspector] Element not found for undo:', change.elementSelector);
+      }
+    } catch (error) {
+      console.error('[Element Inspector] Error applying undo:', error);
+    }
+  }
+
+  /**
+   * Apply all drag changes (clear undo history on iframe side)
+   */
+  private applyDragChanges(): void {
+    console.log('[Element Inspector] Changes applied');
+    // Changes are already applied visually, just acknowledge
   }
 
   /**
@@ -547,9 +803,16 @@ class ElementInspector {
     this.isSelectionMode = enabled;
 
     if (enabled) {
+      // Disable drag mode when selection mode is enabled
+      if (this.isDragMode) {
+        this.isDragMode = false;
+        document.body.classList.remove('__claude-vs-drag-mode__');
+      }
       // Show boundaries on all elements when selection mode is enabled
       this.showAllElementBoundaries();
     } else {
+      // Re-enable drag mode when selection mode is disabled
+      this.setDragMode(true);
       // Cancel any pending RAF updates
       if (this.rafId !== null) {
         cancelAnimationFrame(this.rafId);
@@ -753,6 +1016,11 @@ class ElementInspector {
       this.rafId = null;
     }
 
+    // Cancel any ongoing drag
+    if (this.isDragging) {
+      this.finishDrag();
+    }
+
     this.pendingUpdate = null;
 
     if (this.overlay && this.overlay.parentElement) {
@@ -763,7 +1031,17 @@ class ElementInspector {
       this.outlineStyleElement.parentElement.removeChild(this.outlineStyleElement);
     }
 
+    if (this.dragStyleElement && this.dragStyleElement.parentElement) {
+      this.dragStyleElement.parentElement.removeChild(this.dragStyleElement);
+    }
+
+    if (this.dragOverlay && this.dragOverlay.parentElement) {
+      this.dragOverlay.parentElement.removeChild(this.dragOverlay);
+    }
+
     this.hideAllElementBoundaries();
+    document.body.classList.remove('__claude-vs-drag-mode__');
+    document.body.classList.remove('__claude-vs-dragging__');
     document.body.style.cursor = '';
   }
 }

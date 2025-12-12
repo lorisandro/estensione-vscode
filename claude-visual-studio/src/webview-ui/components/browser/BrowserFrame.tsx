@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
-import { useNavigationStore, useSelectionStore, useEditorStore, type ElementInfo, type ConsoleLogEntry } from '../../state/stores';
+import { useNavigationStore, useSelectionStore, useEditorStore, type ElementInfo, type ConsoleLogEntry, type DragChange } from '../../state/stores';
 import { useVSCodeApi } from '../../hooks/useVSCodeApi';
 
 interface BrowserFrameProps {
@@ -41,9 +41,12 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const internalRef = useRef<HTMLIFrameElement>(null);
   const iframeRef = externalRef || internalRef;
   const { url, serverBaseUrl } = useNavigationStore();
-  const { selectionMode } = useSelectionStore();
+  const { selectionMode, screenshotMode, addDragChange } = useSelectionStore();
   const { setLoading, setError, addConsoleLog } = useEditorStore();
   const { postMessage } = useVSCodeApi();
+
+  // Drag mode is active when no other mode is enabled
+  const isDragMode = !selectionMode && !screenshotMode;
 
   // Convert external URLs to proxy URLs
   const iframeSrc = useMemo(() => {
@@ -55,7 +58,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     setLoading(false);
     setError(null);
 
-    // Send current selection mode to iframe after load
+    // Send current modes to iframe after load
     // The element-inspector.ts script injected by the server will receive this
     const iframe = iframeRef.current;
     if (iframe?.contentWindow) {
@@ -65,10 +68,14 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           type: 'set-selection-mode',
           payload: { enabled: selectionMode }
         }, '*');
-        console.log('[BrowserFrame] Sent initial selection mode after load:', selectionMode);
+        iframe.contentWindow?.postMessage({
+          type: 'set-drag-mode',
+          payload: { enabled: isDragMode }
+        }, '*');
+        console.log('[BrowserFrame] Sent initial modes after load - selection:', selectionMode, 'drag:', isDragMode);
       }, 100);
     }
-  }, [selectionMode, setLoading, setError]);
+  }, [selectionMode, isDragMode, setLoading, setError]);
 
   // Handle iframe error
   const handleError = useCallback(() => {
@@ -91,11 +98,27 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           onElementClick?.(data);
         } else if (type === 'inspector-ready') {
           console.log('[BrowserFrame] Inspector ready in iframe');
-          // Send current selection mode when inspector is ready
+          // Send current modes when inspector is ready
           iframeRef.current?.contentWindow?.postMessage({
             type: 'set-selection-mode',
             payload: { enabled: selectionMode }
           }, '*');
+          iframeRef.current?.contentWindow?.postMessage({
+            type: 'set-drag-mode',
+            payload: { enabled: isDragMode }
+          }, '*');
+        } else if (type === 'element-drag-end') {
+          // Handle drag end - add change to store
+          if (data?.elementSelector) {
+            addDragChange({
+              elementSelector: data.elementSelector,
+              originalPosition: data.originalPosition,
+              newPosition: data.newPosition,
+            });
+            console.log('[BrowserFrame] Drag change recorded:', data);
+          }
+        } else if (type === 'drag-mode-changed') {
+          console.log('[BrowserFrame] Drag mode changed in iframe:', data);
         }
         return;
       }
@@ -115,7 +138,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementHover, onElementClick, addConsoleLog, selectionMode]);
+  }, [onElementHover, onElementClick, addConsoleLog, selectionMode, isDragMode, addDragChange]);
 
   // Send selection mode change to iframe via postMessage
   useEffect(() => {
@@ -131,6 +154,20 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
     console.log('[BrowserFrame] Sent selection mode to iframe:', selectionMode);
   }, [selectionMode]);
+
+  // Send drag mode change to iframe via postMessage
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+
+    // Send message to iframe to toggle drag mode
+    iframe.contentWindow.postMessage({
+      type: 'set-drag-mode',
+      payload: { enabled: isDragMode }
+    }, '*');
+
+    console.log('[BrowserFrame] Sent drag mode to iframe:', isDragMode);
+  }, [isDragMode]);
 
   // Set loading when URL changes
   useEffect(() => {
