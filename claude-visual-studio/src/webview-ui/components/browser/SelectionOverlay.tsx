@@ -76,7 +76,11 @@ const CURSOR_MAP: Record<HandlePosition, string> = {
   se: 'nwse-resize',
 };
 
-export const SelectionOverlay: React.FC = () => {
+interface SelectionOverlayProps {
+  iframeRef?: React.RefObject<HTMLIFrameElement>;
+}
+
+export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({ iframeRef }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -92,6 +96,35 @@ export const SelectionOverlay: React.FC = () => {
     startRect: null,
   });
   const [liveRect, setLiveRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [iframeOffset, setIframeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Calculate iframe offset relative to parent container
+  useEffect(() => {
+    const updateIframeOffset = () => {
+      if (!iframeRef?.current || !canvasRef.current) return;
+
+      const iframe = iframeRef.current;
+      const canvas = canvasRef.current;
+      const iframeRect = iframe.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+
+      setIframeOffset({
+        x: iframeRect.left - canvasRect.left,
+        y: iframeRect.top - canvasRect.top,
+      });
+    };
+
+    updateIframeOffset();
+    window.addEventListener('resize', updateIframeOffset);
+
+    // Update periodically in case of layout changes
+    const intervalId = setInterval(updateIframeOffset, 500);
+
+    return () => {
+      window.removeEventListener('resize', updateIframeOffset);
+      clearInterval(intervalId);
+    };
+  }, [iframeRef]);
 
   // Get element label - memoized for performance
   const getElementLabel = useCallback((element: ElementInfo): string => {
@@ -114,10 +147,10 @@ export const SelectionOverlay: React.FC = () => {
     return parts.join('');
   }, []);
 
-  // Get handle positions for a given rect
+  // Get handle positions for a given rect (adjusted for iframe offset)
   const getHandlePositions = useCallback((rect: { x: number; y: number; width: number; height: number }): ResizeHandle[] => {
-    const x = Math.round(rect.x);
-    const y = Math.round(rect.y);
+    const x = Math.round(rect.x + iframeOffset.x);
+    const y = Math.round(rect.y + iframeOffset.y);
     const w = Math.round(rect.width);
     const h = Math.round(rect.height);
 
@@ -131,7 +164,7 @@ export const SelectionOverlay: React.FC = () => {
       { x: x + w / 2 - HANDLE_OFFSET, y: y + h - HANDLE_OFFSET, position: 's' },
       { x: x + w - HANDLE_OFFSET, y: y + h - HANDLE_OFFSET, position: 'se' },
     ];
-  }, []);
+  }, [iframeOffset]);
 
   // Check if a point is inside a handle's hit area
   const getHandleAtPoint = useCallback((mouseX: number, mouseY: number, rect: { x: number; y: number; width: number; height: number }): HandlePosition | null => {
@@ -383,14 +416,23 @@ export const SelectionOverlay: React.FC = () => {
 
       if (!selectionMode) return;
 
+      // Helper to apply iframe offset to rect
+      const applyOffset = (rect: { x: number; y: number; width: number; height: number }) => ({
+        x: rect.x + iframeOffset.x,
+        y: rect.y + iframeOffset.y,
+        width: rect.width,
+        height: rect.height,
+      });
+
       // Draw only hovered element (not selected) for hover feedback
       if (hoveredElement && hoveredElement !== selectedElement) {
-        drawElementHighlight(ctx, hoveredElement.rect, COLORS.hoverFill, COLORS.hoverStroke, 2);
+        drawElementHighlight(ctx, applyOffset(hoveredElement.rect), COLORS.hoverFill, COLORS.hoverStroke, 2);
       }
 
       // Draw selected element - use liveRect during resize for live feedback
       if (selectedElement) {
-        const rectToDraw = liveRect || selectedElement.rect;
+        const baseRect = liveRect || selectedElement.rect;
+        const rectToDraw = applyOffset(baseRect);
 
         // Use different colors during resize
         const fillColor = resizeState.isResizing ? 'rgba(66, 133, 244, 0.2)' : COLORS.selectedFill;
@@ -423,7 +465,7 @@ export const SelectionOverlay: React.FC = () => {
         rafIdRef.current = null;
       }
     };
-  }, [selectionMode, selectedElement, hoveredElement, getElementLabel, setupCanvas, liveRect, resizeState.isResizing, hoveredHandle]);
+  }, [selectionMode, selectedElement, hoveredElement, getElementLabel, setupCanvas, liveRect, resizeState.isResizing, hoveredHandle, iframeOffset]);
 
   // Draw element highlight with crisp edges
   const drawElementHighlight = (

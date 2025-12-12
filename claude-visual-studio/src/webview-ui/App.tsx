@@ -197,7 +197,7 @@ export const App: React.FC = () => {
             />
 
             {/* Selection Overlay */}
-            <SelectionOverlay />
+            <SelectionOverlay iframeRef={iframeRef} />
 
             {/* Screenshot Area Selection Overlay */}
             {screenshotMode && (
