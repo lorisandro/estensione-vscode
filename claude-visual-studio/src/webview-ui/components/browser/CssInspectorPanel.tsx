@@ -1335,7 +1335,7 @@ export const CssInspectorPanel: React.FC = () => {
           <div style={styles.gridRow}>
             <NumberInput
               label="X"
-              value={parseNumericValue(getStyle('left')).num || Math.round(element.rect?.x || 0)}
+              value={parseNumericValue(getStyle('left')).num}
               onChange={(v) => {
                 // Auto-switch to relative if position is static (only once per scrub session)
                 if (position === 'static' && !positionAppliedRef.current) {
@@ -1348,7 +1348,7 @@ export const CssInspectorPanel: React.FC = () => {
             />
             <NumberInput
               label="Y"
-              value={parseNumericValue(getStyle('top')).num || Math.round(element.rect?.y || 0)}
+              value={parseNumericValue(getStyle('top')).num}
               onChange={(v) => {
                 // Auto-switch to relative if position is static (only once per scrub session)
                 if (position === 'static' && !positionAppliedRef.current) {
