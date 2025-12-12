@@ -49,6 +49,58 @@ interface CssStyleChange {
   previousValue?: string;
 }
 
+// Guided drag and drop interfaces
+interface AlignmentPoint {
+  position: number;
+  type: 'edge' | 'center';
+  source: 'parent' | 'sibling';
+}
+
+interface AlignmentLine {
+  orientation: 'horizontal' | 'vertical';
+  position: number;
+  start: number;
+  end: number;
+  type: 'edge' | 'center';
+}
+
+interface DistanceIndicator {
+  orientation: 'horizontal' | 'vertical';
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  distance: number;
+}
+
+interface ElementBounds {
+  rect: DOMRect;
+  edges: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+    centerX: number;
+    centerY: number;
+  };
+}
+
+interface DragGuideState {
+  alignmentPoints: {
+    horizontal: AlignmentPoint[];
+    vertical: AlignmentPoint[];
+  };
+  siblingBounds: ElementBounds[];
+  parentBounds: ElementBounds | null;
+}
+
+interface SnapResult {
+  snappedX: number;
+  snappedY: number;
+  horizontalGuides: AlignmentLine[];
+  verticalGuides: AlignmentLine[];
+}
+
 class ElementInspector {
   private isSelectionMode: boolean = false;
   private isDragMode: boolean = true; // Drag mode enabled by default
@@ -71,6 +123,15 @@ class ElementInspector {
   private elementStartY: number = 0;
   private originalPosition: { x: number; y: number } | null = null;
   private dragOverlay: HTMLDivElement | null = null;
+
+  // Guided drag properties
+  private readonly SNAP_THRESHOLD = 5;
+  private readonly GUIDE_COLOR = '#ff00ff';
+  private readonly GUIDE_CENTER_COLOR = '#00d4ff';
+  private guidesContainer: SVGSVGElement | null = null;
+  private distanceContainer: HTMLDivElement | null = null;
+  private dragGuideState: DragGuideState | null = null;
+
   private readonly IMPORTANT_STYLES = [
     // Position & Transform
     'position',
@@ -180,6 +241,7 @@ class ElementInspector {
     // Create drag mode elements
     this.createDragStyle();
     this.createDragOverlay();
+    this.createGuidesContainer();
 
     // Setup event listeners
     this.setupEventListeners();
@@ -291,6 +353,499 @@ class ElementInspector {
       box-sizing: border-box;
     `;
     document.body.appendChild(this.dragOverlay);
+  }
+
+  /**
+   * Create containers for alignment guides and distance indicators
+   */
+  private createGuidesContainer(): void {
+    // SVG container for crisp guide lines
+    this.guidesContainer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.guidesContainer.id = '__claude-vs-guides-container__';
+    this.guidesContainer.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999996;
+      overflow: visible;
+    `;
+    document.body.appendChild(this.guidesContainer);
+
+    // Container for distance labels
+    this.distanceContainer = document.createElement('div');
+    this.distanceContainer.id = '__claude-vs-distance-container__';
+    this.distanceContainer.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999996;
+    `;
+    document.body.appendChild(this.distanceContainer);
+  }
+
+  /**
+   * Collect alignment points from parent and siblings
+   */
+  private collectAlignmentPoints(dragElement: HTMLElement): DragGuideState {
+    const state: DragGuideState = {
+      alignmentPoints: { horizontal: [], vertical: [] },
+      siblingBounds: [],
+      parentBounds: null
+    };
+
+    const parent = dragElement.parentElement;
+    if (!parent || parent === document.body || parent === document.documentElement) {
+      return state;
+    }
+
+    // Collect parent bounds and alignment points
+    const parentRect = parent.getBoundingClientRect();
+    state.parentBounds = {
+      rect: parentRect,
+      edges: {
+        top: parentRect.top,
+        right: parentRect.right,
+        bottom: parentRect.bottom,
+        left: parentRect.left,
+        centerX: parentRect.left + parentRect.width / 2,
+        centerY: parentRect.top + parentRect.height / 2
+      }
+    };
+
+    // Add parent alignment points
+    // Horizontal alignments (y-axis positions)
+    state.alignmentPoints.horizontal.push(
+      { position: parentRect.top, type: 'edge', source: 'parent' },
+      { position: parentRect.top + parentRect.height / 2, type: 'center', source: 'parent' },
+      { position: parentRect.bottom, type: 'edge', source: 'parent' }
+    );
+
+    // Vertical alignments (x-axis positions)
+    state.alignmentPoints.vertical.push(
+      { position: parentRect.left, type: 'edge', source: 'parent' },
+      { position: parentRect.left + parentRect.width / 2, type: 'center', source: 'parent' },
+      { position: parentRect.right, type: 'edge', source: 'parent' }
+    );
+
+    // Collect sibling bounds and alignment points
+    const siblings = Array.from(parent.children).filter(
+      child => child !== dragElement &&
+               child.nodeType === Node.ELEMENT_NODE &&
+               !((child as HTMLElement).id?.startsWith('__claude-vs-')) &&
+               window.getComputedStyle(child as HTMLElement).display !== 'none'
+    ) as HTMLElement[];
+
+    for (const sibling of siblings) {
+      const rect = sibling.getBoundingClientRect();
+      const bounds: ElementBounds = {
+        rect,
+        edges: {
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+          left: rect.left,
+          centerX: rect.left + rect.width / 2,
+          centerY: rect.top + rect.height / 2
+        }
+      };
+      state.siblingBounds.push(bounds);
+
+      // Add sibling horizontal alignment points
+      state.alignmentPoints.horizontal.push(
+        { position: rect.top, type: 'edge', source: 'sibling' },
+        { position: rect.top + rect.height / 2, type: 'center', source: 'sibling' },
+        { position: rect.bottom, type: 'edge', source: 'sibling' }
+      );
+
+      // Add sibling vertical alignment points
+      state.alignmentPoints.vertical.push(
+        { position: rect.left, type: 'edge', source: 'sibling' },
+        { position: rect.left + rect.width / 2, type: 'center', source: 'sibling' },
+        { position: rect.right, type: 'edge', source: 'sibling' }
+      );
+    }
+
+    return state;
+  }
+
+  /**
+   * Find snap position based on alignment points
+   */
+  private findSnapPosition(
+    elementRect: DOMRect,
+    state: DragGuideState,
+    proposedX: number,
+    proposedY: number
+  ): SnapResult {
+    const result: SnapResult = {
+      snappedX: proposedX,
+      snappedY: proposedY,
+      horizontalGuides: [],
+      verticalGuides: []
+    };
+
+    // Element edges at current visual position
+    const elementEdges = {
+      top: elementRect.top,
+      bottom: elementRect.bottom,
+      centerY: elementRect.top + elementRect.height / 2,
+      left: elementRect.left,
+      right: elementRect.right,
+      centerX: elementRect.left + elementRect.width / 2
+    };
+
+    // Check horizontal snapping (affects Y position)
+    let bestHSnap: { distance: number; adjustment: number; guide: AlignmentLine } | null = null;
+    const hEdgesToCheck = [
+      { edge: 'top', value: elementEdges.top },
+      { edge: 'center', value: elementEdges.centerY },
+      { edge: 'bottom', value: elementEdges.bottom }
+    ];
+
+    for (const edgeInfo of hEdgesToCheck) {
+      for (const point of state.alignmentPoints.horizontal) {
+        const distance = Math.abs(edgeInfo.value - point.position);
+
+        if (distance <= this.SNAP_THRESHOLD) {
+          if (!bestHSnap || distance < bestHSnap.distance) {
+            let adjustment: number;
+            if (edgeInfo.edge === 'top') {
+              adjustment = proposedY + (point.position - elementEdges.top);
+            } else if (edgeInfo.edge === 'center') {
+              adjustment = proposedY + (point.position - elementEdges.centerY);
+            } else {
+              adjustment = proposedY + (point.position - elementEdges.bottom);
+            }
+
+            bestHSnap = {
+              distance,
+              adjustment,
+              guide: {
+                orientation: 'horizontal',
+                position: point.position,
+                start: 0,
+                end: window.innerWidth,
+                type: point.type
+              }
+            };
+          }
+        }
+      }
+    }
+
+    if (bestHSnap) {
+      result.snappedY = bestHSnap.adjustment;
+      result.horizontalGuides.push(bestHSnap.guide);
+    }
+
+    // Check vertical snapping (affects X position)
+    let bestVSnap: { distance: number; adjustment: number; guide: AlignmentLine } | null = null;
+    const vEdgesToCheck = [
+      { edge: 'left', value: elementEdges.left },
+      { edge: 'center', value: elementEdges.centerX },
+      { edge: 'right', value: elementEdges.right }
+    ];
+
+    for (const edgeInfo of vEdgesToCheck) {
+      for (const point of state.alignmentPoints.vertical) {
+        const distance = Math.abs(edgeInfo.value - point.position);
+
+        if (distance <= this.SNAP_THRESHOLD) {
+          if (!bestVSnap || distance < bestVSnap.distance) {
+            let adjustment: number;
+            if (edgeInfo.edge === 'left') {
+              adjustment = proposedX + (point.position - elementEdges.left);
+            } else if (edgeInfo.edge === 'center') {
+              adjustment = proposedX + (point.position - elementEdges.centerX);
+            } else {
+              adjustment = proposedX + (point.position - elementEdges.right);
+            }
+
+            bestVSnap = {
+              distance,
+              adjustment,
+              guide: {
+                orientation: 'vertical',
+                position: point.position,
+                start: 0,
+                end: window.innerHeight,
+                type: point.type
+              }
+            };
+          }
+        }
+      }
+    }
+
+    if (bestVSnap) {
+      result.snappedX = bestVSnap.adjustment;
+      result.verticalGuides.push(bestVSnap.guide);
+    }
+
+    return result;
+  }
+
+  /**
+   * Calculate distance indicators from element to parent and siblings
+   */
+  private calculateDistanceIndicators(
+    elementRect: DOMRect,
+    state: DragGuideState
+  ): DistanceIndicator[] {
+    const indicators: DistanceIndicator[] = [];
+
+    // Distance to parent edges
+    if (state.parentBounds) {
+      const parent = state.parentBounds;
+
+      // Top distance
+      if (elementRect.top > parent.rect.top) {
+        indicators.push({
+          orientation: 'vertical',
+          fromX: elementRect.left + elementRect.width / 2,
+          fromY: parent.rect.top,
+          toX: elementRect.left + elementRect.width / 2,
+          toY: elementRect.top,
+          distance: elementRect.top - parent.rect.top
+        });
+      }
+
+      // Bottom distance
+      if (elementRect.bottom < parent.rect.bottom) {
+        indicators.push({
+          orientation: 'vertical',
+          fromX: elementRect.left + elementRect.width / 2,
+          fromY: elementRect.bottom,
+          toX: elementRect.left + elementRect.width / 2,
+          toY: parent.rect.bottom,
+          distance: parent.rect.bottom - elementRect.bottom
+        });
+      }
+
+      // Left distance
+      if (elementRect.left > parent.rect.left) {
+        indicators.push({
+          orientation: 'horizontal',
+          fromX: parent.rect.left,
+          fromY: elementRect.top + elementRect.height / 2,
+          toX: elementRect.left,
+          toY: elementRect.top + elementRect.height / 2,
+          distance: elementRect.left - parent.rect.left
+        });
+      }
+
+      // Right distance
+      if (elementRect.right < parent.rect.right) {
+        indicators.push({
+          orientation: 'horizontal',
+          fromX: elementRect.right,
+          fromY: elementRect.top + elementRect.height / 2,
+          toX: parent.rect.right,
+          toY: elementRect.top + elementRect.height / 2,
+          distance: parent.rect.right - elementRect.right
+        });
+      }
+    }
+
+    // Distance to nearest siblings
+    for (const sibling of state.siblingBounds) {
+      const sRect = sibling.rect;
+
+      // Check if sibling is to the left and overlaps vertically
+      if (sRect.right < elementRect.left &&
+          !(elementRect.bottom < sRect.top || elementRect.top > sRect.bottom)) {
+        const midY = Math.max(elementRect.top, sRect.top) +
+                     (Math.min(elementRect.bottom, sRect.bottom) - Math.max(elementRect.top, sRect.top)) / 2;
+        indicators.push({
+          orientation: 'horizontal',
+          fromX: sRect.right,
+          fromY: midY,
+          toX: elementRect.left,
+          toY: midY,
+          distance: elementRect.left - sRect.right
+        });
+      }
+
+      // Check if sibling is to the right and overlaps vertically
+      if (sRect.left > elementRect.right &&
+          !(elementRect.bottom < sRect.top || elementRect.top > sRect.bottom)) {
+        const midY = Math.max(elementRect.top, sRect.top) +
+                     (Math.min(elementRect.bottom, sRect.bottom) - Math.max(elementRect.top, sRect.top)) / 2;
+        indicators.push({
+          orientation: 'horizontal',
+          fromX: elementRect.right,
+          fromY: midY,
+          toX: sRect.left,
+          toY: midY,
+          distance: sRect.left - elementRect.right
+        });
+      }
+
+      // Check if sibling is above and overlaps horizontally
+      if (sRect.bottom < elementRect.top &&
+          !(elementRect.right < sRect.left || elementRect.left > sRect.right)) {
+        const midX = Math.max(elementRect.left, sRect.left) +
+                     (Math.min(elementRect.right, sRect.right) - Math.max(elementRect.left, sRect.left)) / 2;
+        indicators.push({
+          orientation: 'vertical',
+          fromX: midX,
+          fromY: sRect.bottom,
+          toX: midX,
+          toY: elementRect.top,
+          distance: elementRect.top - sRect.bottom
+        });
+      }
+
+      // Check if sibling is below and overlaps horizontally
+      if (sRect.top > elementRect.bottom &&
+          !(elementRect.right < sRect.left || elementRect.left > sRect.right)) {
+        const midX = Math.max(elementRect.left, sRect.left) +
+                     (Math.min(elementRect.right, sRect.right) - Math.max(elementRect.left, sRect.left)) / 2;
+        indicators.push({
+          orientation: 'vertical',
+          fromX: midX,
+          fromY: elementRect.bottom,
+          toX: midX,
+          toY: sRect.top,
+          distance: sRect.top - elementRect.bottom
+        });
+      }
+    }
+
+    return indicators;
+  }
+
+  /**
+   * Update the visual display of guides and distance indicators
+   */
+  private updateGuidesDisplay(guides: AlignmentLine[], indicators: DistanceIndicator[]): void {
+    if (!this.guidesContainer || !this.distanceContainer) return;
+
+    // Clear existing content
+    this.guidesContainer.innerHTML = '';
+    this.distanceContainer.innerHTML = '';
+
+    // Draw alignment guide lines
+    for (const guide of guides) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      const isCenter = guide.type === 'center';
+
+      if (guide.orientation === 'vertical') {
+        line.setAttribute('x1', String(guide.position));
+        line.setAttribute('y1', String(guide.start));
+        line.setAttribute('x2', String(guide.position));
+        line.setAttribute('y2', String(guide.end));
+      } else {
+        line.setAttribute('x1', String(guide.start));
+        line.setAttribute('y1', String(guide.position));
+        line.setAttribute('x2', String(guide.end));
+        line.setAttribute('y2', String(guide.position));
+      }
+
+      line.setAttribute('stroke', isCenter ? this.GUIDE_CENTER_COLOR : this.GUIDE_COLOR);
+      line.setAttribute('stroke-width', '1');
+      if (isCenter) {
+        line.setAttribute('stroke-dasharray', '4,4');
+      }
+
+      this.guidesContainer.appendChild(line);
+    }
+
+    // Draw distance measurement lines and labels
+    for (const indicator of indicators) {
+      // Draw measurement line
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', String(indicator.fromX));
+      line.setAttribute('y1', String(indicator.fromY));
+      line.setAttribute('x2', String(indicator.toX));
+      line.setAttribute('y2', String(indicator.toY));
+      line.setAttribute('stroke', this.GUIDE_COLOR);
+      line.setAttribute('stroke-width', '1');
+      line.setAttribute('stroke-dasharray', '2,2');
+      this.guidesContainer.appendChild(line);
+
+      // Draw end caps for the measurement line
+      if (indicator.orientation === 'horizontal') {
+        // Vertical caps at each end
+        const cap1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        cap1.setAttribute('x1', String(indicator.fromX));
+        cap1.setAttribute('y1', String(indicator.fromY - 4));
+        cap1.setAttribute('x2', String(indicator.fromX));
+        cap1.setAttribute('y2', String(indicator.fromY + 4));
+        cap1.setAttribute('stroke', this.GUIDE_COLOR);
+        cap1.setAttribute('stroke-width', '1');
+        this.guidesContainer.appendChild(cap1);
+
+        const cap2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        cap2.setAttribute('x1', String(indicator.toX));
+        cap2.setAttribute('y1', String(indicator.toY - 4));
+        cap2.setAttribute('x2', String(indicator.toX));
+        cap2.setAttribute('y2', String(indicator.toY + 4));
+        cap2.setAttribute('stroke', this.GUIDE_COLOR);
+        cap2.setAttribute('stroke-width', '1');
+        this.guidesContainer.appendChild(cap2);
+      } else {
+        // Horizontal caps at each end
+        const cap1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        cap1.setAttribute('x1', String(indicator.fromX - 4));
+        cap1.setAttribute('y1', String(indicator.fromY));
+        cap1.setAttribute('x2', String(indicator.fromX + 4));
+        cap1.setAttribute('y2', String(indicator.fromY));
+        cap1.setAttribute('stroke', this.GUIDE_COLOR);
+        cap1.setAttribute('stroke-width', '1');
+        this.guidesContainer.appendChild(cap1);
+
+        const cap2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        cap2.setAttribute('x1', String(indicator.toX - 4));
+        cap2.setAttribute('y1', String(indicator.toY));
+        cap2.setAttribute('x2', String(indicator.toX + 4));
+        cap2.setAttribute('y2', String(indicator.toY));
+        cap2.setAttribute('stroke', this.GUIDE_COLOR);
+        cap2.setAttribute('stroke-width', '1');
+        this.guidesContainer.appendChild(cap2);
+      }
+
+      // Draw distance label
+      const label = document.createElement('div');
+      const midX = (indicator.fromX + indicator.toX) / 2;
+      const midY = (indicator.fromY + indicator.toY) / 2;
+
+      label.style.cssText = `
+        position: fixed;
+        left: ${midX}px;
+        top: ${midY}px;
+        transform: translate(-50%, -50%);
+        background: ${this.GUIDE_COLOR};
+        color: #ffffff;
+        font-size: 10px;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-variant-numeric: tabular-nums;
+        padding: 2px 4px;
+        border-radius: 2px;
+        white-space: nowrap;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      `;
+      label.textContent = `${Math.round(indicator.distance)}`;
+      this.distanceContainer.appendChild(label);
+    }
+  }
+
+  /**
+   * Clear all guides and distance indicators
+   */
+  private clearGuides(): void {
+    if (this.guidesContainer) {
+      this.guidesContainer.innerHTML = '';
+    }
+    if (this.distanceContainer) {
+      this.distanceContainer.innerHTML = '';
+    }
   }
 
   /**
@@ -748,6 +1303,9 @@ class ElementInspector {
       timestamp: Date.now(),
     });
 
+    // Collect alignment points for guided drag
+    this.dragGuideState = this.collectAlignmentPoints(target);
+
     console.log('[Element Inspector] Drag started:', target.tagName, 'originalPosition:', this.originalPosition);
   }
 
@@ -764,14 +1322,36 @@ class ElementInspector {
     const deltaX = event.clientX - this.dragStartX;
     const deltaY = event.clientY - this.dragStartY;
 
-    // Move element using transform for smooth movement
-    const computedStyle = window.getComputedStyle(this.dragElement);
-    const currentLeft = parseFloat(computedStyle.left) || 0;
-    const currentTop = parseFloat(computedStyle.top) || 0;
+    // Calculate proposed position
+    const proposedLeft = (this.originalPosition?.x || 0) + deltaX;
+    const proposedTop = (this.originalPosition?.y || 0) + deltaY;
 
-    // Use left/top for positioning (maintains position after drag)
-    this.dragElement.style.left = `${(this.originalPosition?.x || 0) + deltaX}px`;
-    this.dragElement.style.top = `${(this.originalPosition?.y || 0) + deltaY}px`;
+    // Get current element rect for snapping calculation
+    const currentRect = this.dragElement.getBoundingClientRect();
+
+    // Check if we have guide state for snapping
+    if (this.dragGuideState) {
+      // Find snap positions
+      const snap = this.findSnapPosition(currentRect, this.dragGuideState, proposedLeft, proposedTop);
+
+      // Apply snapped position
+      this.dragElement.style.left = `${snap.snappedX}px`;
+      this.dragElement.style.top = `${snap.snappedY}px`;
+
+      // Get updated rect after snapping
+      const newRect = this.dragElement.getBoundingClientRect();
+
+      // Calculate distance indicators
+      const distances = this.calculateDistanceIndicators(newRect, this.dragGuideState);
+
+      // Update visual guides
+      const allGuides = [...snap.horizontalGuides, ...snap.verticalGuides];
+      this.updateGuidesDisplay(allGuides, distances);
+    } else {
+      // Fallback: no snapping
+      this.dragElement.style.left = `${proposedLeft}px`;
+      this.dragElement.style.top = `${proposedTop}px`;
+    }
   }
 
   /**
@@ -845,6 +1425,10 @@ class ElementInspector {
     if (this.dragOverlay) {
       this.dragOverlay.style.display = 'none';
     }
+
+    // Clear alignment guides
+    this.clearGuides();
+    this.dragGuideState = null;
 
     this.isDragging = false;
     this.dragElement = null;
@@ -1208,6 +1792,15 @@ class ElementInspector {
 
     if (this.dragOverlay && this.dragOverlay.parentElement) {
       this.dragOverlay.parentElement.removeChild(this.dragOverlay);
+    }
+
+    // Remove guide containers
+    if (this.guidesContainer && this.guidesContainer.parentElement) {
+      this.guidesContainer.parentElement.removeChild(this.guidesContainer);
+    }
+
+    if (this.distanceContainer && this.distanceContainer.parentElement) {
+      this.distanceContainer.parentElement.removeChild(this.distanceContainer);
     }
 
     this.hideAllElementBoundaries();
