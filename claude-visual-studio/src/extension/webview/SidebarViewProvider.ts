@@ -43,6 +43,9 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
         case 'openSettings':
           await vscode.commands.executeCommand('workbench.action.openSettings', 'claudeVisualStudio');
           break;
+        case 'reloadExtension':
+          await vscode.commands.executeCommand('workbench.action.reloadWindow');
+          break;
       }
     });
   }
@@ -159,6 +162,9 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
   <button class="btn btn-secondary" id="settingsBtn">
     Settings
   </button>
+  <button class="btn btn-secondary" id="reloadBtn">
+    Reload Extension
+  </button>
 
   <div class="features">
     <h2>Features</h2>
@@ -201,6 +207,10 @@ export class SidebarViewProvider implements vscode.WebviewViewProvider {
 
     document.getElementById('settingsBtn').addEventListener('click', () => {
       vscode.postMessage({ type: 'openSettings' });
+    });
+
+    document.getElementById('reloadBtn').addEventListener('click', () => {
+      vscode.postMessage({ type: 'reloadExtension' });
     });
   </script>
 </body>
