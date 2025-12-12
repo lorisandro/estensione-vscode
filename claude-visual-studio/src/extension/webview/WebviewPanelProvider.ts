@@ -238,7 +238,7 @@ export class WebviewPanelProvider {
     }
   </script>
 
-  <script src="${scriptUri}"></script>
+  <script type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

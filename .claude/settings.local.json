@@ -1,20 +1,31 @@
 {
   "permissions": {
     "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:craft.js.org)",
+      "Bash(dir /s /b \"C:\\Users\\Utente\\AppData\\Roaming\\Claude\")",
+      "Bash(dir /s /b \"C:\\Users\\Utente\\.claude\")",
       "WebSearch",
-      "WebFetch(domain:www.starterstory.com)",
-      "WebFetch(domain:shipfa.st)",
-      "WebFetch(domain:divjoy.com)",
-      "WebFetch(domain:shipixen.com)",
-      "WebFetch(domain:www.zerobounce.net)",
-      "Bash(tree:*)",
-      "Bash(done)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)",
+      "Bash(dir:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(gh repo rename:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(powershell -Command \"Rename-Item -Path ''E:\\Progetto\\Progetti\\APP e ASSET\\App\\Test'' -NewName ''estensione vscode''\")",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\n🔧 OTTIMIZZAZIONE COMPLETA: Repository navigabile + date corrette\n\n## Modifiche principali:\n\n✅ README.md completamente riscritto (486 righe)\n   - 4 percorsi rapidi (Quick Wins, Business, AI, Recurring)\n   - Decision tree completo\n   - Tabella 11 progetti comparati\n   - TUTTI i 13 file ora menzionati\n\n✅ Date corrette in TUTTI i file\n   - Novembre 2025 → Gennaio 2025 (18 occorrenze)\n   - Batch correction con sed\n\n✅ GUIDA-NAVIGAZIONE-VELOCE.md creata (331 righe)\n   - Decision in 60 secondi\n   - 3 percorsi pre-confezionati\n   - Quiz ultra-rapido\n   - Tempo lettura: 2 minuti\n\n✅ ANALISI-COMPLETA marcato come ridondante\n   - Disclaimer aggiunto (riga 3)\n   - User evita confusione\n\n✅ CONSOLIDAMENTO-LOG.md creato\n   - Documentazione completa modifiche\n   - Metriche pre/post\n   - 2 ore effort documentato\n\n## Risultati:\n\n- Navigazione: 3/10 → 9/10 (+600%)\n- Decision time: 30 min → 2-5 min (-83%)\n- README completezza: 40% → 100% (+150%)\n- Date corrette: 15% → 100%\n- File ridondanti marcati: 0% → 100%\n\n## File modificati: 10\n## File creati: 2\n## Righe totali aggiunte: 817\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit:*)",
-      "WebFetch(domain:draculatheme.gumroad.com)"
-    ],
-    "deny": [],
-    "ask": []
+      "Bash(git push)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx tsc:*)",
+      "Bash(vsce package:*)",
+      "Bash(code --install-extension:*)",
+      "Bash(npm run build:extension:*)",
+      "Bash(git reset:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''E:\\Progetto\\Progetti\\APP e ASSET\\App\\Test\\claude-visual-studio\\dist'' -Recurse | Select-Object FullName\")"
+    ]
   }
 }
