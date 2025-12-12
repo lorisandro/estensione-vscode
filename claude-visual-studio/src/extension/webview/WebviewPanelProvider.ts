@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
+import * as http from 'http';
 import {
   ExtensionToWebviewMessage,
   WebviewToExtensionMessage,
@@ -457,7 +458,7 @@ export class WebviewPanelProvider {
   }
 
   /**
-   * Write element info to file and send to terminal for Claude Code to see
+   * Write element info to file and send to Claude Code via SSE
    */
   private async writeElementToFile(elementInfo: any): Promise<void> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -488,12 +489,12 @@ export class WebviewPanelProvider {
     try {
       fs.writeFileSync(outputPath, JSON.stringify(elementData, null, 2), 'utf-8');
 
-      // Build a formatted message for the terminal
+      // Build a formatted message
       const el = elementData.element;
       const selectorStr = `${el.tag}${el.id ? '#' + el.id : ''}${el.classes.length > 0 ? '.' + el.classes.join('.') : ''}`;
 
-      // Create formatted output for Claude Code terminal
-      const terminalMessage = [
+      // Create formatted output for Claude Code
+      const formattedElement = [
         `[SELECTED ELEMENT]`,
         `Tag: ${el.tag}`,
         el.id ? `ID: ${el.id}` : null,
@@ -503,16 +504,77 @@ export class WebviewPanelProvider {
         el.boundingBox ? `Size: ${Math.round(el.boundingBox.width)}x${Math.round(el.boundingBox.height)}px` : null,
       ].filter(Boolean).join('\n');
 
-      // Send to active terminal (where Claude Code is running)
-      const activeTerminal = vscode.window.activeTerminal;
-      if (activeTerminal) {
-        activeTerminal.sendText(terminalMessage, true);
+      // Try to send to Claude Code via SSE port (from lock file)
+      const ssePort = this.getClaudeCodeSSEPort();
+      if (ssePort) {
+        this.sendToClaudeCode(ssePort, formattedElement);
       }
 
       console.log(`[Claude VS] Element selected: ${selectorStr}`);
+      console.log(`[Claude VS] Data written to: ${outputPath}`);
     } catch (err) {
       console.error('[Claude VS] Failed to write element info:', err);
     }
+  }
+
+  /**
+   * Get Claude Code SSE port from lock file
+   */
+  private getClaudeCodeSSEPort(): string | null {
+    try {
+      const homeDir = process.env.USERPROFILE || process.env.HOME || '';
+      const ideLockDir = path.join(homeDir, '.claude', 'ide');
+
+      if (!fs.existsSync(ideLockDir)) {
+        return null;
+      }
+
+      // Find lock files - the filename is the port number
+      const files = fs.readdirSync(ideLockDir);
+      const lockFile = files.find(f => f.endsWith('.lock'));
+
+      if (lockFile) {
+        // Extract port from filename (e.g., "15791.lock" -> "15791")
+        const port = lockFile.replace('.lock', '');
+        console.log(`[Claude VS] Found Claude Code SSE port: ${port}`);
+        return port;
+      }
+    } catch (err) {
+      console.log('[Claude VS] Could not find Claude Code SSE port');
+    }
+    return null;
+  }
+
+  /**
+   * Send message to Claude Code via SSE
+   */
+  private sendToClaudeCode(port: string, message: string): void {
+    const data = JSON.stringify({
+      type: 'user_message',
+      content: message,
+    });
+
+    const options = {
+      hostname: 'localhost',
+      port: parseInt(port),
+      path: '/message',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data),
+      },
+    };
+
+    const req = http.request(options, (res) => {
+      console.log(`[Claude VS] SSE response: ${res.statusCode}`);
+    });
+
+    req.on('error', (err) => {
+      console.log(`[Claude VS] SSE not available: ${err.message}`);
+    });
+
+    req.write(data);
+    req.end();
   }
 
   /**
