@@ -13,21 +13,31 @@ export interface UseVSCodeApiReturn {
 
 // Global singleton for VS Code API - must only be acquired once
 let globalVscodeApi: VSCodeApi | null = null;
+let acquisitionAttempted = false;
 
 function getVSCodeApi(): VSCodeApi | null {
+  // Return cached if available
   if (globalVscodeApi) {
     return globalVscodeApi;
+  }
+
+  // Don't try again if we already failed
+  if (acquisitionAttempted) {
+    return null;
   }
 
   if (typeof window === 'undefined') {
     return null;
   }
 
-  // Check if API was already acquired and stored on window
+  // Check if API was already acquired and stored on window by VS Code
   if ((window as any).vscode) {
     globalVscodeApi = (window as any).vscode;
     return globalVscodeApi;
   }
+
+  // Mark that we're attempting acquisition
+  acquisitionAttempted = true;
 
   // Try to acquire the API, catching any errors
   if (window.acquireVsCodeApi) {
@@ -36,7 +46,9 @@ function getVSCodeApi(): VSCodeApi | null {
       // Store it globally for future reference
       (window as any).vscode = globalVscodeApi;
     } catch (e) {
-      console.warn('Failed to acquire VS Code API:', e);
+      // API was already acquired - this is expected during webview restore
+      // VS Code may have already acquired it internally
+      console.warn('VS Code API acquisition failed (may already be acquired):', e);
       return null;
     }
   }
@@ -49,10 +61,11 @@ function getVSCodeApi(): VSCodeApi | null {
  * Provides methods to send and receive messages from the extension
  */
 export const useVSCodeApi = (): UseVSCodeApiReturn => {
-  const vscodeApi = useRef<VSCodeApi | null>(getVSCodeApi());
+  // Initialize ref as null - we'll acquire lazily in useEffect
+  const vscodeApi = useRef<VSCodeApi | null>(null);
   const messageHandlers = useRef<Set<(message: Message) => void>>(new Set());
 
-  // Initialize VSCode API once
+  // Initialize VSCode API once after mount
   useEffect(() => {
     if (!vscodeApi.current) {
       vscodeApi.current = getVSCodeApi();
