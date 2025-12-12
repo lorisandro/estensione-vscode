@@ -132,10 +132,11 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "npm run build:extension && npm run build:webview && npm run build:mcp",
+    "build": "npm run build:extension && npm run build:webview && npm run build:mcp && npm run build:injected",
     "build:extension": "esbuild src/extension/index.ts --bundle --outfile=dist/extension/index.js --external:vscode --format=cjs --platform=node",
     "build:webview": "vite build",
     "build:mcp": "esbuild src/mcp-server/index.ts --bundle --outfile=dist/mcp-server/index.js --format=esm --platform=node --packages=external",
+    "build:injected": "esbuild src/injected-scripts/element-inspector.ts --bundle --outfile=dist/injected-scripts/element-inspector.js --format=iife --platform=browser",
     "watch": "concurrently \"npm run watch:extension\" \"npm run watch:webview\"",
     "watch:extension": "esbuild src/extension/index.ts --bundle --outfile=dist/extension/index.js --external:vscode --format=cjs --platform=node --watch",
     "watch:webview": "vite build --watch",

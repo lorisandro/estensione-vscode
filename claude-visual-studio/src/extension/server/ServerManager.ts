@@ -275,20 +275,30 @@ export class ServerManager {
     // Special route for element inspector script
     this.app.get('/__claude-vs__/element-inspector.js', async (req, res) => {
       try {
-        const inspectorPath = path.join(__dirname, '../../../injected-scripts/element-inspector.js');
+        // First try the compiled JS in dist folder (relative to dist/extension/)
+        const distPath = path.join(__dirname, '../injected-scripts/element-inspector.js');
+        // Fallback to source folder if running in dev mode
+        const srcPath = path.join(__dirname, '../../../src/injected-scripts/element-inspector.js');
 
-        // Check if compiled JS exists, otherwise serve TS (will be transpiled by browser)
-        let scriptPath = inspectorPath;
+        let scriptPath = distPath;
         try {
-          await stat(inspectorPath);
+          await stat(distPath);
         } catch {
-          // Try TypeScript version
-          scriptPath = path.join(__dirname, '../../../injected-scripts/element-inspector.ts');
+          // Try source path
+          try {
+            await stat(srcPath);
+            scriptPath = srcPath;
+          } catch {
+            // Last resort: try TypeScript source (won't work in browser but useful for debugging)
+            scriptPath = path.join(__dirname, '../../../src/injected-scripts/element-inspector.ts');
+          }
         }
 
         const content = await readFile(scriptPath, 'utf-8');
         res.setHeader('Content-Type', 'application/javascript');
+        res.setHeader('Cache-Control', 'no-cache');
         res.send(content);
+        console.log('[ServerManager] Serving element inspector from:', scriptPath);
       } catch (error) {
         console.error('[ServerManager] Error serving element inspector:', error);
         res.status(500).send('// Error loading element inspector');
