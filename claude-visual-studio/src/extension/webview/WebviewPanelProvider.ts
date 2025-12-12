@@ -504,14 +504,14 @@ export class WebviewPanelProvider {
         el.boundingBox ? `Size: ${Math.round(el.boundingBox.width)}x${Math.round(el.boundingBox.height)}px` : null,
       ].filter(Boolean).join('\n');
 
-      // Try to send to Claude Code via SSE port (from lock file)
-      const ssePort = this.getClaudeCodeSSEPort();
-      if (ssePort) {
-        this.sendToClaudeCode(ssePort, formattedElement);
+      // Send directly to active terminal (Claude Code)
+      const terminal = vscode.window.activeTerminal;
+      if (terminal) {
+        const terminalOutput = `[ELEMENTO SELEZIONATO: ${selectorStr}]\nSelector: ${el.selector || selectorStr}${el.textContent ? `\nText: "${el.textContent.substring(0, 50)}..."` : ''}`;
+        terminal.sendText(terminalOutput);
       }
 
       console.log(`[Claude VS] Element selected: ${selectorStr}`);
-      console.log(`[Claude VS] Data written to: ${outputPath}`);
     } catch (err) {
       console.error('[Claude VS] Failed to write element info:', err);
     }
