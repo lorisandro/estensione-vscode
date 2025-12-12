@@ -47,8 +47,19 @@ function getVSCodeApi(): VSCodeApi {
     return globalVscodeApi;
   }
 
-  // Use fallback API - don't call acquireVsCodeApi at all
-  // VS Code webviews can still communicate via postMessage
+  // Try to acquire VS Code API (only available in VS Code webview context)
+  if (typeof (window as any).acquireVsCodeApi === 'function') {
+    try {
+      globalVscodeApi = (window as any).acquireVsCodeApi();
+      // Store on window for subsequent calls
+      (window as any).vscode = globalVscodeApi;
+      return globalVscodeApi;
+    } catch (e) {
+      console.warn('Failed to acquire VS Code API:', e);
+    }
+  }
+
+  // Use fallback API for non-VS Code environments (e.g., standalone browser testing)
   globalVscodeApi = createFallbackApi();
   return globalVscodeApi;
 }

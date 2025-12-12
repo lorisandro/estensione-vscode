@@ -29,7 +29,23 @@
       "Bash(find:*)",
       "Bash(powershell -Command \"(Get-Content dist/webview/index.js)[59..61]\")",
       "Bash(node:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(code --list-extensions:*)",
+      "Bash(npx vsce:*)",
+      "Bash(npm run watch:*)",
+      "Bash(robocopy \"E:\\Progetto\" \"G:\\Il mio Drive\\Progetto\" /MIR /R:1 /W:1 /MT:16 /NP /NDL /NFL)",
+      "Bash(cmd /c \"robocopy \"\"E:\\Progetto\"\" \"\"G:\\Il mio Drive\\Progetto\"\" /MIR /R:1 /W:1 /MT:16 /NP /NDL\")",
+      "Bash(npm run dev:server:*)",
+      "Bash(cmd /c \"robocopy \"\"E:\\Progetto\"\" \"\"G:\\Il mio Drive\\Progetto\"\" /MIR /R:1 /W:1 /MT:16\")",
+      "Bash(cmd /c \"robocopy \"\"E:\\Progetto\"\" \"\"G:\\Il mio Drive\\Progetto\"\" /MIR /R:1 /W:1 /MT:16 /L\")",
+      "Bash(cmd /c \"dir \"\"G:\\Il mio Drive\\Progetto\"\" /AD /B\")",
+      "Bash(cmd /c \"dir \"\"G:\\Il mio Drive\"\" /AD /B\")",
+      "Bash(cmd /c \"if exist G: (echo G: exists) else (echo G: not found)\")",
+      "Bash(powershell -Command \"Test-Path ''G:\\Il mio Drive''\")",
+      "Bash(powershell:*)",
+      "mcp__claude-browser__browser_get_url",
+      "mcp__claude-browser__browser_screenshot",
+      "mcp__claude-browser__browser_navigate"
     ]
   }
 }
