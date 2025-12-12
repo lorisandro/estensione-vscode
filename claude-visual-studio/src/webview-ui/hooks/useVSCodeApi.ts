@@ -15,9 +15,32 @@ export interface UseVSCodeApiReturn {
 let globalVscodeApi: VSCodeApi | null = null;
 
 function getVSCodeApi(): VSCodeApi | null {
-  if (!globalVscodeApi && typeof window !== 'undefined' && window.acquireVsCodeApi) {
-    globalVscodeApi = window.acquireVsCodeApi();
+  if (globalVscodeApi) {
+    return globalVscodeApi;
   }
+
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  // Check if API was already acquired and stored on window
+  if ((window as any).vscode) {
+    globalVscodeApi = (window as any).vscode;
+    return globalVscodeApi;
+  }
+
+  // Try to acquire the API, catching any errors
+  if (window.acquireVsCodeApi) {
+    try {
+      globalVscodeApi = window.acquireVsCodeApi();
+      // Store it globally for future reference
+      (window as any).vscode = globalVscodeApi;
+    } catch (e) {
+      console.warn('Failed to acquire VS Code API:', e);
+      return null;
+    }
+  }
+
   return globalVscodeApi;
 }
 
