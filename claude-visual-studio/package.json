@@ -72,6 +72,12 @@
         "title": "Refresh Preview",
         "category": "Claude Visual Studio",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "claudeVisualStudio.forceRecreate",
+        "title": "Force Recreate Panel",
+        "category": "Claude Visual Studio",
+        "icon": "$(debug-restart)"
       }
     ],
     "keybindings": [
@@ -102,6 +108,9 @@
         },
         {
           "command": "claudeVisualStudio.refreshPreview"
+        },
+        {
+          "command": "claudeVisualStudio.forceRecreate"
         }
       ]
     },

@@ -201,6 +201,20 @@ export class WebviewPanelProvider {
   }
 
   /**
+   * Force recreate the webview panel (useful for development)
+   */
+  public async forceRecreate(column?: vscode.ViewColumn): Promise<vscode.WebviewPanel> {
+    // Close existing panel if any
+    if (this.panel) {
+      this.panel.dispose();
+      this.panel = undefined;
+    }
+
+    // Create new panel
+    return this.createWebviewPanel(column);
+  }
+
+  /**
    * Dispose of the panel and clean up resources
    */
   public dispose(): void {

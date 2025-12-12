@@ -350,6 +350,23 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }
   );
 
+  // Command: Force Recreate Panel (for development)
+  const forceRecreateDisposable = vscode.commands.registerCommand(
+    'claudeVisualStudio.forceRecreate',
+    async () => {
+      try {
+        await webviewProvider?.forceRecreate();
+        vscode.window.showInformationMessage('Panel recreated successfully');
+      } catch (error) {
+        console.error('Error recreating panel:', error);
+        vscode.window.showErrorMessage(
+          `Failed to recreate panel: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    }
+  );
+  context.subscriptions.push(forceRecreateDisposable);
+
   // Command: Reload Extension (reloads VS Code window)
   const reloadExtensionDisposable = vscode.commands.registerCommand(
     'claudeVisualStudio.reloadExtension',
