@@ -401,6 +401,12 @@ export class WebviewPanelProvider {
         console.log('Screenshot requested');
         break;
 
+      // Handle open DevTools request
+      case 'openDevTools':
+        console.log('Opening Developer Tools');
+        vscode.commands.executeCommand('workbench.action.webview.openDeveloperTools');
+        break;
+
       // Handle element-selected from iframe inspector
       case 'element-selected':
         const inspectorPayload = (message as any).payload || (message as any).data;

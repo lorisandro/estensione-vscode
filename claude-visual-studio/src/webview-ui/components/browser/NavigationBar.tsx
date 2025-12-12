@@ -89,7 +89,7 @@ export const NavigationBar: React.FC = () => {
   } = useNavigationStore();
 
   const { selectionMode, setSelectionMode } = useSelectionStore();
-  const { consoleVisible, toggleConsole, cssInspectorVisible, toggleCssInspector } = useEditorStore();
+  const { cssInspectorVisible, toggleCssInspector } = useEditorStore();
   const { postMessage } = useVSCodeApi();
 
   const [urlInput, setUrlInput] = useState(url);
@@ -250,11 +250,11 @@ export const NavigationBar: React.FC = () => {
       </button>
 
       <button
-        onClick={toggleConsole}
-        style={getButtonStyle('console', consoleVisible)}
-        onMouseEnter={() => setHoveredButton('console')}
+        onClick={() => postMessage({ type: 'openDevTools' })}
+        style={getButtonStyle('devtools')}
+        onMouseEnter={() => setHoveredButton('devtools')}
         onMouseLeave={() => setHoveredButton(null)}
-        title={consoleVisible ? 'Hide Console' : 'Show Console'}
+        title="Open Developer Tools"
       >
         <svg style={styles.icon} viewBox="0 0 16 16">
           <path d="M0 2v12h16V2H0zm15 11H1V5h14v8zM1 4V3h14v1H1z" />
