@@ -226,16 +226,6 @@ export class WebviewPanelProvider {
 </head>
 <body>
   <div id="root"></div>
-  <script>
-    // Acquire VS Code API once and store globally BEFORE React loads
-    if (typeof acquireVsCodeApi === 'function' && !window.vscode) {
-      try {
-        window.vscode = acquireVsCodeApi();
-      } catch (e) {
-        console.log('VS Code API already acquired');
-      }
-    }
-  </script>
   <script type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
