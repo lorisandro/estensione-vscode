@@ -31,8 +31,8 @@ interface ElementInfo {
 }
 
 interface InspectorMessage {
-  type: 'element-hover' | 'element-select' | 'inspector-ready' | 'selection-mode-changed' | 'element-drag-start' | 'element-drag-end' | 'drag-mode-changed';
-  data?: ElementInfo | boolean | DragChangeData;
+  type: 'element-hover' | 'element-select' | 'inspector-ready' | 'selection-mode-changed' | 'element-drag-start' | 'element-drag-end' | 'drag-mode-changed' | 'css-style-applied' | 'element-updated';
+  data?: ElementInfo | boolean | DragChangeData | CssStyleChange;
   timestamp: number;
 }
 
@@ -40,6 +40,13 @@ interface DragChangeData {
   elementSelector: string;
   originalPosition: { x: number; y: number };
   newPosition: { x: number; y: number };
+}
+
+interface CssStyleChange {
+  selector: string;
+  property: string;
+  value: string;
+  previousValue?: string;
 }
 
 class ElementInspector {
@@ -65,35 +72,98 @@ class ElementInspector {
   private originalPosition: { x: number; y: number } | null = null;
   private dragOverlay: HTMLDivElement | null = null;
   private readonly IMPORTANT_STYLES = [
-    'display',
+    // Position & Transform
     'position',
     'top',
     'left',
     'right',
     'bottom',
-    'width',
-    'height',
-    'margin',
-    'padding',
-    'border',
-    'background',
-    'backgroundColor',
-    'color',
-    'font',
-    'fontSize',
-    'fontFamily',
-    'fontWeight',
-    'lineHeight',
-    'textAlign',
-    'flex',
+    'zIndex',
+    'transform',
+    'transformOrigin',
+    // Layout
+    'display',
     'flexDirection',
+    'flexWrap',
     'justifyContent',
     'alignItems',
-    'grid',
-    'gridTemplate',
-    'zIndex',
+    'alignContent',
+    'gap',
+    'gridTemplateColumns',
+    'gridTemplateRows',
+    'gridColumn',
+    'gridRow',
+    // Dimensions
+    'width',
+    'height',
+    'minWidth',
+    'minHeight',
+    'maxWidth',
+    'maxHeight',
+    // Spacing
+    'margin',
+    'marginTop',
+    'marginRight',
+    'marginBottom',
+    'marginLeft',
+    'padding',
+    'paddingTop',
+    'paddingRight',
+    'paddingBottom',
+    'paddingLeft',
+    'boxSizing',
+    // Appearance
     'opacity',
-    'transform',
+    'borderRadius',
+    'borderTopLeftRadius',
+    'borderTopRightRadius',
+    'borderBottomLeftRadius',
+    'borderBottomRightRadius',
+    'overflow',
+    'visibility',
+    // Typography
+    'fontFamily',
+    'fontSize',
+    'fontWeight',
+    'fontStyle',
+    'lineHeight',
+    'letterSpacing',
+    'textAlign',
+    'verticalAlign',
+    'textDecoration',
+    'textTransform',
+    'whiteSpace',
+    'wordBreak',
+    'color',
+    // Background
+    'background',
+    'backgroundColor',
+    'backgroundImage',
+    'backgroundSize',
+    'backgroundPosition',
+    'backgroundRepeat',
+    // Border
+    'border',
+    'borderWidth',
+    'borderStyle',
+    'borderColor',
+    'borderTop',
+    'borderRight',
+    'borderBottom',
+    'borderLeft',
+    // Shadow
+    'boxShadow',
+    'textShadow',
+    // Filter
+    'filter',
+    'backdropFilter',
+    // Transition & Animation
+    'transition',
+    'animation',
+    // Cursor & Interaction
+    'cursor',
+    'pointerEvents',
+    'userSelect',
   ];
 
   constructor() {
@@ -263,6 +333,19 @@ class ElementInspector {
     document.addEventListener('mousedown', this.handleDragStart.bind(this), true);
     document.addEventListener('mousemove', this.handleDragMove.bind(this), true);
     document.addEventListener('mouseup', this.handleDragEnd.bind(this), true);
+
+    // Prevent native browser drag which interferes with our custom drag
+    document.addEventListener('dragstart', this.handleNativeDragStart.bind(this), true);
+  }
+
+  /**
+   * Prevent native browser drag when in drag mode
+   */
+  private handleNativeDragStart(event: DragEvent): void {
+    if (this.isDragMode && !this.isSelectionMode) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   }
 
   /**
@@ -281,6 +364,81 @@ class ElementInspector {
       this.undoDragChange(payload);
     } else if (type === 'apply-drag-changes') {
       this.applyDragChanges();
+    } else if (type === 'apply-css-style') {
+      this.applyCssStyle(payload);
+    } else if (type === 'get-element-info') {
+      this.sendSelectedElementInfo();
+    }
+  }
+
+  /**
+   * Apply CSS style to selected element or by selector
+   */
+  private applyCssStyle(payload: { selector?: string; property: string; value: string }): void {
+    if (!payload?.property) {
+      console.warn('[Element Inspector] Invalid CSS style payload');
+      return;
+    }
+
+    let element: HTMLElement | null = null;
+
+    // If selector is provided, use it; otherwise use selected element
+    if (payload.selector) {
+      element = document.querySelector(payload.selector) as HTMLElement;
+    } else if (this.selectedElement) {
+      element = this.selectedElement;
+    }
+
+    if (!element) {
+      console.warn('[Element Inspector] No element found to apply CSS style');
+      return;
+    }
+
+    // Get previous value for undo support
+    const computedStyle = window.getComputedStyle(element);
+    const previousValue = computedStyle.getPropertyValue(payload.property);
+
+    // Apply the style
+    try {
+      // Convert camelCase to kebab-case for CSS property
+      const cssProperty = payload.property.replace(/([A-Z])/g, '-$1').toLowerCase();
+      element.style.setProperty(cssProperty, payload.value);
+
+      // Send confirmation with updated element info
+      this.sendMessage({
+        type: 'css-style-applied',
+        data: {
+          selector: this.getCSSSelector(element),
+          property: payload.property,
+          value: payload.value,
+          previousValue: previousValue,
+        } as CssStyleChange,
+        timestamp: Date.now(),
+      });
+
+      // Also send updated element info
+      this.sendMessage({
+        type: 'element-updated',
+        data: this.getElementInfo(element),
+        timestamp: Date.now(),
+      });
+
+      console.log('[Element Inspector] CSS style applied:', payload.property, '=', payload.value);
+    } catch (error) {
+      console.error('[Element Inspector] Error applying CSS style:', error);
+    }
+  }
+
+  /**
+   * Send current selected element info
+   */
+  private sendSelectedElementInfo(): void {
+    if (this.selectedElement) {
+      this.sendMessage({
+        type: 'element-updated',
+        data: this.getElementInfo(this.selectedElement),
+        timestamp: Date.now(),
+      });
     }
   }
 
@@ -536,8 +694,9 @@ class ElementInspector {
       return;
     }
 
-    // Prevent default text selection
+    // Prevent default behavior (text selection, native drag)
     event.preventDefault();
+    event.stopPropagation();
 
     this.isDragging = true;
     this.dragElement = target;
@@ -547,23 +706,31 @@ class ElementInspector {
     // Get current position
     const rect = target.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(target);
+    const originalPosition = computedStyle.position;
 
-    // Store original position for undo
-    const currentLeft = parseFloat(computedStyle.left) || 0;
-    const currentTop = parseFloat(computedStyle.top) || 0;
+    // Store original CSS position values
+    // For static elements, left/top are "auto", so we use 0
+    const leftValue = computedStyle.left;
+    const topValue = computedStyle.top;
+    const currentLeft = (leftValue === 'auto' || leftValue === '') ? 0 : parseFloat(leftValue) || 0;
+    const currentTop = (topValue === 'auto' || topValue === '') ? 0 : parseFloat(topValue) || 0;
     this.originalPosition = { x: currentLeft, y: currentTop };
 
     this.elementStartX = rect.left;
     this.elementStartY = rect.top;
 
     // Ensure element has position for dragging
-    if (computedStyle.position === 'static') {
+    if (originalPosition === 'static') {
       target.style.position = 'relative';
     }
 
     // Add visual feedback
     target.classList.add('__claude-vs-drag-element__');
     document.body.classList.add('__claude-vs-dragging__');
+
+    // Disable text selection during drag
+    document.body.style.userSelect = 'none';
+    document.body.style.webkitUserSelect = 'none';
 
     // Show drag overlay at original position
     if (this.dragOverlay) {
@@ -581,7 +748,7 @@ class ElementInspector {
       timestamp: Date.now(),
     });
 
-    console.log('[Element Inspector] Drag started:', target);
+    console.log('[Element Inspector] Drag started:', target.tagName, 'originalPosition:', this.originalPosition);
   }
 
   /**
@@ -670,6 +837,10 @@ class ElementInspector {
       this.dragElement.classList.remove('__claude-vs-drag-element__');
     }
     document.body.classList.remove('__claude-vs-dragging__');
+
+    // Re-enable text selection
+    document.body.style.userSelect = '';
+    document.body.style.webkitUserSelect = '';
 
     if (this.dragOverlay) {
       this.dragOverlay.style.display = 'none';

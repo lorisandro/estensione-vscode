@@ -891,35 +891,51 @@ export class WebviewPanelProvider {
     try {
       fs.writeFileSync(outputPath, JSON.stringify(changeData, null, 2), 'utf-8');
 
-      // Create formatted output for Claude Code terminal
-      const terminalLines = [
-        `[MODIFICHE DRAG & DROP APPLICATE]`,
-        `Numero modifiche: ${changes.length}`,
+      // Create formatted output for Claude Code terminal with clear CSS instructions
+      const cssInstructions = changes.map((change, i) => {
+        const deltaX = Math.round(change.newPosition.x - change.originalPosition.x);
+        const deltaY = Math.round(change.newPosition.y - change.originalPosition.y);
+        return [
+          `/* Modifica ${i + 1} */`,
+          `${change.elementSelector} {`,
+          `  position: relative;`,
+          `  left: ${Math.round(change.newPosition.x)}px;`,
+          `  top: ${Math.round(change.newPosition.y)}px;`,
+          `}`,
+        ].join('\n');
+      }).join('\n\n');
+
+      const terminalOutput = [
         ``,
+        `=== DRAG & DROP CHANGES APPLIED ===`,
+        ``,
+        `User has visually repositioned ${changes.length} element(s) in the browser preview.`,
+        `Please apply the following CSS changes to the source files:`,
+        ``,
+        `--- CSS TO ADD/MODIFY ---`,
+        ``,
+        cssInstructions,
+        ``,
+        `--- DETAILS ---`,
         ...changes.map((change, i) => {
-          const deltaX = change.newPosition.x - change.originalPosition.x;
-          const deltaY = change.newPosition.y - change.originalPosition.y;
-          return [
-            `Modifica ${i + 1}:`,
-            `  Elemento: ${change.elementSelector}`,
-            `  Da: left=${change.originalPosition.x}px, top=${change.originalPosition.y}px`,
-            `  A:  left=${change.newPosition.x}px, top=${change.newPosition.y}px`,
-            `  Delta: x=${deltaX > 0 ? '+' : ''}${deltaX}px, y=${deltaY > 0 ? '+' : ''}${deltaY}px`,
-          ].join('\n');
+          const deltaX = Math.round(change.newPosition.x - change.originalPosition.x);
+          const deltaY = Math.round(change.newPosition.y - change.originalPosition.y);
+          return `${i + 1}. ${change.elementSelector}: moved ${deltaX > 0 ? '+' : ''}${deltaX}px horizontal, ${deltaY > 0 ? '+' : ''}${deltaY}px vertical`;
         }),
         ``,
-        `File dettagli: .claude-drag-changes.json`,
+        `Full details saved to: .claude-drag-changes.json`,
+        ``,
       ].join('\n');
 
       // Send directly to active terminal (Claude Code)
       const terminal = vscode.window.activeTerminal;
       if (terminal) {
-        terminal.sendText(terminalLines);
+        terminal.sendText(terminalOutput);
       }
 
       // Also show VS Code notification
       vscode.window.showInformationMessage(
-        `${changes.length} drag change(s) applied. Details saved to .claude-drag-changes.json`
+        `${changes.length} drag change(s) applied. CSS instructions sent to terminal.`
       );
 
       console.log(`[Claude VS] Drag changes applied: ${changes.length}`);
