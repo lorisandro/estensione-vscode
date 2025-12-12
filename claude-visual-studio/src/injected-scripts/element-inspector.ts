@@ -38,8 +38,12 @@ interface InspectorMessage {
 
 interface DragChangeData {
   elementSelector: string;
-  originalPosition: { x: number; y: number };
-  newPosition: { x: number; y: number };
+  // For DOM reorder undo
+  originalParentSelector?: string | null;
+  originalNextSiblingSelector?: string | null;
+  // Legacy CSS positioning (kept for compatibility)
+  originalPosition?: { x: number; y: number };
+  newPosition?: { x: number; y: number };
 }
 
 interface CssStyleChange {
@@ -128,6 +132,11 @@ class ElementInspector {
   private dropPosition: 'before' | 'after' | null = null;
   private originalNextSibling: Node | null = null;
   private originalParent: HTMLElement | null = null;
+
+  // Page builder style visual feedback
+  private dropZoneHighlight: HTMLDivElement | null = null;
+  private dragGhost: HTMLDivElement | null = null;
+  private containerHighlight: HTMLDivElement | null = null;
 
   // Guide properties (for visual feedback)
   private readonly GUIDE_COLOR = '#ff00ff';
@@ -250,6 +259,7 @@ class ElementInspector {
     this.createDragOverlay();
     this.createDropIndicator();
     this.createDragHoverOverlay();
+    this.createPageBuilderElements();
 
     // Setup event listeners
     this.setupEventListeners();
@@ -515,6 +525,150 @@ class ElementInspector {
       transition: left 0.08s ease-out, top 0.08s ease-out, width 0.08s ease-out, height 0.08s ease-out;
     `;
     document.body.appendChild(this.dragHoverOverlay);
+  }
+
+  /**
+   * Create page builder style visual feedback elements
+   */
+  private createPageBuilderElements(): void {
+    // Drop zone highlight - shows where element will be inserted
+    this.dropZoneHighlight = document.createElement('div');
+    this.dropZoneHighlight.id = '__claude-vs-drop-zone__';
+    this.dropZoneHighlight.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(0, 122, 204, 0.15), rgba(0, 122, 204, 0.25), rgba(0, 122, 204, 0.15));
+      border: 2px dashed #007acc;
+      border-radius: 4px;
+      z-index: 999996;
+      display: none;
+      box-sizing: border-box;
+      transition: all 0.15s ease-out;
+    `;
+    document.body.appendChild(this.dropZoneHighlight);
+
+    // Drag ghost - semi-transparent copy of dragged element
+    this.dragGhost = document.createElement('div');
+    this.dragGhost.id = '__claude-vs-drag-ghost__';
+    this.dragGhost.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      opacity: 0.6;
+      z-index: 999999;
+      display: none;
+      box-sizing: border-box;
+      transform: scale(0.98);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      border-radius: 4px;
+      overflow: hidden;
+    `;
+    document.body.appendChild(this.dragGhost);
+
+    // Container highlight - shows target container
+    this.containerHighlight = document.createElement('div');
+    this.containerHighlight.id = '__claude-vs-container-highlight__';
+    this.containerHighlight.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      border: 2px solid rgba(0, 200, 100, 0.6);
+      background-color: rgba(0, 200, 100, 0.05);
+      z-index: 999995;
+      display: none;
+      box-sizing: border-box;
+      border-radius: 4px;
+      transition: all 0.15s ease-out;
+    `;
+    document.body.appendChild(this.containerHighlight);
+  }
+
+  /**
+   * Show drag ghost following the mouse
+   */
+  private showDragGhost(element: HTMLElement, mouseX: number, mouseY: number): void {
+    if (!this.dragGhost) return;
+
+    const rect = element.getBoundingClientRect();
+
+    // Clone element's visual appearance
+    this.dragGhost.innerHTML = '';
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.style.margin = '0';
+    clone.style.width = `${rect.width}px`;
+    clone.style.height = `${rect.height}px`;
+    this.dragGhost.appendChild(clone);
+
+    // Position ghost at mouse with offset
+    const offsetX = rect.width / 2;
+    const offsetY = rect.height / 2;
+    this.dragGhost.style.left = `${mouseX - offsetX}px`;
+    this.dragGhost.style.top = `${mouseY - offsetY}px`;
+    this.dragGhost.style.width = `${rect.width}px`;
+    this.dragGhost.style.height = `${rect.height}px`;
+    this.dragGhost.style.display = 'block';
+  }
+
+  /**
+   * Update drag ghost position
+   */
+  private updateDragGhostPosition(mouseX: number, mouseY: number): void {
+    if (!this.dragGhost || this.dragGhost.style.display === 'none') return;
+
+    const width = parseFloat(this.dragGhost.style.width);
+    const height = parseFloat(this.dragGhost.style.height);
+    this.dragGhost.style.left = `${mouseX - width / 2}px`;
+    this.dragGhost.style.top = `${mouseY - height / 2}px`;
+  }
+
+  /**
+   * Hide drag ghost
+   */
+  private hideDragGhost(): void {
+    if (!this.dragGhost) return;
+    this.dragGhost.style.display = 'none';
+    this.dragGhost.innerHTML = '';
+  }
+
+  /**
+   * Show container highlight
+   */
+  private showContainerHighlight(container: HTMLElement): void {
+    if (!this.containerHighlight) return;
+
+    const rect = container.getBoundingClientRect();
+    this.containerHighlight.style.left = `${rect.left}px`;
+    this.containerHighlight.style.top = `${rect.top}px`;
+    this.containerHighlight.style.width = `${rect.width}px`;
+    this.containerHighlight.style.height = `${rect.height}px`;
+    this.containerHighlight.style.display = 'block';
+  }
+
+  /**
+   * Hide container highlight
+   */
+  private hideContainerHighlight(): void {
+    if (!this.containerHighlight) return;
+    this.containerHighlight.style.display = 'none';
+  }
+
+  /**
+   * Show drop zone highlight (where element will be inserted)
+   */
+  private showDropZone(x: number, y: number, width: number, height: number): void {
+    if (!this.dropZoneHighlight) return;
+
+    this.dropZoneHighlight.style.left = `${x}px`;
+    this.dropZoneHighlight.style.top = `${y}px`;
+    this.dropZoneHighlight.style.width = `${width}px`;
+    this.dropZoneHighlight.style.height = `${height}px`;
+    this.dropZoneHighlight.style.display = 'block';
+  }
+
+  /**
+   * Hide drop zone highlight
+   */
+  private hideDropZone(): void {
+    if (!this.dropZoneHighlight) return;
+    this.dropZoneHighlight.style.display = 'none';
   }
 
   /**
@@ -1471,7 +1625,7 @@ class ElementInspector {
     document.body.style.userSelect = 'none';
     document.body.style.webkitUserSelect = 'none';
 
-    // Show drag overlay following the element
+    // Show drag overlay following the element (original position indicator)
     if (this.dragOverlay) {
       this.dragOverlay.style.left = `${rect.left}px`;
       this.dragOverlay.style.top = `${rect.top}px`;
@@ -1479,6 +1633,12 @@ class ElementInspector {
       this.dragOverlay.style.height = `${rect.height}px`;
       this.dragOverlay.style.display = 'block';
     }
+
+    // Show drag ghost (page builder style)
+    this.showDragGhost(target, event.clientX, event.clientY);
+
+    // Make original element semi-transparent
+    target.style.opacity = '0.4';
 
     // Send drag start message
     this.sendMessage({
@@ -1491,7 +1651,7 @@ class ElementInspector {
   }
 
   /**
-   * Handle drag move - DOM reorder approach
+   * Handle drag move - DOM reorder approach with page builder visual feedback
    */
   private handleDragMove(event: MouseEvent): void {
     if (!this.isDragging || !this.dragElement) {
@@ -1500,7 +1660,10 @@ class ElementInspector {
 
     event.preventDefault();
 
-    // Update drag overlay position to follow mouse
+    // Update drag ghost position (follows mouse)
+    this.updateDragGhostPosition(event.clientX, event.clientY);
+
+    // Update drag overlay position (stays on original element)
     const rect = this.dragElement.getBoundingClientRect();
     if (this.dragOverlay) {
       this.dragOverlay.style.left = `${rect.left}px`;
@@ -1513,6 +1676,9 @@ class ElementInspector {
     this.dropContainer = container;
 
     if (container) {
+      // Show container highlight (green border around target container)
+      this.showContainerHighlight(container);
+
       if (target) {
         // Drop before/after a specific child
         this.dropTarget = target;
@@ -1520,21 +1686,39 @@ class ElementInspector {
 
         const targetRect = target.getBoundingClientRect();
         const indicatorY = position === 'before' ? targetRect.top : targetRect.bottom;
+
+        // Show drop indicator line
         this.showDropIndicator(targetRect.left, indicatorY, targetRect.width);
+
+        // Show drop zone (preview area where element will go)
+        const dropHeight = Math.min(rect.height, 60); // Cap height for large elements
+        const dropY = position === 'before' ? targetRect.top - dropHeight / 2 : targetRect.bottom - dropHeight / 2;
+        this.showDropZone(targetRect.left, dropY, targetRect.width, dropHeight);
       } else {
         // Drop inside empty container
         this.dropTarget = null;
         this.dropPosition = 'before';
 
         const containerRect = container.getBoundingClientRect();
-        // Show indicator at top of container
-        this.showDropIndicator(containerRect.left + 10, containerRect.top + 10, containerRect.width - 20);
+        // Show indicator and zone at center of container
+        const centerY = containerRect.top + containerRect.height / 2;
+        const dropHeight = Math.min(rect.height, containerRect.height * 0.8);
+
+        this.showDropIndicator(containerRect.left + 10, centerY, containerRect.width - 20);
+        this.showDropZone(
+          containerRect.left + 10,
+          centerY - dropHeight / 2,
+          containerRect.width - 20,
+          dropHeight
+        );
       }
     } else {
       this.dropTarget = null;
       this.dropContainer = null;
       this.dropPosition = null;
       this.hideDropIndicator();
+      this.hideDropZone();
+      this.hideContainerHighlight();
     }
   }
 
@@ -1551,6 +1735,12 @@ class ElementInspector {
     // Perform DOM move if we have a valid drop container
     if (this.dropContainer && this.dropPosition !== null) {
       const elementSelector = this.getCSSSelector(this.dragElement);
+
+      // Save original position for undo
+      const originalParentSelector = this.originalParent ? this.getCSSSelector(this.originalParent) : null;
+      const originalNextSiblingSelector = this.originalNextSibling && this.originalNextSibling.nodeType === Node.ELEMENT_NODE
+        ? this.getCSSSelector(this.originalNextSibling as HTMLElement)
+        : null;
 
       if (this.dropTarget) {
         // Insert before/after a specific element
@@ -1571,6 +1761,9 @@ class ElementInspector {
             action: 'move',
             targetSelector,
             position: this.dropPosition,
+            // For undo
+            originalParentSelector,
+            originalNextSiblingSelector,
           },
           timestamp: Date.now(),
         });
@@ -1587,6 +1780,9 @@ class ElementInspector {
             elementSelector,
             action: 'move-into',
             containerSelector,
+            // For undo
+            originalParentSelector,
+            originalNextSiblingSelector,
           },
           timestamp: Date.now(),
         });
@@ -1624,6 +1820,8 @@ class ElementInspector {
   private finishDrag(): void {
     if (this.dragElement) {
       this.dragElement.classList.remove('__claude-vs-drag-element__');
+      // Restore original opacity
+      this.dragElement.style.opacity = '';
     }
     document.body.classList.remove('__claude-vs-dragging__');
 
@@ -1631,11 +1829,14 @@ class ElementInspector {
     document.body.style.userSelect = '';
     document.body.style.webkitUserSelect = '';
 
-    // Hide overlays
+    // Hide all overlays and page builder elements
     if (this.dragOverlay) {
       this.dragOverlay.style.display = 'none';
     }
     this.hideDropIndicator();
+    this.hideDragGhost();
+    this.hideDropZone();
+    this.hideContainerHighlight();
 
     // Reset state
     this.isDragging = false;
@@ -1678,7 +1879,7 @@ class ElementInspector {
   }
 
   /**
-   * Undo a drag change
+   * Undo a drag change - restore element to original DOM position
    */
   private undoDragChange(change: DragChangeData): void {
     if (!change?.elementSelector) {
@@ -1688,12 +1889,40 @@ class ElementInspector {
 
     try {
       const element = document.querySelector(change.elementSelector) as HTMLElement;
-      if (element) {
+      if (!element) {
+        console.warn('[Element Inspector] Element not found for undo:', change.elementSelector);
+        return;
+      }
+
+      // DOM reorder undo
+      if (change.originalParentSelector) {
+        const originalParent = document.querySelector(change.originalParentSelector) as HTMLElement;
+        if (!originalParent) {
+          console.warn('[Element Inspector] Original parent not found for undo:', change.originalParentSelector);
+          return;
+        }
+
+        // Find original next sibling (if any)
+        let originalNextSibling: Element | null = null;
+        if (change.originalNextSiblingSelector) {
+          originalNextSibling = document.querySelector(change.originalNextSiblingSelector);
+        }
+
+        // Restore to original position in DOM
+        if (originalNextSibling && originalNextSibling.parentElement === originalParent) {
+          originalParent.insertBefore(element, originalNextSibling);
+        } else {
+          // No next sibling or sibling not found - append to parent
+          originalParent.appendChild(element);
+        }
+
+        console.log('[Element Inspector] DOM undo applied:', change.elementSelector, '-> parent:', change.originalParentSelector);
+      }
+      // Legacy CSS positioning undo (for backwards compatibility)
+      else if (change.originalPosition) {
         element.style.left = `${change.originalPosition.x}px`;
         element.style.top = `${change.originalPosition.y}px`;
-        console.log('[Element Inspector] Undo applied:', change.elementSelector);
-      } else {
-        console.warn('[Element Inspector] Element not found for undo:', change.elementSelector);
+        console.log('[Element Inspector] CSS undo applied:', change.elementSelector);
       }
     } catch (error) {
       console.error('[Element Inspector] Error applying undo:', error);
@@ -2012,6 +2241,19 @@ class ElementInspector {
 
     if (this.dropIndicator && this.dropIndicator.parentElement) {
       this.dropIndicator.parentElement.removeChild(this.dropIndicator);
+    }
+
+    // Remove page builder elements
+    if (this.dropZoneHighlight && this.dropZoneHighlight.parentElement) {
+      this.dropZoneHighlight.parentElement.removeChild(this.dropZoneHighlight);
+    }
+
+    if (this.dragGhost && this.dragGhost.parentElement) {
+      this.dragGhost.parentElement.removeChild(this.dragGhost);
+    }
+
+    if (this.containerHighlight && this.containerHighlight.parentElement) {
+      this.containerHighlight.parentElement.removeChild(this.containerHighlight);
     }
 
     // Remove guide containers
