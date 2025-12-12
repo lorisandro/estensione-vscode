@@ -120,16 +120,12 @@ class ElementInspector {
   }
 
   /**
-   * Create style element for showing all element boundaries
+   * Create style element for showing element boundaries on hover only
    */
   private createOutlineStyle(): void {
     this.outlineStyleElement = document.createElement('style');
     this.outlineStyleElement.id = '__claude-vs-inspector-outline-style__';
     this.outlineStyleElement.textContent = `
-      .__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__) {
-        outline: 1px dashed rgba(66, 133, 244, 0.5) !important;
-        outline-offset: -1px !important;
-      }
       .__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__):hover {
         outline: 2px solid rgba(66, 133, 244, 0.8) !important;
         outline-offset: -1px !important;
