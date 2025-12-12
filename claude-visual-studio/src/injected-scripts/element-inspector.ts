@@ -124,8 +124,8 @@ class ElementInspector {
   // DOM reorder drag properties
   private dropIndicator: HTMLDivElement | null = null;
   private dropTarget: HTMLElement | null = null;
+  private dropContainer: HTMLElement | null = null;
   private dropPosition: 'before' | 'after' | null = null;
-  private dragPlaceholder: HTMLDivElement | null = null;
   private originalNextSibling: Node | null = null;
   private originalParent: HTMLElement | null = null;
 
@@ -402,49 +402,66 @@ class ElementInspector {
 
   /**
    * Find drop target and position based on mouse coordinates
+   * Searches for valid drop zones across the entire document, not just siblings
    */
-  private findDropTarget(mouseX: number, mouseY: number): { target: HTMLElement | null; position: 'before' | 'after' } {
-    if (!this.dragElement || !this.originalParent) {
-      console.log('[Element Inspector] findDropTarget: no dragElement or originalParent');
-      return { target: null, position: 'before' };
+  private findDropTarget(mouseX: number, mouseY: number): { target: HTMLElement | null; position: 'before' | 'after'; container: HTMLElement | null } {
+    if (!this.dragElement) {
+      return { target: null, position: 'before', container: null };
     }
 
-    // Get siblings (excluding the dragged element and our inspector elements)
-    const allChildren = Array.from(this.originalParent.children);
-    const siblings = allChildren.filter(
+    // Get element under mouse (excluding our inspector elements and the dragged element)
+    const elementsAtPoint = document.elementsFromPoint(mouseX, mouseY) as HTMLElement[];
+
+    // Find the first valid container element under the mouse
+    let targetContainer: HTMLElement | null = null;
+    for (const el of elementsAtPoint) {
+      if (el === this.dragElement) continue;
+      if (el.id?.startsWith('__claude-vs-')) continue;
+      if (el.tagName === 'HTML' || el.tagName === 'HEAD' || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+
+      // Skip inline elements - we want block-level containers (but allow body)
+      const display = window.getComputedStyle(el).display;
+      if (display === 'inline' || display === 'none') continue;
+
+      targetContainer = el;
+      break;
+    }
+
+    if (!targetContainer) {
+      return { target: null, position: 'before', container: null };
+    }
+
+    // Get children of the target container
+    const children = Array.from(targetContainer.children).filter(
       child => child !== this.dragElement &&
-               child !== this.dragPlaceholder &&
                child.nodeType === Node.ELEMENT_NODE &&
                !((child as HTMLElement).id?.startsWith('__claude-vs-')) &&
                window.getComputedStyle(child as HTMLElement).display !== 'none'
     ) as HTMLElement[];
 
-    console.log('[Element Inspector] findDropTarget: parent has', allChildren.length, 'children,', siblings.length, 'valid siblings');
-
-    if (siblings.length === 0) {
-      console.log('[Element Inspector] No siblings found - element is only child or all siblings hidden');
-      return { target: null, position: 'before' };
+    // If container has no children, we can drop directly inside
+    if (children.length === 0) {
+      return { target: null, position: 'before', container: targetContainer };
     }
 
-    // Find the closest sibling based on mouse Y position
-    let closestSibling: HTMLElement | null = null;
+    // Find the closest child to insert before/after
+    let closestChild: HTMLElement | null = null;
     let closestDistance = Infinity;
     let position: 'before' | 'after' = 'before';
 
-    for (const sibling of siblings) {
-      const rect = sibling.getBoundingClientRect();
-      const siblingCenterY = rect.top + rect.height / 2;
-      const distance = Math.abs(mouseY - siblingCenterY);
+    for (const child of children) {
+      const rect = child.getBoundingClientRect();
+      const childCenterY = rect.top + rect.height / 2;
+      const distance = Math.abs(mouseY - childCenterY);
 
       if (distance < closestDistance) {
         closestDistance = distance;
-        closestSibling = sibling;
-        // If mouse is above center, insert before; otherwise after
-        position = mouseY < siblingCenterY ? 'before' : 'after';
+        closestChild = child;
+        position = mouseY < childCenterY ? 'before' : 'after';
       }
     }
 
-    return { target: closestSibling, position };
+    return { target: closestChild, position, container: targetContainer };
   }
 
   /**
@@ -1491,18 +1508,31 @@ class ElementInspector {
     }
 
     // Find where the element would be dropped
-    const { target, position } = this.findDropTarget(event.clientX, event.clientY);
+    const { target, position, container } = this.findDropTarget(event.clientX, event.clientY);
 
-    if (target) {
-      this.dropTarget = target;
-      this.dropPosition = position;
+    this.dropContainer = container;
 
-      // Show drop indicator
-      const targetRect = target.getBoundingClientRect();
-      const indicatorY = position === 'before' ? targetRect.top : targetRect.bottom;
-      this.showDropIndicator(targetRect.left, indicatorY, targetRect.width);
+    if (container) {
+      if (target) {
+        // Drop before/after a specific child
+        this.dropTarget = target;
+        this.dropPosition = position;
+
+        const targetRect = target.getBoundingClientRect();
+        const indicatorY = position === 'before' ? targetRect.top : targetRect.bottom;
+        this.showDropIndicator(targetRect.left, indicatorY, targetRect.width);
+      } else {
+        // Drop inside empty container
+        this.dropTarget = null;
+        this.dropPosition = 'before';
+
+        const containerRect = container.getBoundingClientRect();
+        // Show indicator at top of container
+        this.showDropIndicator(containerRect.left + 10, containerRect.top + 10, containerRect.width - 20);
+      }
     } else {
       this.dropTarget = null;
+      this.dropContainer = null;
       this.dropPosition = null;
       this.hideDropIndicator();
     }
@@ -1516,36 +1546,53 @@ class ElementInspector {
       return;
     }
 
-    console.log('[Element Inspector] handleDragEnd - dropTarget:', this.dropTarget?.tagName, 'dropPosition:', this.dropPosition);
+    console.log('[Element Inspector] handleDragEnd - dropContainer:', this.dropContainer?.tagName, 'dropTarget:', this.dropTarget?.tagName, 'dropPosition:', this.dropPosition);
 
-    // Perform DOM reorder if we have a valid drop target
-    if (this.dropTarget && this.dropPosition && this.originalParent) {
+    // Perform DOM move if we have a valid drop container
+    if (this.dropContainer && this.dropPosition !== null) {
       const elementSelector = this.getCSSSelector(this.dragElement);
-      const targetSelector = this.getCSSSelector(this.dropTarget);
 
-      // Move element in DOM
-      if (this.dropPosition === 'before') {
-        this.dropTarget.parentElement?.insertBefore(this.dragElement, this.dropTarget);
+      if (this.dropTarget) {
+        // Insert before/after a specific element
+        const targetSelector = this.getCSSSelector(this.dropTarget);
+
+        if (this.dropPosition === 'before') {
+          this.dropTarget.parentElement?.insertBefore(this.dragElement, this.dropTarget);
+        } else {
+          this.dropTarget.parentElement?.insertBefore(this.dragElement, this.dropTarget.nextSibling);
+        }
+
+        console.log('[Element Inspector] DOM Move completed:', elementSelector, this.dropPosition, targetSelector);
+
+        this.sendMessage({
+          type: 'element-drag-end',
+          data: {
+            elementSelector,
+            action: 'move',
+            targetSelector,
+            position: this.dropPosition,
+          },
+          timestamp: Date.now(),
+        });
       } else {
-        // Insert after = insert before the next sibling
-        this.dropTarget.parentElement?.insertBefore(this.dragElement, this.dropTarget.nextSibling);
+        // Insert into empty container
+        const containerSelector = this.getCSSSelector(this.dropContainer);
+        this.dropContainer.appendChild(this.dragElement);
+
+        console.log('[Element Inspector] DOM Move completed:', elementSelector, 'into', containerSelector);
+
+        this.sendMessage({
+          type: 'element-drag-end',
+          data: {
+            elementSelector,
+            action: 'move-into',
+            containerSelector,
+          },
+          timestamp: Date.now(),
+        });
       }
-
-      // Send message with DOM change info
-      this.sendMessage({
-        type: 'element-drag-end',
-        data: {
-          elementSelector,
-          action: 'reorder',
-          targetSelector,
-          position: this.dropPosition,
-        },
-        timestamp: Date.now(),
-      });
-
-      console.log('[Element Inspector] DOM Reorder completed:', elementSelector, this.dropPosition, targetSelector);
     } else {
-      console.log('[Element Inspector] No valid drop target - element not moved. Element needs siblings to reorder with.');
+      console.log('[Element Inspector] No valid drop container found');
     }
 
     // Clean up
@@ -1594,6 +1641,7 @@ class ElementInspector {
     this.isDragging = false;
     this.dragElement = null;
     this.dropTarget = null;
+    this.dropContainer = null;
     this.dropPosition = null;
     this.originalParent = null;
     this.originalNextSibling = null;
