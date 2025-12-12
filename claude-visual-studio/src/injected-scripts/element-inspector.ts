@@ -132,6 +132,10 @@ class ElementInspector {
   private distanceContainer: HTMLDivElement | null = null;
   private dragGuideState: DragGuideState | null = null;
 
+  // Drag mode hover overlay (replaces CSS :hover)
+  private dragHoverOverlay: HTMLDivElement | null = null;
+  private lastDragHoveredElement: HTMLElement | null = null;
+
   private readonly IMPORTANT_STYLES = [
     // Position & Transform
     'position',
@@ -242,6 +246,7 @@ class ElementInspector {
     this.createDragStyle();
     this.createDragOverlay();
     this.createGuidesContainer();
+    this.createDragHoverOverlay();
 
     // Setup event listeners
     this.setupEventListeners();
@@ -311,13 +316,11 @@ class ElementInspector {
   private createDragStyle(): void {
     this.dragStyleElement = document.createElement('style');
     this.dragStyleElement.id = '__claude-vs-inspector-drag-style__';
+    // Note: Hover effect is now handled by dragHoverOverlay (JS-based) instead of CSS :hover
+    // This prevents glitches with nested elements and z-index issues
     this.dragStyleElement.textContent = `
-      .__claude-vs-drag-mode__ *:not(#__claude-vs-inspector-overlay__):not(#__claude-vs-drag-overlay__):not(script):not(style):not(head):not(html):not(body) {
+      .__claude-vs-drag-mode__ *:not(#__claude-vs-inspector-overlay__):not(#__claude-vs-drag-overlay__):not(#__claude-vs-drag-hover-overlay__):not(script):not(style):not(head):not(html):not(body) {
         cursor: grab !important;
-      }
-      .__claude-vs-drag-mode__ *:not(#__claude-vs-inspector-overlay__):not(#__claude-vs-drag-overlay__):not(script):not(style):not(head):not(html):not(body):hover {
-        outline: 2px dashed rgba(0, 122, 204, 0.6) !important;
-        outline-offset: 2px !important;
       }
       .__claude-vs-dragging__ {
         cursor: grabbing !important;
@@ -390,6 +393,77 @@ class ElementInspector {
   }
 
   /**
+   * Create drag hover overlay (replaces CSS :hover for better control)
+   */
+  private createDragHoverOverlay(): void {
+    this.dragHoverOverlay = document.createElement('div');
+    this.dragHoverOverlay.id = '__claude-vs-drag-hover-overlay__';
+    this.dragHoverOverlay.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      border: 2px dashed rgba(0, 122, 204, 0.8);
+      background-color: rgba(0, 122, 204, 0.05);
+      z-index: 999999;
+      display: none;
+      box-sizing: border-box;
+      transition: left 0.08s ease-out, top 0.08s ease-out, width 0.08s ease-out, height 0.08s ease-out;
+    `;
+    document.body.appendChild(this.dragHoverOverlay);
+  }
+
+  /**
+   * Show drag hover overlay on element
+   */
+  private showDragHoverOverlay(rect: DOMRect): void {
+    if (!this.dragHoverOverlay) return;
+
+    this.dragHoverOverlay.style.left = `${rect.left}px`;
+    this.dragHoverOverlay.style.top = `${rect.top}px`;
+    this.dragHoverOverlay.style.width = `${rect.width}px`;
+    this.dragHoverOverlay.style.height = `${rect.height}px`;
+    this.dragHoverOverlay.style.display = 'block';
+  }
+
+  /**
+   * Hide drag hover overlay
+   */
+  private hideDragHoverOverlay(): void {
+    if (!this.dragHoverOverlay) return;
+    this.dragHoverOverlay.style.display = 'none';
+    this.lastDragHoveredElement = null;
+  }
+
+  /**
+   * Handle hover in drag mode (replaces CSS :hover)
+   */
+  private handleDragModeHover(event: MouseEvent): void {
+    // Only active in drag mode, when not dragging, and not in selection mode
+    if (!this.isDragMode || this.isDragging || this.isSelectionMode) {
+      this.hideDragHoverOverlay();
+      return;
+    }
+
+    const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement;
+
+    // Skip if same element or not draggable
+    if (!target || target === this.lastDragHoveredElement) {
+      return;
+    }
+
+    if (!this.isDraggableElement(target)) {
+      this.hideDragHoverOverlay();
+      return;
+    }
+
+    // Update last hovered element
+    this.lastDragHoveredElement = target;
+
+    // Show overlay on element
+    const rect = target.getBoundingClientRect();
+    this.showDragHoverOverlay(rect);
+  }
+
+  /**
    * Collect alignment points from parent and siblings
    */
   private collectAlignmentPoints(dragElement: HTMLElement): DragGuideState {
@@ -400,12 +474,21 @@ class ElementInspector {
     };
 
     const parent = dragElement.parentElement;
-    if (!parent || parent === document.body || parent === document.documentElement) {
+    if (!parent) {
       return state;
     }
 
-    // Collect parent bounds and alignment points
-    const parentRect = parent.getBoundingClientRect();
+    // Check if parent is body or html - use viewport as reference
+    const isBodyOrHtml = parent === document.body || parent === document.documentElement;
+
+    let parentRect: DOMRect;
+    if (isBodyOrHtml) {
+      // Use viewport as reference bounds
+      parentRect = new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+    } else {
+      parentRect = parent.getBoundingClientRect();
+    }
+
     state.parentBounds = {
       rect: parentRect,
       edges: {
@@ -418,7 +501,7 @@ class ElementInspector {
       }
     };
 
-    // Add parent alignment points
+    // Add parent/viewport alignment points
     // Horizontal alignments (y-axis positions)
     state.alignmentPoints.horizontal.push(
       { position: parentRect.top, type: 'edge', source: 'parent' },
@@ -433,8 +516,11 @@ class ElementInspector {
       { position: parentRect.right, type: 'edge', source: 'parent' }
     );
 
+    // Get the actual parent for sibling collection (use body if parent is html)
+    const siblingContainer = isBodyOrHtml ? document.body : parent;
+
     // Collect sibling bounds and alignment points
-    const siblings = Array.from(parent.children).filter(
+    const siblings = Array.from(siblingContainer.children).filter(
       child => child !== dragElement &&
                child.nodeType === Node.ELEMENT_NODE &&
                !((child as HTMLElement).id?.startsWith('__claude-vs-')) &&
@@ -889,6 +975,9 @@ class ElementInspector {
     document.addEventListener('mousemove', this.handleDragMove.bind(this), true);
     document.addEventListener('mouseup', this.handleDragEnd.bind(this), true);
 
+    // Drag mode hover (replaces CSS :hover for better control)
+    document.addEventListener('mousemove', this.handleDragModeHover.bind(this), true);
+
     // Prevent native browser drag which interferes with our custom drag
     document.addEventListener('dragstart', this.handleNativeDragStart.bind(this), true);
   }
@@ -1252,6 +1341,9 @@ class ElementInspector {
     // Prevent default behavior (text selection, native drag)
     event.preventDefault();
     event.stopPropagation();
+
+    // Hide the hover overlay when starting to drag
+    this.hideDragHoverOverlay();
 
     this.isDragging = true;
     this.dragElement = target;
@@ -1792,6 +1884,10 @@ class ElementInspector {
 
     if (this.dragOverlay && this.dragOverlay.parentElement) {
       this.dragOverlay.parentElement.removeChild(this.dragOverlay);
+    }
+
+    if (this.dragHoverOverlay && this.dragHoverOverlay.parentElement) {
+      this.dragHoverOverlay.parentElement.removeChild(this.dragHoverOverlay);
     }
 
     // Remove guide containers
