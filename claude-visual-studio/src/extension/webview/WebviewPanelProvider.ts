@@ -457,7 +457,7 @@ export class WebviewPanelProvider {
   }
 
   /**
-   * Write element info to file for Claude Code to read
+   * Write element info to file and send to terminal for Claude Code to see
    */
   private async writeElementToFile(elementInfo: any): Promise<void> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -487,9 +487,29 @@ export class WebviewPanelProvider {
 
     try {
       fs.writeFileSync(outputPath, JSON.stringify(elementData, null, 2), 'utf-8');
-      const selector = `${elementData.element.tag}${elementData.element.id ? '#' + elementData.element.id : ''}${elementData.element.classes.length > 0 ? '.' + elementData.element.classes.join('.') : ''}`;
-      console.log(`[Claude VS] Element selected: ${selector}`);
-      console.log(`[Claude VS] Element info written to: ${outputPath}`);
+
+      // Build a formatted message for the terminal
+      const el = elementData.element;
+      const selectorStr = `${el.tag}${el.id ? '#' + el.id : ''}${el.classes.length > 0 ? '.' + el.classes.join('.') : ''}`;
+
+      // Create formatted output for Claude Code terminal
+      const terminalMessage = [
+        `[SELECTED ELEMENT]`,
+        `Tag: ${el.tag}`,
+        el.id ? `ID: ${el.id}` : null,
+        el.classes.length > 0 ? `Classes: ${el.classes.join(', ')}` : null,
+        el.selector ? `Selector: ${el.selector}` : null,
+        el.textContent ? `Text: "${el.textContent.substring(0, 100)}${el.textContent.length > 100 ? '...' : ''}"` : null,
+        el.boundingBox ? `Size: ${Math.round(el.boundingBox.width)}x${Math.round(el.boundingBox.height)}px` : null,
+      ].filter(Boolean).join('\n');
+
+      // Send to active terminal (where Claude Code is running)
+      const activeTerminal = vscode.window.activeTerminal;
+      if (activeTerminal) {
+        activeTerminal.sendText(terminalMessage, true);
+      }
+
+      console.log(`[Claude VS] Element selected: ${selectorStr}`);
     } catch (err) {
       console.error('[Claude VS] Failed to write element info:', err);
     }
