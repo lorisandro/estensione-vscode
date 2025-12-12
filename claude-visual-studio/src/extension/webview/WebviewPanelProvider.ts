@@ -43,7 +43,7 @@ export class WebviewPanelProvider {
     // Create new webview panel
     this.panel = vscode.window.createWebviewPanel(
       'claudeVisualStudio',
-      'Claude Visual Studio',
+      'Browser',
       column || vscode.ViewColumn.Beside,
       this.getWebviewOptions()
     );
@@ -210,17 +210,17 @@ export class WebviewPanelProvider {
                  frame-src http://localhost:* https:;
                  worker-src ${webview.cspSource} blob:;">
 
-  <title>Claude Visual Studio</title>
+  <title>Browser</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      font-family: var(--vscode-font-family);
-      font-size: var(--vscode-font-size);
-      color: var(--vscode-foreground);
-      background-color: var(--vscode-editor-background);
+      font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, sans-serif);
+      font-size: var(--vscode-font-size, 13px);
+      color: var(--vscode-foreground, #cccccc);
+      background-color: var(--vscode-editor-background, #1e1e1e);
     }
   </style>
 </head>
