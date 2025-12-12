@@ -77,7 +77,10 @@ export class WebviewPanelProvider {
       this.state = state as WebviewState;
     }
 
-    // Initialize the panel with restored state
+    // Update webview options to ensure fresh content
+    this.panel.webview.options = this.getWebviewOptions();
+
+    // Initialize the panel with restored state (this sets new HTML)
     this.initializePanel();
 
     console.log('Webview panel restored successfully');
