@@ -50,99 +50,10 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     return getProxiedUrl(url, serverBaseUrl);
   }, [url, serverBaseUrl]);
 
-  // Inject console capture script into iframe
-  const injectConsoleScript = useCallback(() => {
-    const iframe = iframeRef.current;
-    if (!iframe?.contentWindow) return;
-
-    try {
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-
-      // Check if script already exists
-      if (doc.getElementById('console-capture-script')) return;
-
-      const script = doc.createElement('script');
-      script.id = 'console-capture-script';
-      script.textContent = `
-        (function() {
-          const originalConsole = {
-            log: console.log.bind(console),
-            warn: console.warn.bind(console),
-            error: console.error.bind(console),
-            info: console.info.bind(console),
-            debug: console.debug.bind(console),
-          };
-
-          function formatArgs(args) {
-            return Array.from(args).map(arg => {
-              if (typeof arg === 'object') {
-                try {
-                  return JSON.stringify(arg, null, 2);
-                } catch {
-                  return String(arg);
-                }
-              }
-              return String(arg);
-            }).join(' ');
-          }
-
-          function interceptConsole(type) {
-            console[type] = function() {
-              originalConsole[type].apply(console, arguments);
-              window.parent.postMessage({
-                type: 'console-log',
-                payload: {
-                  logType: type,
-                  message: formatArgs(arguments)
-                }
-              }, '*');
-            };
-          }
-
-          ['log', 'warn', 'error', 'info', 'debug'].forEach(interceptConsole);
-
-          // Capture unhandled errors
-          window.onerror = function(message, source, lineno, colno, error) {
-            window.parent.postMessage({
-              type: 'console-log',
-              payload: {
-                logType: 'error',
-                message: message + ' at ' + source + ':' + lineno + ':' + colno
-              }
-            }, '*');
-          };
-
-          // Capture unhandled promise rejections
-          window.onunhandledrejection = function(event) {
-            window.parent.postMessage({
-              type: 'console-log',
-              payload: {
-                logType: 'error',
-                message: 'Unhandled Promise Rejection: ' + (event.reason?.message || event.reason || 'Unknown error')
-              }
-            }, '*');
-          };
-        })();
-      `;
-
-      // Insert at the beginning of head to capture early logs
-      if (doc.head) {
-        doc.head.insertBefore(script, doc.head.firstChild);
-      } else if (doc.body) {
-        doc.body.insertBefore(script, doc.body.firstChild);
-      }
-    } catch (err) {
-      console.error('Failed to inject console capture script:', err);
-    }
-  }, []);
-
   // Handle iframe load
   const handleLoad = useCallback(() => {
     setLoading(false);
     setError(null);
-
-    // Try to inject console capture script (may fail for cross-origin)
-    injectConsoleScript();
 
     // Send current selection mode to iframe after load
     // The element-inspector.ts script injected by the server will receive this
@@ -157,7 +68,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
         console.log('[BrowserFrame] Sent initial selection mode after load:', selectionMode);
       }, 100);
     }
-  }, [selectionMode, setLoading, setError, injectConsoleScript]);
+  }, [selectionMode, setLoading, setError]);
 
   // Handle iframe error
   const handleError = useCallback(() => {
@@ -165,170 +76,31 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     setError('Failed to load preview. Make sure the server is running.');
   }, [setLoading, setError]);
 
-  // Inject selection script into iframe
-  const injectSelectionScript = useCallback(() => {
-    const iframe = iframeRef.current;
-    if (!iframe?.contentWindow) return;
-
-    try {
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-
-      // Check if script already exists
-      if (doc.getElementById('selection-script')) return;
-
-      // Add outline style for showing all element boundaries
-      if (!doc.getElementById('selection-outline-style')) {
-        const style = doc.createElement('style');
-        style.id = 'selection-outline-style';
-        style.textContent =
-          'body.__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__) {' +
-          '  outline: 1px dashed rgba(66, 133, 244, 0.5) !important;' +
-          '  outline-offset: -1px !important;' +
-          '}' +
-          'body.__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__):hover {' +
-          '  outline: 2px solid rgba(66, 133, 244, 0.8) !important;' +
-          '  outline-offset: -1px !important;' +
-          '}';
-        doc.head.appendChild(style);
-      }
-
-      // Enable outline mode
-      doc.body.classList.add('__claude-vs-show-outlines__');
-
-      const script = doc.createElement('script');
-      script.id = 'selection-script';
-      script.textContent = `
-        (function() {
-          let lastHoveredElement = null;
-
-          function getElementInfo(element) {
-            if (!element || element === document.body || element === document.documentElement) {
-              return null;
-            }
-
-            const rect = element.getBoundingClientRect();
-            const computedStyle = window.getComputedStyle(element);
-
-            // Generate CSS selector
-            const selector = generateSelector(element);
-
-            // Get all attributes
-            const attributes = {};
-            for (let i = 0; i < element.attributes.length; i++) {
-              const attr = element.attributes[i];
-              attributes[attr.name] = attr.value;
-            }
-
-            // Get key styles
-            const styles = {
-              display: computedStyle.display,
-              position: computedStyle.position,
-              width: computedStyle.width,
-              height: computedStyle.height,
-              padding: computedStyle.padding,
-              margin: computedStyle.margin,
-              backgroundColor: computedStyle.backgroundColor,
-              color: computedStyle.color,
-              fontSize: computedStyle.fontSize,
-              fontFamily: computedStyle.fontFamily,
-            };
-
-            return {
-              tagName: element.tagName.toLowerCase(),
-              id: element.id || undefined,
-              className: element.className || undefined,
-              textContent: element.textContent?.trim().substring(0, 100) || undefined,
-              attributes,
-              styles,
-              rect: {
-                x: rect.left,
-                y: rect.top,
-                width: rect.width,
-                height: rect.height,
-              },
-              selector,
-            };
-          }
-
-          function generateSelector(element) {
-            if (element.id) {
-              return '#' + element.id;
-            }
-
-            if (element === document.body) {
-              return 'body';
-            }
-
-            const names = [];
-            while (element.parentElement && element !== document.body) {
-              if (element.id) {
-                names.unshift('#' + element.id);
-                break;
-              } else {
-                let c = 1;
-                let e = element;
-                while (e.previousElementSibling) {
-                  e = e.previousElementSibling;
-                  if (e.tagName === element.tagName) c++;
-                }
-                names.unshift(element.tagName.toLowerCase() + ':nth-of-type(' + c + ')');
-                element = element.parentElement;
-              }
-            }
-            return names.join(' > ');
-          }
-
-          // Mouse move handler
-          document.addEventListener('mousemove', (e) => {
-            const element = e.target;
-            if (element !== lastHoveredElement) {
-              lastHoveredElement = element;
-              const info = getElementInfo(element);
-              if (info) {
-                window.parent.postMessage({
-                  type: 'element-hover',
-                  payload: info
-                }, '*');
-              }
-            }
-          }, true);
-
-          // Click handler
-          document.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const info = getElementInfo(e.target);
-            if (info) {
-              window.parent.postMessage({
-                type: 'element-click',
-                payload: info
-              }, '*');
-            }
-          }, true);
-
-          // Mouse out of iframe
-          document.addEventListener('mouseleave', () => {
-            window.parent.postMessage({
-              type: 'element-hover',
-              payload: null
-            }, '*');
-          });
-        })();
-      `;
-
-      doc.body.appendChild(script);
-    } catch (err) {
-      console.error('Failed to inject selection script:', err);
-    }
-  }, []);
-
   // Listen for messages from iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
 
-      const { type, payload } = event.data;
+      const { type, payload, source } = event.data;
 
+      // Handle messages from element-inspector.ts
+      if (source === 'claude-vs-inspector') {
+        if (type === 'element-hover') {
+          onElementHover?.(payload);
+        } else if (type === 'element-select') {
+          onElementClick?.(payload);
+        } else if (type === 'inspector-ready') {
+          console.log('[BrowserFrame] Inspector ready in iframe');
+          // Send current selection mode when inspector is ready
+          iframeRef.current?.contentWindow?.postMessage({
+            type: 'set-selection-mode',
+            payload: { enabled: selectionMode }
+          }, '*');
+        }
+        return;
+      }
+
+      // Handle legacy messages
       if (type === 'element-hover') {
         onElementHover?.(payload);
       } else if (type === 'element-click') {
@@ -343,7 +115,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementHover, onElementClick, addConsoleLog]);
+  }, [onElementHover, onElementClick, addConsoleLog, selectionMode]);
 
   // Send selection mode change to iframe via postMessage
   useEffect(() => {
