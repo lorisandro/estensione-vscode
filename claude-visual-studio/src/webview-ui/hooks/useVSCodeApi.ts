@@ -21,8 +21,13 @@ export const useVSCodeApi = (): UseVSCodeApiReturn => {
 
   // Initialize VSCode API once
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.acquireVsCodeApi) {
-      vscodeApi.current = window.acquireVsCodeApi();
+    if (typeof window !== 'undefined') {
+      // Use already acquired API if available (from inline script)
+      if ((window as any).vscode) {
+        vscodeApi.current = (window as any).vscode;
+      } else if (window.acquireVsCodeApi) {
+        vscodeApi.current = window.acquireVsCodeApi();
+      }
     }
 
     // Listen for messages from extension
