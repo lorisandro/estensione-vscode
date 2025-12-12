@@ -18,26 +18,12 @@ export class OpenPreviewCommand {
 
   /**
    * Execute the open preview command
+   * Always opens the browser panel - user can navigate manually via URL bar
    */
-  public async execute(uri?: vscode.Uri): Promise<void> {
+  public async execute(_uri?: vscode.Uri): Promise<void> {
     try {
-      // Get the file to preview
-      const fileUri = uri || this.getActiveEditorUri();
-
-      // If we have a previewable file, use it
-      if (fileUri && this.isPreviewableFile(fileUri)) {
-        await this.openPreview(fileUri);
-        return;
-      }
-
-      // Otherwise, try to find an index.html or just open the browser
-      const indexHtml = await this.findIndexHtml();
-      if (indexHtml) {
-        await this.openPreview(indexHtml);
-        return;
-      }
-
-      // Just open the browser panel without a specific file
+      // Always open the browser panel without a specific file
+      // This gives users control to navigate where they want
       await this.openBrowserOnly();
     } catch (error) {
       vscode.window.showErrorMessage(
