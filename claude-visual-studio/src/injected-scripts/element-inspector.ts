@@ -168,8 +168,22 @@ class ElementInspector {
     // Key press for toggling selection mode (Escape to exit)
     document.addEventListener('keydown', this.handleKeyDown.bind(this), true);
 
+    // Listen for messages from parent window
+    window.addEventListener('message', this.handleMessage.bind(this), false);
+
     // Cleanup on unload
     window.addEventListener('beforeunload', this.cleanup.bind(this));
+  }
+
+  /**
+   * Handle messages from parent window
+   */
+  private handleMessage(event: MessageEvent): void {
+    const { type, payload } = event.data || {};
+
+    if (type === 'set-selection-mode') {
+      this.setSelectionMode(!!payload?.enabled);
+    }
   }
 
   /**

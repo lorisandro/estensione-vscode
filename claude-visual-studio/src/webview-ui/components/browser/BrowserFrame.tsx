@@ -141,12 +141,21 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     setLoading(false);
     setError(null);
 
-    // Always inject console capture script
+    // Try to inject console capture script (may fail for cross-origin)
     injectConsoleScript();
 
-    // Inject selection script if in selection mode
-    if (selectionMode && iframeRef.current?.contentWindow) {
-      injectSelectionScript();
+    // Send current selection mode to iframe after load
+    // The element-inspector.ts script injected by the server will receive this
+    const iframe = iframeRef.current;
+    if (iframe?.contentWindow) {
+      // Small delay to ensure the inspector script is initialized
+      setTimeout(() => {
+        iframe.contentWindow?.postMessage({
+          type: 'set-selection-mode',
+          payload: { enabled: selectionMode }
+        }, '*');
+        console.log('[BrowserFrame] Sent initial selection mode after load:', selectionMode);
+      }, 100);
     }
   }, [selectionMode, setLoading, setError, injectConsoleScript]);
 
@@ -336,25 +345,20 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementHover, onElementClick, addConsoleLog]);
 
-  // Reinject script when selection mode changes
+  // Send selection mode change to iframe via postMessage
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow) return;
 
-    try {
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
+    // Send message to iframe to toggle selection mode
+    // The element-inspector.ts script injected by the server will receive this
+    iframe.contentWindow.postMessage({
+      type: 'set-selection-mode',
+      payload: { enabled: selectionMode }
+    }, '*');
 
-      if (selectionMode) {
-        injectSelectionScript();
-      } else {
-        // Remove outline mode when selection mode is disabled
-        doc.body.classList.remove('__claude-vs-show-outlines__');
-      }
-    } catch (err) {
-      // Cross-origin error - iframe content not accessible
-      console.error('Failed to update selection mode:', err);
-    }
-  }, [selectionMode, url, injectSelectionScript]);
+    console.log('[BrowserFrame] Sent selection mode to iframe:', selectionMode);
+  }, [selectionMode]);
 
   // Set loading when URL changes
   useEffect(() => {
