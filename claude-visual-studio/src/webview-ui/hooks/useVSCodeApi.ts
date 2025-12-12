@@ -13,40 +13,43 @@ export interface UseVSCodeApiReturn {
 
 // Global singleton for VS Code API - must only be acquired once
 let globalVscodeApi: VSCodeApi | null = null;
-
-// Immediately try to get the API on module load, before React renders
-// This runs once when the module is first imported
-(function initVSCodeApi() {
-  if (typeof window === 'undefined') return;
-
-  // Check if already available on window (VS Code might set it)
-  if ((window as any).vscode) {
-    globalVscodeApi = (window as any).vscode;
-    return;
-  }
-
-  // Wrap acquireVsCodeApi to prevent the "already acquired" error
-  const originalAcquire = window.acquireVsCodeApi;
-  if (originalAcquire) {
-    let acquired = false;
-    window.acquireVsCodeApi = function() {
-      if (acquired && globalVscodeApi) {
-        return globalVscodeApi;
-      }
-      if (!globalVscodeApi) {
-        globalVscodeApi = originalAcquire();
-        (window as any).vscode = globalVscodeApi;
-      }
-      acquired = true;
-      return globalVscodeApi;
-    };
-
-    // Now acquire it
-    globalVscodeApi = window.acquireVsCodeApi();
-  }
-})();
+let apiAcquisitionFailed = false;
 
 function getVSCodeApi(): VSCodeApi | null {
+  // Return cached
+  if (globalVscodeApi) {
+    return globalVscodeApi;
+  }
+
+  // Don't retry if already failed
+  if (apiAcquisitionFailed) {
+    return null;
+  }
+
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  // Check if already stored on window
+  if ((window as any).vscode) {
+    globalVscodeApi = (window as any).vscode;
+    return globalVscodeApi;
+  }
+
+  // Try to acquire, wrapping the call to handle errors gracefully
+  if (window.acquireVsCodeApi) {
+    try {
+      globalVscodeApi = window.acquireVsCodeApi();
+      (window as any).vscode = globalVscodeApi;
+    } catch {
+      // If acquisition fails, mark it and return null
+      // The webview can still function with postMessage
+      apiAcquisitionFailed = true;
+      console.log('VS Code API not available - using fallback communication');
+      return null;
+    }
+  }
+
   return globalVscodeApi;
 }
 
