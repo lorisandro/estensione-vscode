@@ -11,23 +11,28 @@ export interface UseVSCodeApiReturn {
   setState: <T = unknown>(state: T) => void;
 }
 
+// Global singleton for VS Code API - must only be acquired once
+let globalVscodeApi: VSCodeApi | null = null;
+
+function getVSCodeApi(): VSCodeApi | null {
+  if (!globalVscodeApi && typeof window !== 'undefined' && window.acquireVsCodeApi) {
+    globalVscodeApi = window.acquireVsCodeApi();
+  }
+  return globalVscodeApi;
+}
+
 /**
  * Hook to interact with VSCode API
  * Provides methods to send and receive messages from the extension
  */
 export const useVSCodeApi = (): UseVSCodeApiReturn => {
-  const vscodeApi = useRef<VSCodeApi | null>(null);
+  const vscodeApi = useRef<VSCodeApi | null>(getVSCodeApi());
   const messageHandlers = useRef<Set<(message: Message) => void>>(new Set());
 
   // Initialize VSCode API once
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Use already acquired API if available (from inline script)
-      if ((window as any).vscode) {
-        vscodeApi.current = (window as any).vscode;
-      } else if (window.acquireVsCodeApi) {
-        vscodeApi.current = window.acquireVsCodeApi();
-      }
+    if (!vscodeApi.current) {
+      vscodeApi.current = getVSCodeApi();
     }
 
     // Listen for messages from extension

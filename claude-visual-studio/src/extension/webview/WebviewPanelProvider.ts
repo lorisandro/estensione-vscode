@@ -226,18 +226,6 @@ export class WebviewPanelProvider {
 </head>
 <body>
   <div id="root"></div>
-
-  <script>
-    // Make vscode API available to React app
-    window.vscode = acquireVsCodeApi();
-
-    // Restore state if available
-    const state = window.vscode.getState();
-    if (state) {
-      window.__INITIAL_STATE__ = state;
-    }
-  </script>
-
   <script type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
