@@ -7,6 +7,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import {
   ExtensionToWebviewMessage,
   WebviewToExtensionMessage,
@@ -221,6 +222,12 @@ export class WebviewPanelProvider {
     // Save state before disposing
     this.saveState();
 
+    // Clean up pending MCP requests - reject all with disposal error
+    for (const [id, callback] of this.pendingRequests.entries()) {
+      callback({ error: 'Webview disposed' });
+    }
+    this.pendingRequests.clear();
+
     // Dispose of the panel
     if (this.panel) {
       this.panel.dispose();
@@ -247,18 +254,18 @@ export class WebviewPanelProvider {
     // Generate a nonce for security
     const nonce = this.getNonce();
 
-    // Build HTML with secure CSP
+    // Build HTML with secure CSP using nonce (per VS Code security best practices)
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Security CSP -->
+  <!-- Security CSP with nonce-based script execution -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none';
                  style-src ${webview.cspSource} 'unsafe-inline';
-                 script-src ${webview.cspSource} 'unsafe-inline';
+                 script-src 'nonce-${nonce}';
                  img-src ${webview.cspSource} https: data: blob:;
                  font-src ${webview.cspSource} data:;
                  connect-src ws://localhost:* http://localhost:* https:;
@@ -266,7 +273,7 @@ export class WebviewPanelProvider {
                  worker-src ${webview.cspSource} blob:;">
 
   <title>Browser</title>
-  <style>
+  <style nonce="${nonce}">
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root {
       width: 100%;
@@ -281,21 +288,16 @@ export class WebviewPanelProvider {
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="${scriptUri}?v=${cacheBuster}"></script>
+  <script nonce="${nonce}" type="module" src="${scriptUri}?v=${cacheBuster}"></script>
 </body>
 </html>`;
   }
 
   /**
-   * Generate a cryptographically secure nonce
+   * Generate a cryptographically secure nonce using Node.js crypto
    */
   private getNonce(): string {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < 32; i++) {
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
+    return crypto.randomBytes(16).toString('base64');
   }
 
   /**

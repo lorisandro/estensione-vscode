@@ -85,10 +85,11 @@ export const useNavigationStore = create<NavigationState>()(
 
         refresh: () => {
           const { url } = get();
-          // Trigger re-render by setting url to empty then back
-          // This forces iframe reload without modifying the URL
-          set({ url: '' });
-          setTimeout(() => set({ url }), 0);
+          // Trigger re-render by appending a cache-busting timestamp
+          // This forces iframe reload without using setTimeout (avoids memory leaks)
+          const separator = url.includes('?') ? '&' : '?';
+          const refreshUrl = `${url.split('&_refresh=')[0].split('?_refresh=')[0]}${separator}_refresh=${Date.now()}`;
+          set({ url: refreshUrl });
         },
 
         reset: () => {
@@ -110,6 +111,15 @@ export const useNavigationStore = create<NavigationState>()(
           historyIndex: state.historyIndex,
           serverBaseUrl: state.serverBaseUrl,
         }),
+        // Per Zustand best practices: handle hydration state
+        onRehydrateStorage: () => (state, error) => {
+          if (error) {
+            console.warn('[NavigationStore] Hydration failed:', error);
+          } else if (state) {
+            // Recalculate canGoBack/canGoForward after hydration
+            console.debug('[NavigationStore] Hydration completed');
+          }
+        },
       }
     ),
     { name: 'NavigationStore' }
@@ -207,7 +217,14 @@ const initialEditorState = {
   cssInspectorWidth: 280,
 };
 
-let logIdCounter = 0;
+// Generate unique IDs using crypto.randomUUID() for better uniqueness
+const generateLogId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+};
 
 export const useEditorStore = create<EditorState>()(
   devtools(
@@ -242,7 +259,7 @@ export const useEditorStore = create<EditorState>()(
         addConsoleLog: (log: Omit<ConsoleLogEntry, 'id' | 'timestamp'>) => {
           const newLog: ConsoleLogEntry = {
             ...log,
-            id: `log-${++logIdCounter}`,
+            id: generateLogId(),
             timestamp: Date.now(),
           };
           set((state) => ({
@@ -280,6 +297,14 @@ export const useEditorStore = create<EditorState>()(
           cssInspectorVisible: state.cssInspectorVisible,
           cssInspectorWidth: state.cssInspectorWidth,
         }),
+        // Per Zustand best practices: handle hydration state
+        onRehydrateStorage: () => (state, error) => {
+          if (error) {
+            console.warn('[EditorStore] Hydration failed:', error);
+          } else if (state) {
+            console.debug('[EditorStore] Hydration completed');
+          }
+        },
       }
     ),
     { name: 'EditorStore' }

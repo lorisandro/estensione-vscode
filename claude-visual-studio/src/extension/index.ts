@@ -134,6 +134,45 @@ async function initializeServer(): Promise<void> {
 }
 
 /**
+ * Helper function to create a timeout-protected request to the webview
+ * Properly handles cleanup to prevent memory leaks
+ */
+function createWebviewRequest<T>(
+  command: string,
+  params: Record<string, unknown>,
+  timeoutMs: number
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (!webviewProvider) {
+      reject(new Error('Webview not initialized'));
+      return;
+    }
+
+    let isSettled = false;
+    const timeoutId = setTimeout(() => {
+      if (!isSettled) {
+        isSettled = true;
+        reject(new Error(`MCP request '${command}' timed out after ${timeoutMs}ms`));
+      }
+    }, timeoutMs);
+
+    webviewProvider.requestFromWebview(command, params, (result) => {
+      if (!isSettled) {
+        isSettled = true;
+        clearTimeout(timeoutId);
+
+        // Check if the result contains an error from webview disposal
+        if (result && typeof result === 'object' && 'error' in result) {
+          reject(new Error(result.error as string));
+        } else {
+          resolve(result as T);
+        }
+      }
+    });
+  });
+}
+
+/**
  * Initialize MCP Bridge for browser control
  */
 async function initializeMCPBridge(): Promise<void> {
@@ -143,7 +182,7 @@ async function initializeMCPBridge(): Promise<void> {
 
   mcpBridge = new MCPBridge(mcpPort);
 
-  // Register command handlers
+  // Register command handlers using the helper function for proper cleanup
   mcpBridge.registerHandler('navigate', async (params) => {
     if (!webviewProvider) throw new Error('Webview not initialized');
     await webviewProvider.postMessage({
@@ -154,69 +193,27 @@ async function initializeMCPBridge(): Promise<void> {
   });
 
   mcpBridge.registerHandler('getUrl', async () => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
-      webviewProvider!.requestFromWebview('getUrl', {}, (result) => {
-        clearTimeout(timeout);
-        resolve(result);
-      });
-    });
+    return createWebviewRequest('getUrl', {}, 5000);
   });
 
   mcpBridge.registerHandler('getHtml', async (params) => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
-      webviewProvider!.requestFromWebview('getHtml', params, (result) => {
-        clearTimeout(timeout);
-        resolve(result);
-      });
-    });
+    return createWebviewRequest('getHtml', params, 10000);
   });
 
   mcpBridge.registerHandler('getText', async (params) => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
-      webviewProvider!.requestFromWebview('getText', params, (result) => {
-        clearTimeout(timeout);
-        resolve(result);
-      });
-    });
+    return createWebviewRequest('getText', params, 10000);
   });
 
   mcpBridge.registerHandler('screenshot', async () => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
-      webviewProvider!.requestFromWebview('screenshot', {}, (result) => {
-        clearTimeout(timeout);
-        resolve(result);
-      });
-    });
+    return createWebviewRequest('screenshot', {}, 10000);
   });
 
   mcpBridge.registerHandler('click', async (params) => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
-      webviewProvider!.requestFromWebview('click', params, (result) => {
-        clearTimeout(timeout);
-        resolve(result);
-      });
-    });
+    return createWebviewRequest('click', params, 5000);
   });
 
   mcpBridge.registerHandler('type', async (params) => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
-      webviewProvider!.requestFromWebview('type', params, (result) => {
-        clearTimeout(timeout);
-        resolve(result);
-      });
-    });
+    return createWebviewRequest('type', params, 5000);
   });
 
   mcpBridge.registerHandler('refresh', async () => {
@@ -247,14 +244,7 @@ async function initializeMCPBridge(): Promise<void> {
   });
 
   mcpBridge.registerHandler('getElements', async (params) => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
-      webviewProvider!.requestFromWebview('getElements', params, (result) => {
-        clearTimeout(timeout);
-        resolve(result);
-      });
-    });
+    return createWebviewRequest('getElements', params, 10000);
   });
 
   // Start the bridge
