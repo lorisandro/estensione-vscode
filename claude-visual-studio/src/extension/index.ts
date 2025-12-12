@@ -249,6 +249,12 @@ async function initializeMCPBridge(): Promise<void> {
     return createWebviewRequest('getElements', params, 10000);
   });
 
+  mcpBridge.registerHandler('getSelectedElement', async () => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    const element = webviewProvider.getSelectedElement();
+    return { element };
+  });
+
   // Start the bridge
   try {
     await mcpBridge.start();

@@ -174,6 +174,13 @@ export class WebviewPanelProvider {
   }
 
   /**
+   * Get the currently selected element info
+   */
+  public getSelectedElement(): any {
+    return this.state.selectedElement || null;
+  }
+
+  /**
    * Send a request to the webview and wait for response
    * Used by MCP bridge to execute commands in the browser
    */

@@ -229,6 +229,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ['selector'],
         },
       },
+      {
+        name: 'browser_get_selected_element',
+        description: 'Get the currently selected element in selection mode. Returns element info including tag, id, classes, selector, xpath, attributes, bounding box, and computed styles.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -314,6 +322,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
         }
         return { content: [{ type: 'text', text: JSON.stringify(result.elements || [], null, 2) }] };
+
+      case 'browser_get_selected_element':
+        result = await sendCommand('getSelectedElement');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        if (!result.element) {
+          return { content: [{ type: 'text', text: 'No element currently selected. Use selection mode to select an element first.' }] };
+        }
+        return { content: [{ type: 'text', text: JSON.stringify(result.element, null, 2) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);
