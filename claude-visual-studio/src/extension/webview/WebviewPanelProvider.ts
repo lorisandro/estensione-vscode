@@ -8,6 +8,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 import {
   ExtensionToWebviewMessage,
   WebviewToExtensionMessage,
@@ -367,6 +368,39 @@ export class WebviewPanelProvider {
         this.handleMCPResponse(message as any);
         break;
 
+      // Handle toggle-selection from webview toolbar
+      case 'toggle-selection':
+        console.log('Selection mode toggled:', (message as any).payload?.enabled);
+        break;
+
+      // Handle navigate message from webview
+      case 'navigate':
+        console.log('Navigate requested:', (message as any).payload?.url);
+        break;
+
+      // Handle webview-ready (kebab-case variant)
+      case 'webview-ready':
+        console.log('Webview ready (kebab-case)');
+        break;
+
+      // Handle refresh message
+      case 'refresh':
+        console.log('Refresh requested');
+        break;
+
+      // Handle screenshot request
+      case 'screenshot':
+        console.log('Screenshot requested');
+        break;
+
+      // Handle element-selected from iframe inspector
+      case 'element-selected':
+        const inspectorPayload = (message as any).payload || (message as any).data;
+        if (inspectorPayload) {
+          await this.writeElementToFile(inspectorPayload);
+        }
+        break;
+
       default:
         console.warn('Unknown message type:', (message as any).type);
     }
@@ -416,6 +450,45 @@ export class WebviewPanelProvider {
   }
 
   /**
+   * Write element info to file for Claude Code to read
+   */
+  private async writeElementToFile(elementInfo: any): Promise<void> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      return;
+    }
+
+    const outputPath = path.join(workspaceFolders[0].uri.fsPath, '.claude-selected-element.json');
+
+    // Normalize element data from different sources (inspector vs webview)
+    const elementData = {
+      timestamp: new Date().toISOString(),
+      element: {
+        tag: elementInfo.tagName || elementInfo.tag || 'unknown',
+        id: elementInfo.id || null,
+        classes: elementInfo.classes || (elementInfo.className ? elementInfo.className.split(' ').filter((c: string) => c) : []),
+        selector: elementInfo.selector || null,
+        xpath: elementInfo.xpath || null,
+        textContent: elementInfo.textContent ? elementInfo.textContent.substring(0, 200) : null,
+        attributes: elementInfo.attributes || {},
+        boundingBox: elementInfo.boundingBox || elementInfo.rect || null,
+        computedStyles: elementInfo.computedStyles || (elementInfo.styles?.computed) || null,
+        parent: elementInfo.parent || null,
+        children: elementInfo.children || 0,
+      }
+    };
+
+    try {
+      fs.writeFileSync(outputPath, JSON.stringify(elementData, null, 2), 'utf-8');
+      const selector = `${elementData.element.tag}${elementData.element.id ? '#' + elementData.element.id : ''}${elementData.element.classes.length > 0 ? '.' + elementData.element.classes.join('.') : ''}`;
+      console.log(`[Claude VS] Element selected: ${selector}`);
+      console.log(`[Claude VS] Element info written to: ${outputPath}`);
+    } catch (err) {
+      console.error('[Claude VS] Failed to write element info:', err);
+    }
+  }
+
+  /**
    * Handle element selection
    */
   private async handleElementSelected(message: ElementSelectedMessage): Promise<void> {
@@ -424,6 +497,9 @@ export class WebviewPanelProvider {
     // Update state
     this.state.selectedElement = payload;
     this.saveState();
+
+    // Write element info to file for Claude Code to read
+    await this.writeElementToFile(payload);
 
     // Show information message
     const action = await vscode.window.showInformationMessage(
