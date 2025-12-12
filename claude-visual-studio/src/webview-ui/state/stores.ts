@@ -276,6 +276,30 @@ export interface ConsoleLogEntry {
   timestamp: number;
 }
 
+// Viewport preset for responsive design
+export interface ViewportPreset {
+  name: string;
+  width: number;
+  height: number;
+  icon?: string;
+}
+
+export const VIEWPORT_PRESETS: ViewportPreset[] = [
+  { name: 'Responsive', width: 0, height: 0, icon: 'responsive' },
+  { name: 'iPhone SE', width: 375, height: 667, icon: 'mobile' },
+  { name: 'iPhone 14', width: 390, height: 844, icon: 'mobile' },
+  { name: 'iPhone 14 Pro Max', width: 430, height: 932, icon: 'mobile' },
+  { name: 'Pixel 7', width: 412, height: 915, icon: 'mobile' },
+  { name: 'Samsung Galaxy S21', width: 360, height: 800, icon: 'mobile' },
+  { name: 'iPad Mini', width: 768, height: 1024, icon: 'tablet' },
+  { name: 'iPad Pro 11"', width: 834, height: 1194, icon: 'tablet' },
+  { name: 'iPad Pro 12.9"', width: 1024, height: 1366, icon: 'tablet' },
+  { name: 'Surface Pro', width: 912, height: 1368, icon: 'tablet' },
+  { name: 'Laptop', width: 1366, height: 768, icon: 'laptop' },
+  { name: 'Desktop', width: 1920, height: 1080, icon: 'desktop' },
+  { name: '4K', width: 3840, height: 2160, icon: 'desktop' },
+];
+
 // Editor state
 interface EditorState {
   isLoading: boolean;
@@ -286,6 +310,11 @@ interface EditorState {
   consoleLogs: ConsoleLogEntry[];
   cssInspectorVisible: boolean;
   cssInspectorWidth: number;
+  // Responsive viewport state
+  viewportWidth: number;
+  viewportHeight: number;
+  viewportPreset: string;
+  viewportRotated: boolean;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setInspectorWidth: (width: number) => void;
@@ -298,6 +327,11 @@ interface EditorState {
   toggleCssInspector: () => void;
   setCssInspectorWidth: (width: number) => void;
   clearError: () => void;
+  // Responsive viewport actions
+  setViewportSize: (width: number, height: number) => void;
+  setViewportPreset: (preset: string) => void;
+  toggleViewportRotation: () => void;
+  resetViewport: () => void;
 }
 
 const initialEditorState = {
@@ -309,6 +343,11 @@ const initialEditorState = {
   consoleLogs: [] as ConsoleLogEntry[],
   cssInspectorVisible: false,
   cssInspectorWidth: 280,
+  // Responsive viewport (0 = auto/responsive)
+  viewportWidth: 0,
+  viewportHeight: 0,
+  viewportPreset: 'Responsive',
+  viewportRotated: false,
 };
 
 // Generate unique IDs using crypto.randomUUID() for better uniqueness
@@ -380,6 +419,45 @@ export const useEditorStore = create<EditorState>()(
         clearError: () => {
           set({ error: null }, undefined, 'editor/clearError');
         },
+
+        // Responsive viewport actions
+        setViewportSize: (width: number, height: number) => {
+          set({
+            viewportWidth: width,
+            viewportHeight: height,
+            viewportPreset: 'Custom',
+          }, undefined, 'editor/setViewportSize');
+        },
+
+        setViewportPreset: (preset: string) => {
+          const presetData = VIEWPORT_PRESETS.find(p => p.name === preset);
+          if (presetData) {
+            const { viewportRotated } = get();
+            set({
+              viewportPreset: preset,
+              viewportWidth: viewportRotated ? presetData.height : presetData.width,
+              viewportHeight: viewportRotated ? presetData.width : presetData.height,
+            }, undefined, 'editor/setViewportPreset');
+          }
+        },
+
+        toggleViewportRotation: () => {
+          const { viewportWidth, viewportHeight, viewportRotated } = get();
+          set({
+            viewportWidth: viewportHeight,
+            viewportHeight: viewportWidth,
+            viewportRotated: !viewportRotated,
+          }, undefined, 'editor/toggleViewportRotation');
+        },
+
+        resetViewport: () => {
+          set({
+            viewportWidth: 0,
+            viewportHeight: 0,
+            viewportPreset: 'Responsive',
+            viewportRotated: false,
+          }, undefined, 'editor/resetViewport');
+        },
       }),
       {
         name: 'claude-vs-editor',
@@ -390,6 +468,10 @@ export const useEditorStore = create<EditorState>()(
           consoleHeight: state.consoleHeight,
           cssInspectorVisible: state.cssInspectorVisible,
           cssInspectorWidth: state.cssInspectorWidth,
+          viewportWidth: state.viewportWidth,
+          viewportHeight: state.viewportHeight,
+          viewportPreset: state.viewportPreset,
+          viewportRotated: state.viewportRotated,
         }),
         // Per Zustand best practices: handle hydration state
         onRehydrateStorage: () => (state, error) => {

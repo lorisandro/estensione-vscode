@@ -42,7 +42,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const iframeRef = externalRef || internalRef;
   const { url, serverBaseUrl } = useNavigationStore();
   const { selectionMode, screenshotMode, addDragChange } = useSelectionStore();
-  const { setLoading, setError, addConsoleLog } = useEditorStore();
+  const { setLoading, setError, addConsoleLog, viewportWidth, viewportHeight } = useEditorStore();
   const { postMessage } = useVSCodeApi();
 
   // Drag mode is active when no other mode is enabled
@@ -174,23 +174,47 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     setLoading(true);
   }, [url, setLoading]);
 
+  // Determine if we're in responsive mode (fixed viewport)
+  const isResponsiveMode = viewportWidth > 0 && viewportHeight > 0;
+
+  // Calculate iframe dimensions and container styles
+  const iframeStyles: React.CSSProperties = {
+    width: isResponsiveMode ? `${viewportWidth}px` : '100%',
+    height: isResponsiveMode ? `${viewportHeight}px` : '100%',
+    border: 'none',
+    backgroundColor: '#fff',
+    pointerEvents: 'auto',
+    ...(isResponsiveMode && {
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+      borderRadius: '4px',
+    }),
+  };
+
+  const containerStyles: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: isResponsiveMode ? '#2d2d2d' : '#fff',
+    overflow: 'auto',
+    padding: isResponsiveMode ? '16px' : 0,
+    boxSizing: 'border-box',
+  };
+
   return (
-    <iframe
-      ref={iframeRef}
-      src={iframeSrc}
-      onLoad={handleLoad}
-      onError={handleError}
-      // Security Note: allow-same-origin is required for element inspector script injection.
-      // External URLs are routed through proxy to bypass X-Frame-Options.
-      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
-      style={{
-        width: '100%',
-        height: '100%',
-        border: 'none',
-        backgroundColor: '#fff',
-        pointerEvents: selectionMode ? 'auto' : 'auto',
-      }}
-      title="Browser Preview"
-    />
+    <div style={containerStyles}>
+      <iframe
+        ref={iframeRef}
+        src={iframeSrc}
+        onLoad={handleLoad}
+        onError={handleError}
+        // Security Note: allow-same-origin is required for element inspector script injection.
+        // External URLs are routed through proxy to bypass X-Frame-Options.
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+        style={iframeStyles}
+        title="Browser Preview"
+      />
+    </div>
   );
 };

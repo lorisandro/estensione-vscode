@@ -1,14 +1,37 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { useEditorStore, useSelectionStore, type ElementInfo } from '../../state/stores';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useEditorStore, useSelectionStore, VIEWPORT_PRESETS, type ElementInfo } from '../../state/stores';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+type CssUnit = 'px' | '%' | 'em' | 'rem' | 'vw' | 'vh' | 'auto';
+type DisplayType = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'none';
+type FlexDirection = 'row' | 'row-reverse' | 'column' | 'column-reverse';
+type JustifyContent = 'flex-start' | 'flex-end' | 'center' | 'space-between' | 'space-around' | 'space-evenly';
+type AlignItems = 'flex-start' | 'flex-end' | 'center' | 'stretch' | 'baseline';
+type TextAlign = 'left' | 'center' | 'right' | 'justify';
+type VerticalAlign = 'top' | 'middle' | 'bottom';
+
+interface CssChange {
+  property: string;
+  value: string;
+}
+
+// ============================================================================
+// Styles
+// ============================================================================
 
 const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: 'var(--vscode-sideBar-background)',
+    backgroundColor: '#1e1e1e',
     borderLeft: '1px solid var(--vscode-panel-border)',
     height: '100%',
     overflow: 'hidden',
+    color: '#cccccc',
+    fontSize: '12px',
   } as React.CSSProperties,
 
   resizer: {
@@ -27,8 +50,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '8px 12px',
-    backgroundColor: 'var(--vscode-sideBarSectionHeader-background)',
-    borderBottom: '1px solid var(--vscode-panel-border)',
+    backgroundColor: '#252526',
+    borderBottom: '1px solid #3c3c3c',
     minHeight: '36px',
     flexShrink: 0,
   } as React.CSSProperties,
@@ -37,14 +60,14 @@ const styles = {
     fontSize: '11px',
     fontWeight: 600,
     textTransform: 'uppercase',
-    color: 'var(--vscode-sideBarSectionHeader-foreground)',
+    color: '#cccccc',
     letterSpacing: '0.5px',
   } as React.CSSProperties,
 
   closeButton: {
     padding: '2px 4px',
     backgroundColor: 'transparent',
-    color: 'var(--vscode-foreground)',
+    color: '#cccccc',
     border: 'none',
     borderRadius: '2px',
     cursor: 'pointer',
@@ -61,7 +84,7 @@ const styles = {
   } as React.CSSProperties,
 
   section: {
-    borderBottom: '1px solid var(--vscode-panel-border)',
+    borderBottom: '1px solid #3c3c3c',
   } as React.CSSProperties,
 
   sectionHeader: {
@@ -69,7 +92,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '8px 12px',
-    backgroundColor: 'var(--vscode-sideBarSectionHeader-background)',
+    backgroundColor: '#2d2d2d',
     cursor: 'pointer',
     userSelect: 'none',
   } as React.CSSProperties,
@@ -77,55 +100,149 @@ const styles = {
   sectionTitle: {
     fontSize: '11px',
     fontWeight: 600,
-    color: 'var(--vscode-sideBarSectionHeader-foreground)',
+    color: '#ffffff',
   } as React.CSSProperties,
 
   sectionContent: {
-    padding: '8px 12px',
+    padding: '12px',
+    backgroundColor: '#1e1e1e',
   } as React.CSSProperties,
 
-  propertyRow: {
+  row: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: '8px',
     marginBottom: '8px',
   } as React.CSSProperties,
 
-  propertyLabel: {
+  label: {
     fontSize: '11px',
-    color: 'var(--vscode-descriptionForeground)',
+    color: '#9d9d9d',
+    minWidth: '70px',
     flexShrink: 0,
-    width: '80px',
   } as React.CSSProperties,
 
-  propertyValue: {
+  inputGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
     flex: 1,
   } as React.CSSProperties,
 
   input: {
-    width: '100%',
+    flex: 1,
     padding: '4px 8px',
-    fontSize: '12px',
-    backgroundColor: 'var(--vscode-input-background)',
-    color: 'var(--vscode-input-foreground)',
-    border: '1px solid var(--vscode-input-border)',
-    borderRadius: '2px',
+    fontSize: '11px',
+    backgroundColor: '#3c3c3c',
+    color: '#cccccc',
+    border: '1px solid #3c3c3c',
+    borderRadius: '3px',
     outline: 'none',
+    minWidth: '50px',
+  } as React.CSSProperties,
+
+  smallInput: {
+    width: '60px',
+    padding: '4px 6px',
+    fontSize: '11px',
+    backgroundColor: '#3c3c3c',
+    color: '#cccccc',
+    border: '1px solid #3c3c3c',
+    borderRadius: '3px',
+    outline: 'none',
+  } as React.CSSProperties,
+
+  select: {
+    flex: 1,
+    padding: '4px 8px',
+    fontSize: '11px',
+    backgroundColor: '#3c3c3c',
+    color: '#cccccc',
+    border: '1px solid #3c3c3c',
+    borderRadius: '3px',
+    outline: 'none',
+    cursor: 'pointer',
+  } as React.CSSProperties,
+
+  unitSelect: {
+    width: '50px',
+    padding: '4px 4px',
+    fontSize: '10px',
+    backgroundColor: '#3c3c3c',
+    color: '#9d9d9d',
+    border: '1px solid #3c3c3c',
+    borderRadius: '3px',
+    outline: 'none',
+    cursor: 'pointer',
   } as React.CSSProperties,
 
   colorInput: {
     width: '24px',
     height: '24px',
     padding: '0',
-    border: '1px solid var(--vscode-input-border)',
-    borderRadius: '2px',
+    border: '1px solid #3c3c3c',
+    borderRadius: '3px',
     cursor: 'pointer',
+    backgroundColor: 'transparent',
   } as React.CSSProperties,
 
-  colorRow: {
+  checkbox: {
+    width: '14px',
+    height: '14px',
+    cursor: 'pointer',
+    accentColor: '#0078d4',
+  } as React.CSSProperties,
+
+  buttonGroup: {
+    display: 'flex',
+    gap: '2px',
+    flex: 1,
+  } as React.CSSProperties,
+
+  button: {
+    flex: 1,
+    padding: '6px 8px',
+    fontSize: '11px',
+    backgroundColor: '#3c3c3c',
+    color: '#cccccc',
+    border: '1px solid #3c3c3c',
+    borderRadius: '3px',
+    cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
+  } as React.CSSProperties,
+
+  buttonActive: {
+    backgroundColor: '#0078d4',
+    borderColor: '#0078d4',
+    color: '#ffffff',
+  } as React.CSSProperties,
+
+  iconButton: {
+    padding: '4px',
+    backgroundColor: 'transparent',
+    color: '#9d9d9d',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as React.CSSProperties,
+
+  gridRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
     gap: '8px',
+    marginBottom: '8px',
+  } as React.CSSProperties,
+
+  gridRow3: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr 1fr',
+    gap: '4px',
+    marginBottom: '8px',
   } as React.CSSProperties,
 
   noSelection: {
@@ -136,23 +253,12 @@ const styles = {
     height: '100%',
     padding: '24px',
     textAlign: 'center',
-    color: 'var(--vscode-descriptionForeground)',
-  } as React.CSSProperties,
-
-  noSelectionIcon: {
-    width: '48px',
-    height: '48px',
-    marginBottom: '12px',
-    opacity: 0.5,
-  } as React.CSSProperties,
-
-  noSelectionText: {
-    fontSize: '12px',
+    color: '#9d9d9d',
   } as React.CSSProperties,
 
   elementTag: {
-    backgroundColor: 'var(--vscode-badge-background)',
-    color: 'var(--vscode-badge-foreground)',
+    backgroundColor: '#0078d4',
+    color: '#ffffff',
     padding: '2px 8px',
     borderRadius: '4px',
     fontSize: '11px',
@@ -160,137 +266,432 @@ const styles = {
     marginLeft: '8px',
   } as React.CSSProperties,
 
-  boxModelContainer: {
-    padding: '12px',
-    display: 'flex',
-    justifyContent: 'center',
-  } as React.CSSProperties,
-
-  boxModel: {
-    position: 'relative',
-    width: '200px',
-    height: '140px',
-    fontSize: '10px',
-    fontFamily: 'monospace',
-  } as React.CSSProperties,
-
-  boxMargin: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: 'rgba(255, 190, 130, 0.3)',
-    border: '1px dashed rgba(255, 190, 130, 0.8)',
+  sliderContainer: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-  } as React.CSSProperties,
-
-  boxBorder: {
-    position: 'absolute',
-    top: '20px',
-    left: '20px',
-    right: '20px',
-    bottom: '20px',
-    backgroundColor: 'rgba(255, 216, 100, 0.3)',
-    border: '1px dashed rgba(255, 216, 100, 0.8)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as React.CSSProperties,
-
-  boxPadding: {
-    position: 'absolute',
-    top: '35px',
-    left: '35px',
-    right: '35px',
-    bottom: '35px',
-    backgroundColor: 'rgba(130, 190, 130, 0.3)',
-    border: '1px dashed rgba(130, 190, 130, 0.8)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as React.CSSProperties,
-
-  boxContent: {
-    position: 'absolute',
-    top: '50px',
-    left: '50px',
-    right: '50px',
-    bottom: '50px',
-    backgroundColor: 'rgba(130, 170, 255, 0.3)',
-    border: '1px solid rgba(130, 170, 255, 0.8)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'var(--vscode-foreground)',
-  } as React.CSSProperties,
-
-  boxLabel: {
-    position: 'absolute',
-    color: 'var(--vscode-descriptionForeground)',
-  } as React.CSSProperties,
-
-  tabs: {
-    display: 'flex',
-    borderBottom: '1px solid var(--vscode-panel-border)',
-  } as React.CSSProperties,
-
-  tab: {
+    gap: '8px',
     flex: 1,
-    padding: '8px 12px',
-    backgroundColor: 'transparent',
-    color: 'var(--vscode-foreground)',
-    border: 'none',
-    borderBottom: '2px solid transparent',
-    cursor: 'pointer',
-    fontSize: '11px',
-    fontWeight: 500,
-    transition: 'all 0.1s',
   } as React.CSSProperties,
 
-  tabActive: {
-    borderBottomColor: 'var(--vscode-focusBorder)',
-    color: 'var(--vscode-focusBorder)',
+  slider: {
+    flex: 1,
+    height: '4px',
+    appearance: 'none',
+    backgroundColor: '#3c3c3c',
+    borderRadius: '2px',
+    outline: 'none',
+    cursor: 'pointer',
+  } as React.CSSProperties,
+
+  collapsibleHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '6px 12px',
+    backgroundColor: '#252526',
+    cursor: 'pointer',
+    userSelect: 'none',
+    borderBottom: '1px solid #3c3c3c',
   } as React.CSSProperties,
 };
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+function parseNumericValue(value: string | undefined): { num: number; unit: string } {
+  if (!value || value === 'auto' || value === 'none' || value === 'normal') {
+    return { num: 0, unit: 'px' };
+  }
+  const match = value.match(/^(-?[\d.]+)(px|%|em|rem|vw|vh)?$/);
+  if (match) {
+    return { num: parseFloat(match[1]), unit: match[2] || 'px' };
+  }
+  return { num: 0, unit: 'px' };
+}
+
+function rgbToHex(rgb: string): string {
+  if (!rgb || rgb === 'transparent' || rgb.startsWith('#')) {
+    return rgb || '#000000';
+  }
+  const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match) return '#000000';
+  const r = parseInt(match[1], 10);
+  const g = parseInt(match[2], 10);
+  const b = parseInt(match[3], 10);
+  return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToRgba(hex: string, alpha: number = 1): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (result) {
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+    return alpha < 1 ? `rgba(${r}, ${g}, ${b}, ${alpha})` : `rgb(${r}, ${g}, ${b})`;
+  }
+  return hex;
+}
+
+function getOpacityFromColor(color: string): number {
+  const match = color.match(/rgba?\([^)]+,\s*([\d.]+)\)/);
+  return match ? parseFloat(match[1]) * 100 : 100;
+}
+
+// ============================================================================
+// Sub-Components
+// ============================================================================
 
 interface CollapsibleSectionProps {
   title: string;
   defaultOpen?: boolean;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }
 
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, defaultOpen = true, children }) => {
+const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
+  title,
+  defaultOpen = true,
+  actions,
+  children
+}) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <div style={styles.section}>
       <div style={styles.sectionHeader} onClick={() => setIsOpen(!isOpen)}>
         <span style={styles.sectionTitle}>{title}</span>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 16 16"
-          fill="currentColor"
-          style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-        >
-          <path d="M6 4l4 4-4 4V4z" />
-        </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {actions}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+          >
+            <path d="M6 4l4 4-4 4V4z" />
+          </svg>
+        </div>
       </div>
       {isOpen && <div style={styles.sectionContent}>{children}</div>}
     </div>
   );
 };
 
-type TabType = 'styles' | 'computed' | 'box';
+interface NumberInputProps {
+  value: number;
+  unit?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (value: number) => void;
+  onUnitChange?: (unit: string) => void;
+  showUnit?: boolean;
+  units?: string[];
+  disabled?: boolean;
+  label?: string;
+}
+
+const NumberInput: React.FC<NumberInputProps> = ({
+  value,
+  unit = 'px',
+  min,
+  max,
+  step = 1,
+  onChange,
+  onUnitChange,
+  showUnit = true,
+  units = ['px', '%', 'em', 'rem', 'vw', 'vh'],
+  disabled = false,
+  label,
+}) => {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
+      {label && <span style={{ ...styles.label, minWidth: 'auto', marginRight: '4px' }}>{label}</span>}
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        style={{ ...styles.smallInput, flex: 1 }}
+        disabled={disabled}
+      />
+      {showUnit && onUnitChange && (
+        <select
+          value={unit}
+          onChange={(e) => onUnitChange(e.target.value)}
+          style={styles.unitSelect}
+          disabled={disabled}
+        >
+          {units.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+};
+
+interface ColorPickerProps {
+  value: string;
+  onChange: (color: string) => void;
+  showOpacity?: boolean;
+  opacity?: number;
+  onOpacityChange?: (opacity: number) => void;
+}
+
+const ColorPicker: React.FC<ColorPickerProps> = ({
+  value,
+  onChange,
+  showOpacity = false,
+  opacity = 100,
+  onOpacityChange,
+}) => {
+  const hexValue = rgbToHex(value);
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+      <input
+        type="color"
+        value={hexValue}
+        onChange={(e) => {
+          const newColor = showOpacity && opacity < 100
+            ? hexToRgba(e.target.value, opacity / 100)
+            : e.target.value;
+          onChange(newColor);
+        }}
+        style={styles.colorInput}
+      />
+      <input
+        type="text"
+        value={hexValue}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ ...styles.input, flex: 1 }}
+      />
+      {showOpacity && onOpacityChange && (
+        <>
+          <input
+            type="number"
+            value={Math.round(opacity)}
+            min={0}
+            max={100}
+            onChange={(e) => onOpacityChange(parseFloat(e.target.value) || 0)}
+            style={{ ...styles.smallInput, width: '50px' }}
+          />
+          <span style={{ color: '#9d9d9d', fontSize: '11px' }}>%</span>
+        </>
+      )}
+    </div>
+  );
+};
+
+interface ButtonGroupProps<T extends string> {
+  options: { value: T; icon?: React.ReactNode; label?: string }[];
+  value: T;
+  onChange: (value: T) => void;
+}
+
+function ButtonGroup<T extends string>({ options, value, onChange }: ButtonGroupProps<T>) {
+  return (
+    <div style={styles.buttonGroup}>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          style={{
+            ...styles.button,
+            ...(value === opt.value ? styles.buttonActive : {}),
+          }}
+          onClick={() => onChange(opt.value)}
+          title={opt.label || opt.value}
+        >
+          {opt.icon || opt.label || opt.value}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// Icons
+// ============================================================================
+
+const FlexIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+  </svg>
+);
+
+const GridIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" />
+    <line x1="12" y1="3" x2="12" y2="21" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+  </svg>
+);
+
+const BlockIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" />
+  </svg>
+);
+
+const InlineIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <rect x="7" y="8" width="10" height="8" />
+  </svg>
+);
+
+const InlineBlockIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="5" y="5" width="14" height="14" />
+    <line x1="2" y1="12" x2="5" y2="12" />
+    <line x1="19" y1="12" x2="22" y2="12" />
+  </svg>
+);
+
+const AlignLeftIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 3h18v2H3V3zm0 4h12v2H3V7zm0 4h18v2H3v-2zm0 4h12v2H3v-2zm0 4h18v2H3v-2z"/>
+  </svg>
+);
+
+const AlignCenterIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 3h18v2H3V3zm3 4h12v2H6V7zm-3 4h18v2H3v-2zm3 4h12v2H6v-2zm-3 4h18v2H3v-2z"/>
+  </svg>
+);
+
+const AlignRightIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 3h18v2H3V3zm6 4h12v2H9V7zm-6 4h18v2H3v-2zm6 4h12v2H9v-2zm-6 4h18v2H3v-2z"/>
+  </svg>
+);
+
+const AlignTopIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 3h18v2H3V3zm5 4h8v14H8V7z"/>
+  </svg>
+);
+
+const AlignMiddleIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M8 5h8v6H8V5zm0 8h8v6H8v-6zm-5-1h4v2H3v-2zm14 0h4v2h-4v-2z"/>
+  </svg>
+);
+
+const AlignBottomIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 19h18v2H3v-2zm5-16h8v14H8V3z"/>
+  </svg>
+);
+
+const LinkIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+  </svg>
+);
+
+const MobileIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+    <line x1="12" y1="18" x2="12" y2="18" />
+  </svg>
+);
+
+const TabletIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+    <line x1="12" y1="18" x2="12" y2="18" />
+  </svg>
+);
+
+const LaptopIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="4" width="20" height="12" rx="2" ry="2" />
+    <line x1="2" y1="20" x2="22" y2="20" />
+  </svg>
+);
+
+const DesktopIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+    <line x1="8" y1="21" x2="16" y2="21" />
+    <line x1="12" y1="17" x2="12" y2="21" />
+  </svg>
+);
+
+const ResponsiveIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" />
+    <path d="M8 3v2M16 3v2M8 19v2M16 19v2" />
+  </svg>
+);
+
+const RotateIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+    <path d="M21 3v5h-5" />
+  </svg>
+);
+
+// ============================================================================
+// Main Component
+// ============================================================================
 
 export const CssInspectorPanel: React.FC = () => {
-  const { cssInspectorWidth, setCssInspectorWidth, toggleCssInspector } = useEditorStore();
-  const { selectedElement, hoveredElement } = useSelectionStore();
+  const {
+    cssInspectorWidth,
+    setCssInspectorWidth,
+    toggleCssInspector,
+    viewportWidth,
+    viewportHeight,
+    viewportPreset,
+    viewportRotated,
+    setViewportSize,
+    setViewportPreset,
+    toggleViewportRotation,
+    resetViewport,
+  } = useEditorStore();
+  const { selectedElement, hoveredElement, setSelectedElement } = useSelectionStore();
   const [isResizing, setIsResizing] = useState(false);
   const [resizerHover, setResizerHover] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('styles');
+  const [linkedPadding, setLinkedPadding] = useState(true);
+  const [linkedMargin, setLinkedMargin] = useState(true);
+  const [linkedRadius, setLinkedRadius] = useState(true);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const element = selectedElement || hoveredElement;
+
+  // Get computed styles from element
+  const getStyle = useCallback((property: string): string => {
+    return element?.styles?.computed?.[property] || '';
+  }, [element]);
+
+  // Send CSS change to iframe
+  const applyCssChange = useCallback((property: string, value: string) => {
+    if (!element?.selector) return;
+
+    // Find iframe and send message
+    const iframe = document.querySelector('iframe[title="Browser Preview"]') as HTMLIFrameElement;
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({
+        type: 'apply-css-style',
+        payload: {
+          selector: element.selector,
+          property,
+          value,
+        },
+      }, '*');
+    }
+  }, [element]);
 
   // Handle resizer drag
   const handleResizerMouseDown = useCallback((e: React.MouseEvent) => {
@@ -319,10 +720,88 @@ export const CssInspectorPanel: React.FC = () => {
     };
   }, [isResizing, setCssInspectorWidth]);
 
-  const parseSize = (value: string | undefined): string => {
-    if (!value) return '0';
-    return value.replace('px', '') || '0';
-  };
+  // Listen for element updates from iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const { type, data, source } = event.data || {};
+      if (source === 'claude-vs-inspector' && type === 'element-updated' && data) {
+        // Update selected element with new styles
+        setSelectedElement(data);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [setSelectedElement]);
+
+  // Determine if element has text content (for text section visibility)
+  const hasTextContent = element && (
+    ['p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'button', 'label', 'div', 'li', 'td', 'th']
+      .includes(element.tagName?.toLowerCase() || '')
+  );
+
+  // Get current values
+  const position = getStyle('position') || 'static';
+  const display = getStyle('display') || 'block';
+  const opacity = parseFloat(getStyle('opacity') || '1') * 100;
+
+  const { num: width, unit: widthUnit } = parseNumericValue(getStyle('width'));
+  const { num: height, unit: heightUnit } = parseNumericValue(getStyle('height'));
+  const { num: x } = parseNumericValue(getStyle('left'));
+  const { num: y } = parseNumericValue(getStyle('top'));
+  const { num: paddingTop } = parseNumericValue(getStyle('paddingTop'));
+  const { num: paddingRight } = parseNumericValue(getStyle('paddingRight'));
+  const { num: paddingBottom } = parseNumericValue(getStyle('paddingBottom'));
+  const { num: paddingLeft } = parseNumericValue(getStyle('paddingLeft'));
+  const { num: marginTop } = parseNumericValue(getStyle('marginTop'));
+  const { num: marginRight } = parseNumericValue(getStyle('marginRight'));
+  const { num: marginBottom } = parseNumericValue(getStyle('marginBottom'));
+  const { num: marginLeft } = parseNumericValue(getStyle('marginLeft'));
+  const { num: borderRadius } = parseNumericValue(getStyle('borderRadius'));
+  const { num: fontSize } = parseNumericValue(getStyle('fontSize'));
+  const fontWeight = getStyle('fontWeight') || '400';
+  const fontFamily = getStyle('fontFamily')?.split(',')[0]?.replace(/['"]/g, '') || 'Arial';
+  const textAlign = getStyle('textAlign') as TextAlign || 'left';
+  const color = getStyle('color') || '#000000';
+  const backgroundColor = getStyle('backgroundColor') || 'transparent';
+  const lineHeight = getStyle('lineHeight') || 'normal';
+  const letterSpacing = getStyle('letterSpacing') || 'normal';
+
+  if (!element) {
+    return (
+      <div style={{ ...styles.container, width: `${cssInspectorWidth}px`, position: 'relative' }}>
+        <div
+          style={{
+            ...styles.resizer,
+            backgroundColor: resizerHover || isResizing ? 'var(--vscode-focusBorder)' : 'var(--vscode-panel-border)',
+          }}
+          onMouseDown={handleResizerMouseDown}
+          onMouseEnter={() => setResizerHover(true)}
+          onMouseLeave={() => setResizerHover(false)}
+        />
+        <div style={styles.header}>
+          <span style={styles.title}>CSS Inspector</span>
+          <button
+            style={styles.closeButton}
+            onClick={toggleCssInspector}
+            title="Close"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M7.116 8l-4.558 4.558.884.884L8 8.884l4.558 4.558.884-.884L8.884 8l4.558-4.558-.884-.884L8 7.116 3.442 2.558l-.884.884L7.116 8z" />
+            </svg>
+          </button>
+        </div>
+        <div style={styles.noSelection}>
+          <svg width="48" height="48" viewBox="0 0 16 16" fill="currentColor" style={{ marginBottom: '12px', opacity: 0.5 }}>
+            <path d="M1 1l5 14 2-6 6-2L1 1zm3.5 4.5l5 1.8-2.8 1-1 2.8-1.2-5.6z" />
+          </svg>
+          <span style={{ fontSize: '12px' }}>
+            Enable selection mode and click on an element to inspect its CSS
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ ...styles.container, width: `${cssInspectorWidth}px`, position: 'relative' }}>
@@ -341,16 +820,12 @@ export const CssInspectorPanel: React.FC = () => {
       <div style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <span style={styles.title}>CSS Inspector</span>
-          {element && (
-            <span style={styles.elementTag}>{element.tagName}</span>
-          )}
+          <span style={styles.elementTag}>{element.tagName}</span>
         </div>
         <button
           style={styles.closeButton}
           onClick={toggleCssInspector}
           title="Close"
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M7.116 8l-4.558 4.558.884.884L8 8.884l4.558 4.558.884-.884L8.884 8l4.558-4.558-.884-.884L8 7.116 3.442 2.558l-.884.884L7.116 8z" />
@@ -358,260 +833,600 @@ export const CssInspectorPanel: React.FC = () => {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div style={styles.tabs}>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'styles' ? styles.tabActive : {}) }}
-          onClick={() => setActiveTab('styles')}
-        >
-          Styles
-        </button>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'computed' ? styles.tabActive : {}) }}
-          onClick={() => setActiveTab('computed')}
-        >
-          Computed
-        </button>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'box' ? styles.tabActive : {}) }}
-          onClick={() => setActiveTab('box')}
-        >
-          Box Model
-        </button>
-      </div>
-
       {/* Content */}
       <div style={styles.content}>
-        {!element ? (
-          <div style={styles.noSelection}>
-            <svg style={styles.noSelectionIcon} viewBox="0 0 16 16" fill="currentColor">
-              <path d="M1 1l5 14 2-6 6-2L1 1zm3.5 4.5l5 1.8-2.8 1-1 2.8-1.2-5.6z" />
-            </svg>
-            <span style={styles.noSelectionText}>
-              Enable selection mode and click on an element to inspect its CSS
-            </span>
+        {/* Responsive Section - Always visible */}
+        <CollapsibleSection title="Responsive">
+          {/* Device Preset */}
+          <div style={styles.row}>
+            <span style={styles.label}>Device</span>
+            <select
+              value={viewportPreset}
+              onChange={(e) => setViewportPreset(e.target.value)}
+              style={styles.select}
+            >
+              {VIEWPORT_PRESETS.map((preset) => (
+                <option key={preset.name} value={preset.name}>
+                  {preset.name} {preset.width > 0 ? `(${preset.width}x${preset.height})` : ''}
+                </option>
+              ))}
+              <option value="Custom">Custom</option>
+            </select>
           </div>
-        ) : activeTab === 'styles' ? (
-          <>
-            <CollapsibleSection title="Typography">
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Font Size</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={element.styles?.fontSize || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Font Family</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={element.styles?.fontFamily || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Color</span>
-                <div style={{ ...styles.propertyValue, ...styles.colorRow }}>
-                  <input
-                    type="color"
-                    style={styles.colorInput}
-                    value={rgbToHex(element.styles?.color || '')}
-                    readOnly
-                  />
-                  <input
-                    type="text"
-                    style={{ ...styles.input, flex: 1 }}
-                    value={element.styles?.color || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-            </CollapsibleSection>
 
-            <CollapsibleSection title="Layout">
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Display</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={element.styles?.display || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Position</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={element.styles?.position || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Size">
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Width</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={element.styles?.width || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Height</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={element.styles?.height || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Background">
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Background</span>
-                <div style={{ ...styles.propertyValue, ...styles.colorRow }}>
-                  <input
-                    type="color"
-                    style={styles.colorInput}
-                    value={rgbToHex(element.styles?.backgroundColor || '')}
-                    readOnly
-                  />
-                  <input
-                    type="text"
-                    style={{ ...styles.input, flex: 1 }}
-                    value={element.styles?.backgroundColor || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Spacing">
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Padding</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={element.styles?.padding || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-              <div style={styles.propertyRow}>
-                <span style={styles.propertyLabel}>Margin</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={element.styles?.margin || ''}
-                    readOnly
-                  />
-                </div>
-              </div>
-            </CollapsibleSection>
-          </>
-        ) : activeTab === 'computed' ? (
-          <CollapsibleSection title="All Computed Styles" defaultOpen>
-            {element.styles && Object.entries(element.styles).map(([key, value]) => (
-              <div key={key} style={styles.propertyRow}>
-                <span style={{ ...styles.propertyLabel, width: '120px' }}>{key}</span>
-                <div style={styles.propertyValue}>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={String(value)}
-                    readOnly
-                  />
-                </div>
-              </div>
-            ))}
-          </CollapsibleSection>
-        ) : (
-          <div style={styles.boxModelContainer}>
-            <div style={styles.boxModel}>
-              {/* Margin */}
-              <div style={styles.boxMargin}>
-                <span style={{ ...styles.boxLabel, top: '2px', left: '50%', transform: 'translateX(-50%)' }}>
-                  {parseSize(element.styles?.margin?.split(' ')[0])}
-                </span>
-                <span style={{ ...styles.boxLabel, bottom: '2px', left: '50%', transform: 'translateX(-50%)' }}>
-                  {parseSize(element.styles?.margin?.split(' ')[2] || element.styles?.margin?.split(' ')[0])}
-                </span>
-                <span style={{ ...styles.boxLabel, left: '2px', top: '50%', transform: 'translateY(-50%)' }}>
-                  {parseSize(element.styles?.margin?.split(' ')[3] || element.styles?.margin?.split(' ')[1] || element.styles?.margin?.split(' ')[0])}
-                </span>
-                <span style={{ ...styles.boxLabel, right: '2px', top: '50%', transform: 'translateY(-50%)' }}>
-                  {parseSize(element.styles?.margin?.split(' ')[1] || element.styles?.margin?.split(' ')[0])}
-                </span>
-              </div>
-
-              {/* Border */}
-              <div style={styles.boxBorder}>
-                <span style={{ ...styles.boxLabel, top: '-14px', left: '50%', transform: 'translateX(-50%)' }}>
-                  border
-                </span>
-              </div>
-
-              {/* Padding */}
-              <div style={styles.boxPadding}>
-                <span style={{ ...styles.boxLabel, top: '2px', left: '50%', transform: 'translateX(-50%)' }}>
-                  {parseSize(element.styles?.padding?.split(' ')[0])}
-                </span>
-                <span style={{ ...styles.boxLabel, bottom: '2px', left: '50%', transform: 'translateX(-50%)' }}>
-                  {parseSize(element.styles?.padding?.split(' ')[2] || element.styles?.padding?.split(' ')[0])}
-                </span>
-                <span style={{ ...styles.boxLabel, left: '2px', top: '50%', transform: 'translateY(-50%)' }}>
-                  {parseSize(element.styles?.padding?.split(' ')[3] || element.styles?.padding?.split(' ')[1] || element.styles?.padding?.split(' ')[0])}
-                </span>
-                <span style={{ ...styles.boxLabel, right: '2px', top: '50%', transform: 'translateY(-50%)' }}>
-                  {parseSize(element.styles?.padding?.split(' ')[1] || element.styles?.padding?.split(' ')[0])}
-                </span>
-              </div>
-
-              {/* Content */}
-              <div style={styles.boxContent}>
-                {parseSize(element.styles?.width)} x {parseSize(element.styles?.height)}
-              </div>
+          {/* Quick Device Buttons */}
+          <div style={{ ...styles.row, marginBottom: '12px' }}>
+            <span style={styles.label}>Quick</span>
+            <div style={styles.buttonGroup}>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(viewportPreset === 'Responsive' ? styles.buttonActive : {}),
+                  padding: '6px',
+                }}
+                onClick={() => setViewportPreset('Responsive')}
+                title="Responsive"
+              >
+                <ResponsiveIcon />
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(viewportPreset.includes('iPhone') || viewportPreset.includes('Pixel') || viewportPreset.includes('Samsung') ? styles.buttonActive : {}),
+                  padding: '6px',
+                }}
+                onClick={() => setViewportPreset('iPhone 14')}
+                title="Mobile"
+              >
+                <MobileIcon />
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(viewportPreset.includes('iPad') || viewportPreset.includes('Surface') ? styles.buttonActive : {}),
+                  padding: '6px',
+                }}
+                onClick={() => setViewportPreset('iPad Mini')}
+                title="Tablet"
+              >
+                <TabletIcon />
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(viewportPreset === 'Laptop' ? styles.buttonActive : {}),
+                  padding: '6px',
+                }}
+                onClick={() => setViewportPreset('Laptop')}
+                title="Laptop"
+              >
+                <LaptopIcon />
+              </button>
+              <button
+                style={{
+                  ...styles.button,
+                  ...(viewportPreset === 'Desktop' || viewportPreset === '4K' ? styles.buttonActive : {}),
+                  padding: '6px',
+                }}
+                onClick={() => setViewportPreset('Desktop')}
+                title="Desktop"
+              >
+                <DesktopIcon />
+              </button>
             </div>
           </div>
+
+          {/* Custom Dimensions */}
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="W"
+              value={viewportWidth}
+              showUnit={false}
+              onChange={(v) => setViewportSize(v, viewportHeight)}
+            />
+            <NumberInput
+              label="H"
+              value={viewportHeight}
+              showUnit={false}
+              onChange={(v) => setViewportSize(viewportWidth, v)}
+            />
+          </div>
+
+          {/* Rotation & Reset */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              style={{
+                ...styles.button,
+                flex: 1,
+                ...(viewportRotated ? styles.buttonActive : {}),
+              }}
+              onClick={toggleViewportRotation}
+              disabled={viewportWidth === 0 && viewportHeight === 0}
+              title="Rotate viewport"
+            >
+              <RotateIcon />
+              <span style={{ marginLeft: '4px' }}>Rotate</span>
+            </button>
+            <button
+              style={{
+                ...styles.button,
+                flex: 1,
+              }}
+              onClick={resetViewport}
+              title="Reset to responsive"
+            >
+              Reset
+            </button>
+          </div>
+
+          {/* Current Size Info */}
+          {viewportWidth > 0 && viewportHeight > 0 && (
+            <div style={{
+              marginTop: '8px',
+              fontSize: '10px',
+              color: '#9d9d9d',
+              textAlign: 'center',
+            }}>
+              {viewportWidth} x {viewportHeight}px
+              {viewportRotated && ' (Rotated)'}
+            </div>
+          )}
+        </CollapsibleSection>
+
+        {/* Position Section */}
+        <CollapsibleSection title="Position">
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="X"
+              value={element.rect?.x || 0}
+              onChange={(v) => applyCssChange('left', `${v}px`)}
+            />
+            <NumberInput
+              label="Y"
+              value={element.rect?.y || 0}
+              onChange={(v) => applyCssChange('top', `${v}px`)}
+            />
+          </div>
+          <div style={styles.row}>
+            <span style={styles.label}>Position</span>
+            <select
+              value={position}
+              onChange={(e) => applyCssChange('position', e.target.value)}
+              style={styles.select}
+            >
+              <option value="static">Static</option>
+              <option value="relative">Relative</option>
+              <option value="absolute">Absolute</option>
+              <option value="fixed">Fixed</option>
+              <option value="sticky">Sticky</option>
+            </select>
+          </div>
+          <div style={styles.row}>
+            <span style={styles.label}>Z-Index</span>
+            <input
+              type="number"
+              value={parseInt(getStyle('zIndex')) || 0}
+              onChange={(e) => applyCssChange('zIndex', e.target.value)}
+              style={styles.input}
+            />
+          </div>
+        </CollapsibleSection>
+
+        {/* Layout Section */}
+        <CollapsibleSection title="Layout">
+          <div style={styles.row}>
+            <span style={styles.label}>Flow</span>
+            <ButtonGroup
+              options={[
+                { value: 'flex' as DisplayType, icon: <FlexIcon /> },
+                { value: 'grid' as DisplayType, icon: <GridIcon /> },
+                { value: 'block' as DisplayType, icon: <BlockIcon /> },
+                { value: 'inline-block' as DisplayType, icon: <InlineBlockIcon /> },
+                { value: 'inline' as DisplayType, icon: <InlineIcon /> },
+              ]}
+              value={display as DisplayType}
+              onChange={(v) => applyCssChange('display', v)}
+            />
+          </div>
+
+          {/* Dimensions */}
+          <div style={{ ...styles.row, marginTop: '12px' }}>
+            <span style={styles.label}>Dimensions</span>
+          </div>
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="W"
+              value={width}
+              unit={widthUnit}
+              onChange={(v) => applyCssChange('width', `${v}${widthUnit}`)}
+              onUnitChange={(u) => applyCssChange('width', `${width}${u}`)}
+            />
+            <NumberInput
+              label="H"
+              value={height}
+              unit={heightUnit}
+              onChange={(v) => applyCssChange('height', `${v}${heightUnit}`)}
+              onUnitChange={(u) => applyCssChange('height', `${height}${u}`)}
+            />
+          </div>
+
+          {/* Padding */}
+          <div style={{ ...styles.row, marginTop: '12px' }}>
+            <span style={styles.label}>Padding</span>
+            <button
+              style={{ ...styles.iconButton, color: linkedPadding ? '#0078d4' : '#9d9d9d' }}
+              onClick={() => setLinkedPadding(!linkedPadding)}
+              title={linkedPadding ? 'Unlink values' : 'Link values'}
+            >
+              <LinkIcon />
+            </button>
+          </div>
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="↑"
+              value={paddingTop}
+              onChange={(v) => {
+                if (linkedPadding) {
+                  applyCssChange('padding', `${v}px`);
+                } else {
+                  applyCssChange('paddingTop', `${v}px`);
+                }
+              }}
+            />
+            <NumberInput
+              label="→"
+              value={linkedPadding ? paddingTop : paddingRight}
+              onChange={(v) => applyCssChange('paddingRight', `${v}px`)}
+              disabled={linkedPadding}
+            />
+          </div>
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="↓"
+              value={linkedPadding ? paddingTop : paddingBottom}
+              onChange={(v) => applyCssChange('paddingBottom', `${v}px`)}
+              disabled={linkedPadding}
+            />
+            <NumberInput
+              label="←"
+              value={linkedPadding ? paddingTop : paddingLeft}
+              onChange={(v) => applyCssChange('paddingLeft', `${v}px`)}
+              disabled={linkedPadding}
+            />
+          </div>
+
+          {/* Margin */}
+          <div style={{ ...styles.row, marginTop: '12px' }}>
+            <span style={styles.label}>Margin</span>
+            <button
+              style={{ ...styles.iconButton, color: linkedMargin ? '#0078d4' : '#9d9d9d' }}
+              onClick={() => setLinkedMargin(!linkedMargin)}
+              title={linkedMargin ? 'Unlink values' : 'Link values'}
+            >
+              <LinkIcon />
+            </button>
+          </div>
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="↑"
+              value={marginTop}
+              onChange={(v) => {
+                if (linkedMargin) {
+                  applyCssChange('margin', `${v}px`);
+                } else {
+                  applyCssChange('marginTop', `${v}px`);
+                }
+              }}
+            />
+            <NumberInput
+              label="→"
+              value={linkedMargin ? marginTop : marginRight}
+              onChange={(v) => applyCssChange('marginRight', `${v}px`)}
+              disabled={linkedMargin}
+            />
+          </div>
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="↓"
+              value={linkedMargin ? marginTop : marginBottom}
+              onChange={(v) => applyCssChange('marginBottom', `${v}px`)}
+              disabled={linkedMargin}
+            />
+            <NumberInput
+              label="←"
+              value={linkedMargin ? marginTop : marginLeft}
+              onChange={(v) => applyCssChange('marginLeft', `${v}px`)}
+              disabled={linkedMargin}
+            />
+          </div>
+
+          {/* Box Sizing */}
+          <div style={{ ...styles.row, marginTop: '8px' }}>
+            <input
+              type="checkbox"
+              id="borderBox"
+              checked={getStyle('boxSizing') === 'border-box'}
+              onChange={(e) => applyCssChange('boxSizing', e.target.checked ? 'border-box' : 'content-box')}
+              style={styles.checkbox}
+            />
+            <label htmlFor="borderBox" style={{ fontSize: '11px', color: '#9d9d9d', cursor: 'pointer' }}>
+              Border box
+            </label>
+          </div>
+
+          {/* Overflow */}
+          <div style={{ ...styles.row, marginTop: '8px' }}>
+            <input
+              type="checkbox"
+              id="clipContent"
+              checked={getStyle('overflow') === 'hidden'}
+              onChange={(e) => applyCssChange('overflow', e.target.checked ? 'hidden' : 'visible')}
+              style={styles.checkbox}
+            />
+            <label htmlFor="clipContent" style={{ fontSize: '11px', color: '#9d9d9d', cursor: 'pointer' }}>
+              Clip content
+            </label>
+          </div>
+        </CollapsibleSection>
+
+        {/* Appearance Section */}
+        <CollapsibleSection title="Appearance">
+          {/* Opacity */}
+          <div style={styles.row}>
+            <span style={styles.label}>Opacity</span>
+            <div style={styles.sliderContainer}>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={opacity}
+                onChange={(e) => applyCssChange('opacity', String(parseFloat(e.target.value) / 100))}
+                style={styles.slider}
+              />
+              <input
+                type="number"
+                value={Math.round(opacity)}
+                min={0}
+                max={100}
+                onChange={(e) => applyCssChange('opacity', String(parseFloat(e.target.value) / 100))}
+                style={{ ...styles.smallInput, width: '50px' }}
+              />
+              <span style={{ color: '#9d9d9d', fontSize: '11px' }}>%</span>
+            </div>
+          </div>
+
+          {/* Corner Radius */}
+          <div style={styles.row}>
+            <span style={styles.label}>Corner Radius</span>
+            <button
+              style={{ ...styles.iconButton, color: linkedRadius ? '#0078d4' : '#9d9d9d' }}
+              onClick={() => setLinkedRadius(!linkedRadius)}
+              title={linkedRadius ? 'Unlink values' : 'Link values'}
+            >
+              <LinkIcon />
+            </button>
+          </div>
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="↖"
+              value={borderRadius}
+              onChange={(v) => {
+                if (linkedRadius) {
+                  applyCssChange('borderRadius', `${v}px`);
+                } else {
+                  applyCssChange('borderTopLeftRadius', `${v}px`);
+                }
+              }}
+            />
+            <NumberInput
+              label="↗"
+              value={linkedRadius ? borderRadius : parseNumericValue(getStyle('borderTopRightRadius')).num}
+              onChange={(v) => applyCssChange('borderTopRightRadius', `${v}px`)}
+              disabled={linkedRadius}
+            />
+          </div>
+          <div style={styles.gridRow}>
+            <NumberInput
+              label="↙"
+              value={linkedRadius ? borderRadius : parseNumericValue(getStyle('borderBottomLeftRadius')).num}
+              onChange={(v) => applyCssChange('borderBottomLeftRadius', `${v}px`)}
+              disabled={linkedRadius}
+            />
+            <NumberInput
+              label="↘"
+              value={linkedRadius ? borderRadius : parseNumericValue(getStyle('borderBottomRightRadius')).num}
+              onChange={(v) => applyCssChange('borderBottomRightRadius', `${v}px`)}
+              disabled={linkedRadius}
+            />
+          </div>
+        </CollapsibleSection>
+
+        {/* Text Section */}
+        {hasTextContent && (
+          <CollapsibleSection title="Text">
+            {/* Font Family */}
+            <div style={styles.row}>
+              <span style={styles.label}>Font</span>
+              <select
+                value={fontFamily}
+                onChange={(e) => applyCssChange('fontFamily', e.target.value)}
+                style={styles.select}
+              >
+                <option value="Arial">Arial</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Courier New">Courier New</option>
+                <option value="system-ui">System UI</option>
+                <option value="sans-serif">Sans Serif</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monospace</option>
+              </select>
+            </div>
+
+            {/* Font Weight & Size */}
+            <div style={styles.gridRow}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <select
+                  value={fontWeight}
+                  onChange={(e) => applyCssChange('fontWeight', e.target.value)}
+                  style={{ ...styles.select, flex: 1 }}
+                >
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                  <option value="300">300</option>
+                  <option value="400">400</option>
+                  <option value="500">500</option>
+                  <option value="600">600</option>
+                  <option value="700">700</option>
+                  <option value="800">800</option>
+                  <option value="900">900</option>
+                </select>
+              </div>
+              <NumberInput
+                value={fontSize}
+                onChange={(v) => applyCssChange('fontSize', `${v}px`)}
+              />
+            </div>
+
+            {/* Color */}
+            <div style={styles.row}>
+              <span style={styles.label}>Color</span>
+              <ColorPicker
+                value={color}
+                onChange={(c) => applyCssChange('color', c)}
+                showOpacity
+                opacity={getOpacityFromColor(color)}
+                onOpacityChange={(o) => applyCssChange('color', hexToRgba(rgbToHex(color), o / 100))}
+              />
+            </div>
+
+            {/* Line Height & Letter Spacing */}
+            <div style={styles.gridRow}>
+              <div>
+                <span style={{ ...styles.label, display: 'block', marginBottom: '4px' }}>Line Height</span>
+                <input
+                  type="text"
+                  value={lineHeight}
+                  onChange={(e) => applyCssChange('lineHeight', e.target.value)}
+                  style={styles.input}
+                  placeholder="normal"
+                />
+              </div>
+              <div>
+                <span style={{ ...styles.label, display: 'block', marginBottom: '4px' }}>Letter Spacing</span>
+                <input
+                  type="text"
+                  value={letterSpacing}
+                  onChange={(e) => applyCssChange('letterSpacing', e.target.value)}
+                  style={styles.input}
+                  placeholder="normal"
+                />
+              </div>
+            </div>
+
+            {/* Text Alignment */}
+            <div style={styles.row}>
+              <span style={styles.label}>Alignment</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <ButtonGroup
+                options={[
+                  { value: 'left' as TextAlign, icon: <AlignLeftIcon /> },
+                  { value: 'center' as TextAlign, icon: <AlignCenterIcon /> },
+                  { value: 'right' as TextAlign, icon: <AlignRightIcon /> },
+                ]}
+                value={textAlign}
+                onChange={(v) => applyCssChange('textAlign', v)}
+              />
+              <ButtonGroup
+                options={[
+                  { value: 'top' as VerticalAlign, icon: <AlignTopIcon /> },
+                  { value: 'middle' as VerticalAlign, icon: <AlignMiddleIcon /> },
+                  { value: 'bottom' as VerticalAlign, icon: <AlignBottomIcon /> },
+                ]}
+                value={(getStyle('verticalAlign') || 'top') as VerticalAlign}
+                onChange={(v) => applyCssChange('verticalAlign', v)}
+              />
+            </div>
+          </CollapsibleSection>
         )}
+
+        {/* Background Section */}
+        <CollapsibleSection title="Background" defaultOpen={false}>
+          <div style={styles.row}>
+            <span style={styles.label}>Color</span>
+            <ColorPicker
+              value={backgroundColor}
+              onChange={(c) => applyCssChange('backgroundColor', c)}
+              showOpacity
+              opacity={getOpacityFromColor(backgroundColor)}
+              onOpacityChange={(o) => applyCssChange('backgroundColor', hexToRgba(rgbToHex(backgroundColor), o / 100))}
+            />
+          </div>
+        </CollapsibleSection>
+
+        {/* Border Section */}
+        <CollapsibleSection title="Border" defaultOpen={false}>
+          <div style={styles.row}>
+            <span style={styles.label}>Width</span>
+            <NumberInput
+              value={parseNumericValue(getStyle('borderWidth')).num}
+              onChange={(v) => applyCssChange('borderWidth', `${v}px`)}
+            />
+          </div>
+          <div style={styles.row}>
+            <span style={styles.label}>Style</span>
+            <select
+              value={getStyle('borderStyle') || 'none'}
+              onChange={(e) => applyCssChange('borderStyle', e.target.value)}
+              style={styles.select}
+            >
+              <option value="none">None</option>
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+              <option value="dotted">Dotted</option>
+              <option value="double">Double</option>
+              <option value="groove">Groove</option>
+              <option value="ridge">Ridge</option>
+              <option value="inset">Inset</option>
+              <option value="outset">Outset</option>
+            </select>
+          </div>
+          <div style={styles.row}>
+            <span style={styles.label}>Color</span>
+            <ColorPicker
+              value={getStyle('borderColor') || '#000000'}
+              onChange={(c) => applyCssChange('borderColor', c)}
+            />
+          </div>
+        </CollapsibleSection>
+
+        {/* Shadow & Blur Section */}
+        <CollapsibleSection title="Shadow & Blur" defaultOpen={false}>
+          <div style={styles.row}>
+            <span style={styles.label}>Box Shadow</span>
+            <input
+              type="text"
+              value={getStyle('boxShadow') || 'none'}
+              onChange={(e) => applyCssChange('boxShadow', e.target.value)}
+              style={styles.input}
+              placeholder="none"
+            />
+          </div>
+          <div style={styles.row}>
+            <span style={styles.label}>Blur</span>
+            <input
+              type="text"
+              value={getStyle('filter') || 'none'}
+              onChange={(e) => applyCssChange('filter', e.target.value)}
+              style={styles.input}
+              placeholder="none"
+            />
+          </div>
+        </CollapsibleSection>
       </div>
     </div>
   );
 };
-
-// Helper function to convert rgb to hex
-function rgbToHex(rgb: string): string {
-  if (!rgb || rgb === 'transparent' || rgb.startsWith('#')) {
-    return rgb || '#000000';
-  }
-
-  const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!match) return '#000000';
-
-  const r = parseInt(match[1], 10);
-  const g = parseInt(match[2], 10);
-  const b = parseInt(match[3], 10);
-
-  return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
-}
