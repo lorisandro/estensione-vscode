@@ -1,8 +1,20 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useSelectionStore, type ElementInfo } from '../../state/stores';
 
 const HANDLE_SIZE = 8;
 const HANDLE_OFFSET = HANDLE_SIZE / 2;
+
+// Colors for better visual feedback
+const COLORS = {
+  hoverFill: 'rgba(66, 133, 244, 0.15)',
+  hoverStroke: 'rgba(66, 133, 244, 0.9)',
+  selectedFill: 'rgba(66, 133, 244, 0.1)',
+  selectedStroke: 'rgba(66, 133, 244, 1)',
+  handleFill: '#ffffff',
+  handleStroke: 'rgba(66, 133, 244, 1)',
+  dimensionBg: 'rgba(0, 0, 0, 0.85)',
+  dimensionText: '#ffffff',
+};
 
 const styles = {
   canvas: {
@@ -13,6 +25,9 @@ const styles = {
     height: '100%',
     pointerEvents: 'none',
     zIndex: 1000,
+    // GPU acceleration hints
+    willChange: 'contents',
+    contain: 'strict',
   } as React.CSSProperties,
 
   tooltip: {
@@ -20,12 +35,15 @@ const styles = {
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
     color: '#fff',
     padding: '4px 8px',
-    borderRadius: '2px',
+    borderRadius: '3px',
     fontSize: '11px',
     fontFamily: 'var(--vscode-font-family)',
     whiteSpace: 'nowrap',
     pointerEvents: 'none',
     zIndex: 1001,
+    // Smooth transform for tooltip positioning
+    transform: 'translateZ(0)',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
   } as React.CSSProperties,
 };
 
@@ -37,6 +55,8 @@ interface ResizeHandle {
 
 export const SelectionOverlay: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const dprRef = useRef<number>(1);
   const { selectionMode, selectedElement, hoveredElement } = useSelectionStore();
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
@@ -61,46 +81,92 @@ export const SelectionOverlay: React.FC = () => {
     return parts.join('');
   }, []);
 
-  // Draw overlay
-  useEffect(() => {
+  // Setup canvas with proper DPI scaling
+  const setupCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return null;
 
-    // Set canvas size
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+    // Get device pixel ratio for HiDPI displays
+    const dpr = window.devicePixelRatio || 1;
+    dprRef.current = dpr;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
 
-    if (!selectionMode) return;
+    // Only resize if dimensions changed
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      // Set actual size in memory (scaled for DPI)
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
 
-    // Draw hovered element
-    if (hoveredElement && hoveredElement !== selectedElement) {
-      drawElementHighlight(ctx, hoveredElement.rect, 'rgba(66, 133, 244, 0.3)', 'rgba(66, 133, 244, 0.8)', 1);
+      // Scale context to match DPI
+      ctx.scale(dpr, dpr);
     }
 
-    // Draw selected element
-    if (selectedElement) {
-      drawElementHighlight(ctx, selectedElement.rect, 'rgba(66, 133, 244, 0.2)', 'rgba(66, 133, 244, 1)', 2);
-      drawResizeHandles(ctx, selectedElement.rect);
+    // Reset transform for each frame
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Update tooltip
-      const label = getElementLabel(selectedElement);
-      setTooltip({
-        x: selectedElement.rect.x,
-        y: selectedElement.rect.y - 24,
-        text: label,
-      });
-    } else {
-      setTooltip(null);
+    return ctx;
+  }, []);
+
+  // Draw overlay using requestAnimationFrame
+  useEffect(() => {
+    // Cancel any pending frame
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
     }
-  }, [selectionMode, selectedElement, hoveredElement, getElementLabel]);
 
-  // Draw element highlight
+    const drawFrame = () => {
+      const ctx = setupCanvas();
+      if (!ctx) return;
+
+      const canvas = canvasRef.current!;
+      const dpr = dprRef.current;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+      if (!selectionMode) return;
+
+      // Draw only hovered element (not selected) for hover feedback
+      if (hoveredElement && hoveredElement !== selectedElement) {
+        drawElementHighlight(ctx, hoveredElement.rect, COLORS.hoverFill, COLORS.hoverStroke, 2);
+      }
+
+      // Draw selected element
+      if (selectedElement) {
+        drawElementHighlight(ctx, selectedElement.rect, COLORS.selectedFill, COLORS.selectedStroke, 2);
+        drawResizeHandles(ctx, selectedElement.rect);
+
+        // Update tooltip
+        const label = getElementLabel(selectedElement);
+        setTooltip({
+          x: selectedElement.rect.x,
+          y: Math.max(24, selectedElement.rect.y) - 24,
+          text: label,
+        });
+      } else {
+        setTooltip(null);
+      }
+    };
+
+    // Use RAF for smooth rendering
+    rafIdRef.current = requestAnimationFrame(drawFrame);
+
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
+  }, [selectionMode, selectedElement, hoveredElement, getElementLabel, setupCanvas]);
+
+  // Draw element highlight with crisp edges
   const drawElementHighlight = (
     ctx: CanvasRenderingContext2D,
     rect: { x: number; y: number; width: number; height: number },
@@ -108,76 +174,123 @@ export const SelectionOverlay: React.FC = () => {
     strokeColor: string,
     lineWidth: number
   ) => {
-    // Fill
-    ctx.fillStyle = fillColor;
-    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    // Round coordinates for crisp rendering
+    const x = Math.round(rect.x);
+    const y = Math.round(rect.y);
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
 
-    // Stroke
+    // Save context state
+    ctx.save();
+
+    // Fill with semi-transparent background
+    ctx.fillStyle = fillColor;
+    ctx.fillRect(x, y, w, h);
+
+    // Stroke with crisp edges
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = lineWidth;
-    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    // Offset by 0.5 for crisp 1px lines
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
 
-    // Dimensions label
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.font = '11px var(--vscode-font-family)';
-    const dimensionText = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
-    const textMetrics = ctx.measureText(dimensionText);
-    const labelX = rect.x + rect.width / 2 - textMetrics.width / 2;
-    const labelY = rect.y + rect.height / 2 + 4;
+    // Only draw dimensions if element is large enough
+    if (w > 60 && h > 30) {
+      // Dimensions label
+      ctx.font = '11px system-ui, -apple-system, sans-serif';
+      const dimensionText = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
+      const textMetrics = ctx.measureText(dimensionText);
+      const labelWidth = textMetrics.width + 10;
+      const labelHeight = 18;
+      const labelX = x + w / 2 - labelWidth / 2;
+      const labelY = y + h / 2 - labelHeight / 2;
 
-    // Draw background for dimension text
-    ctx.fillRect(
-      labelX - 4,
-      labelY - 12,
-      textMetrics.width + 8,
-      16
-    );
+      // Draw rounded background for dimension text
+      ctx.fillStyle = COLORS.dimensionBg;
+      ctx.beginPath();
+      ctx.roundRect(labelX, labelY, labelWidth, labelHeight, 3);
+      ctx.fill();
 
-    // Draw dimension text
-    ctx.fillStyle = '#fff';
-    ctx.fillText(dimensionText, labelX, labelY);
+      // Draw dimension text centered
+      ctx.fillStyle = COLORS.dimensionText;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(dimensionText, x + w / 2, y + h / 2);
+    }
+
+    ctx.restore();
   };
 
-  // Draw resize handles
+  // Draw resize handles with crisp rendering
   const drawResizeHandles = (
     ctx: CanvasRenderingContext2D,
     rect: { x: number; y: number; width: number; height: number }
   ) => {
+    // Round coordinates for crisp rendering
+    const x = Math.round(rect.x);
+    const y = Math.round(rect.y);
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
+
     const handles: ResizeHandle[] = [
-      { x: rect.x - HANDLE_OFFSET, y: rect.y - HANDLE_OFFSET, position: 'nw' },
-      { x: rect.x + rect.width / 2 - HANDLE_OFFSET, y: rect.y - HANDLE_OFFSET, position: 'n' },
-      { x: rect.x + rect.width - HANDLE_OFFSET, y: rect.y - HANDLE_OFFSET, position: 'ne' },
-      { x: rect.x - HANDLE_OFFSET, y: rect.y + rect.height / 2 - HANDLE_OFFSET, position: 'w' },
-      { x: rect.x + rect.width - HANDLE_OFFSET, y: rect.y + rect.height / 2 - HANDLE_OFFSET, position: 'e' },
-      { x: rect.x - HANDLE_OFFSET, y: rect.y + rect.height - HANDLE_OFFSET, position: 'sw' },
-      { x: rect.x + rect.width / 2 - HANDLE_OFFSET, y: rect.y + rect.height - HANDLE_OFFSET, position: 's' },
-      { x: rect.x + rect.width - HANDLE_OFFSET, y: rect.y + rect.height - HANDLE_OFFSET, position: 'se' },
+      { x: x - HANDLE_OFFSET, y: y - HANDLE_OFFSET, position: 'nw' },
+      { x: x + w / 2 - HANDLE_OFFSET, y: y - HANDLE_OFFSET, position: 'n' },
+      { x: x + w - HANDLE_OFFSET, y: y - HANDLE_OFFSET, position: 'ne' },
+      { x: x - HANDLE_OFFSET, y: y + h / 2 - HANDLE_OFFSET, position: 'w' },
+      { x: x + w - HANDLE_OFFSET, y: y + h / 2 - HANDLE_OFFSET, position: 'e' },
+      { x: x - HANDLE_OFFSET, y: y + h - HANDLE_OFFSET, position: 'sw' },
+      { x: x + w / 2 - HANDLE_OFFSET, y: y + h - HANDLE_OFFSET, position: 's' },
+      { x: x + w - HANDLE_OFFSET, y: y + h - HANDLE_OFFSET, position: 'se' },
     ];
 
-    handles.forEach((handle) => {
-      // Draw handle background
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(handle.x, handle.y, HANDLE_SIZE, HANDLE_SIZE);
+    ctx.save();
 
-      // Draw handle border
-      ctx.strokeStyle = 'rgba(66, 133, 244, 1)';
+    handles.forEach((handle) => {
+      const hx = Math.round(handle.x);
+      const hy = Math.round(handle.y);
+
+      // Draw handle background (white square)
+      ctx.fillStyle = COLORS.handleFill;
+      ctx.fillRect(hx, hy, HANDLE_SIZE, HANDLE_SIZE);
+
+      // Draw handle border with crisp edges
+      ctx.strokeStyle = COLORS.handleStroke;
       ctx.lineWidth = 1;
-      ctx.strokeRect(handle.x, handle.y, HANDLE_SIZE, HANDLE_SIZE);
+      ctx.strokeRect(hx + 0.5, hy + 0.5, HANDLE_SIZE - 1, HANDLE_SIZE - 1);
     });
+
+    ctx.restore();
   };
 
-  // Handle window resize
+  // Handle window resize with debouncing for performance
   useEffect(() => {
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+
     const handleResize = () => {
-      if (canvasRef.current) {
-        canvasRef.current.width = canvasRef.current.offsetWidth;
-        canvasRef.current.height = canvasRef.current.offsetHeight;
+      // Debounce resize events
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
       }
+      resizeTimeout = setTimeout(() => {
+        // Canvas will be re-setup on next draw via setupCanvas
+        // Just trigger a redraw
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current);
+        }
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          setupCanvas();
+        });
+      }, 16); // ~60fps debounce
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+    };
+  }, [setupCanvas]);
 
   if (!selectionMode) return null;
 

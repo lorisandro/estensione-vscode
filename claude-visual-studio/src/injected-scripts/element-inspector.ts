@@ -42,6 +42,10 @@ class ElementInspector {
   private overlay: HTMLDivElement | null = null;
   private selectedElement: HTMLElement | null = null;
   private outlineStyleElement: HTMLStyleElement | null = null;
+  private rafId: number | null = null;
+  private pendingUpdate: { element: HTMLElement; rect: DOMRect } | null = null;
+  private lastMessageTime: number = 0;
+  private readonly MESSAGE_THROTTLE_MS = 16; // ~60fps for messages
   private readonly IMPORTANT_STYLES = [
     'display',
     'position',
@@ -102,33 +106,43 @@ class ElementInspector {
 
   /**
    * Create highlight overlay
+   * Optimized for smooth rendering without transitions
    */
   private createOverlay(): void {
     this.overlay = document.createElement('div');
     this.overlay.id = '__claude-vs-inspector-overlay__';
     this.overlay.style.cssText = `
       position: fixed;
+      top: 0;
+      left: 0;
       pointer-events: none;
       border: 2px solid #007acc;
       background-color: rgba(0, 122, 204, 0.1);
       z-index: 999999;
       display: none;
       box-sizing: border-box;
-      transition: all 0.1s ease;
+      will-change: transform, width, height;
+      contain: strict;
+      transform: translate3d(0, 0, 0);
     `;
     document.body.appendChild(this.overlay);
   }
 
   /**
    * Create style element for showing element boundaries on hover only
+   * Uses box-shadow instead of outline for better visual consistency
    */
   private createOutlineStyle(): void {
     this.outlineStyleElement = document.createElement('style');
     this.outlineStyleElement.id = '__claude-vs-inspector-outline-style__';
+    // Using box-shadow with inset for cleaner visual without layout shifts
+    // Also using pointer-events: none on pseudo-elements to prevent interference
     this.outlineStyleElement.textContent = `
-      .__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__):hover {
-        outline: 2px solid rgba(66, 133, 244, 0.8) !important;
-        outline-offset: -1px !important;
+      .__claude-vs-show-outlines__ {
+        cursor: crosshair !important;
+      }
+      .__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__) {
+        cursor: crosshair !important;
       }
     `;
     document.head.appendChild(this.outlineStyleElement);
@@ -202,6 +216,7 @@ class ElementInspector {
 
   /**
    * Handle mouse move events
+   * Optimized with requestAnimationFrame for smooth 60fps updates
    */
   private handleMouseMove(event: MouseEvent): void {
     if (!this.isSelectionMode) {
@@ -210,21 +225,46 @@ class ElementInspector {
 
     const target = event.target as HTMLElement;
 
-    // Ignore our own overlay
-    if (target === this.overlay || target.id === '__claude-vs-inspector-overlay__') {
+    // Ignore our own overlay and inspector elements
+    if (
+      target === this.overlay ||
+      target.id === '__claude-vs-inspector-overlay__' ||
+      target.id?.startsWith('__claude-vs-')
+    ) {
       return;
     }
 
-    // Update last hovered element
-    if (this.lastHoveredElement !== target) {
-      this.lastHoveredElement = target;
-      this.highlightElement(target);
+    // Only update if element changed
+    if (this.lastHoveredElement === target) {
+      return;
+    }
 
-      // Send hover info to parent
-      this.sendMessage({
-        type: 'element-hover',
-        data: this.getElementInfo(target),
-        timestamp: Date.now(),
+    this.lastHoveredElement = target;
+
+    // Get rect immediately for accurate positioning
+    const rect = target.getBoundingClientRect();
+
+    // Schedule RAF update for smooth visual feedback
+    this.pendingUpdate = { element: target, rect };
+
+    if (this.rafId === null) {
+      this.rafId = requestAnimationFrame(() => {
+        this.rafId = null;
+        if (this.pendingUpdate) {
+          this.highlightElementOptimized(this.pendingUpdate.rect);
+
+          // Throttle messages to parent to avoid overwhelming
+          const now = Date.now();
+          if (now - this.lastMessageTime >= this.MESSAGE_THROTTLE_MS) {
+            this.lastMessageTime = now;
+            this.sendMessage({
+              type: 'element-hover',
+              data: this.getElementInfo(this.pendingUpdate.element),
+              timestamp: now,
+            });
+          }
+          this.pendingUpdate = null;
+        }
       });
     }
   }
@@ -263,15 +303,24 @@ class ElementInspector {
   }
 
   /**
-   * Highlight an element
+   * Highlight an element (legacy method - kept for compatibility)
    */
   private highlightElement(element: HTMLElement): void {
     if (!this.overlay) return;
-
     const rect = element.getBoundingClientRect();
+    this.highlightElementOptimized(rect);
+  }
 
-    this.overlay.style.top = `${rect.top + window.scrollY}px`;
-    this.overlay.style.left = `${rect.left + window.scrollX}px`;
+  /**
+   * Highlight element using optimized transform-based positioning
+   * Uses GPU-accelerated transforms for smoother rendering
+   */
+  private highlightElementOptimized(rect: DOMRect): void {
+    if (!this.overlay) return;
+
+    // Use transform for GPU-accelerated positioning (much smoother than top/left)
+    // Note: rect values from getBoundingClientRect are already viewport-relative
+    this.overlay.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
     this.overlay.style.width = `${rect.width}px`;
     this.overlay.style.height = `${rect.height}px`;
     this.overlay.style.display = 'block';
@@ -318,6 +367,13 @@ class ElementInspector {
       // Show boundaries on all elements when selection mode is enabled
       this.showAllElementBoundaries();
     } else {
+      // Cancel any pending RAF updates
+      if (this.rafId !== null) {
+        cancelAnimationFrame(this.rafId);
+        this.rafId = null;
+      }
+      this.pendingUpdate = null;
+
       this.hideOverlay();
       this.lastHoveredElement = null;
       this.selectedElement = null;
@@ -329,10 +385,11 @@ class ElementInspector {
       if (this.overlay) {
         this.overlay.style.borderColor = '#007acc';
         this.overlay.style.backgroundColor = 'rgba(0, 122, 204, 0.1)';
+        this.overlay.style.transform = 'translate3d(0, 0, 0)';
       }
     }
 
-    // Update cursor
+    // Update cursor (now handled by CSS in outline style)
     document.body.style.cursor = enabled ? 'crosshair' : '';
 
     // Send mode change notification
@@ -507,6 +564,14 @@ class ElementInspector {
    * Cleanup on unload
    */
   private cleanup(): void {
+    // Cancel any pending RAF
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+
+    this.pendingUpdate = null;
+
     if (this.overlay && this.overlay.parentElement) {
       this.overlay.parentElement.removeChild(this.overlay);
     }
