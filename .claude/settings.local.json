@@ -25,7 +25,8 @@
       "Bash(code --install-extension:*)",
       "Bash(npm run build:extension:*)",
       "Bash(git reset:*)",
-      "Bash(powershell -Command \"Get-ChildItem -Path ''E:\\Progetto\\Progetti\\APP e ASSET\\App\\Test\\claude-visual-studio\\dist'' -Recurse | Select-Object FullName\")"
+      "Bash(powershell -Command \"Get-ChildItem -Path ''E:\\Progetto\\Progetti\\APP e ASSET\\App\\Test\\claude-visual-studio\\dist'' -Recurse | Select-Object FullName\")",
+      "Bash(find:*)"
     ]
   }
 }

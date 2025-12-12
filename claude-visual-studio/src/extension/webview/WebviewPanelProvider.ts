@@ -203,7 +203,7 @@ export class WebviewPanelProvider {
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none';
                  style-src ${webview.cspSource} 'unsafe-inline';
-                 script-src ${webview.cspSource} 'nonce-${nonce}';
+                 script-src ${webview.cspSource} 'unsafe-inline';
                  img-src ${webview.cspSource} https: data: blob:;
                  font-src ${webview.cspSource} data:;
                  connect-src ws://localhost:* http://localhost:* https:;
@@ -227,7 +227,7 @@ export class WebviewPanelProvider {
 <body>
   <div id="root"></div>
 
-  <script nonce="${nonce}">
+  <script>
     // Make vscode API available to React app
     window.vscode = acquireVsCodeApi();
 
@@ -238,7 +238,7 @@ export class WebviewPanelProvider {
     }
   </script>
 
-  <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
+  <script type="module" src="${scriptUri}"></script>
 </body>
 </html>`;
   }
