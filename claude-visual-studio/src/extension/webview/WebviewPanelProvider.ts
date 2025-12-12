@@ -221,10 +221,11 @@ export class WebviewPanelProvider {
    * Generate the HTML content for the webview
    */
   private getWebviewContent(webview: vscode.Webview): string {
-    // Get URIs for resources
+    // Get URIs for resources with cache buster
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(this.context.extensionPath, 'dist', 'webview', 'index.js'))
     );
+    const cacheBuster = Date.now();
 
     // Generate a nonce for security
     const nonce = this.getNonce();
@@ -263,7 +264,7 @@ export class WebviewPanelProvider {
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="${scriptUri}"></script>
+  <script type="module" src="${scriptUri}?v=${cacheBuster}"></script>
 </body>
 </html>`;
   }
