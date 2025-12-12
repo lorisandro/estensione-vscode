@@ -202,10 +202,11 @@ export class ServerManager {
             },
           },
           (proxyRes) => {
-            // Handle redirects
+            // Handle redirects - use absolute URL for iframe compatibility
             if (proxyRes.statusCode && proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
               const redirectUrl = new URL(proxyRes.headers.location, targetUrl).href;
-              res.redirect(`/__claude-vs__/proxy?url=${encodeURIComponent(redirectUrl)}`);
+              const absoluteProxyUrl = `http://localhost:${this.config!.port}/__claude-vs__/proxy?url=${encodeURIComponent(redirectUrl)}`;
+              res.redirect(absoluteProxyUrl);
               return;
             }
 
