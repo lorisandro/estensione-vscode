@@ -40,7 +40,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 }) => {
   const internalRef = useRef<HTMLIFrameElement>(null);
   const iframeRef = externalRef || internalRef;
-  const { url, serverBaseUrl } = useNavigationStore();
+  const { url, serverBaseUrl, refreshKey } = useNavigationStore();
   const { selectionMode, screenshotMode, addDragChange } = useSelectionStore();
   const { setLoading, setError, addConsoleLog, viewportWidth, viewportHeight } = useEditorStore();
   const { postMessage } = useVSCodeApi();
@@ -169,10 +169,10 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     console.log('[BrowserFrame] Sent drag mode to iframe:', isDragMode);
   }, [isDragMode]);
 
-  // Set loading when URL changes
+  // Set loading when URL changes or on refresh
   useEffect(() => {
     setLoading(true);
-  }, [url, setLoading]);
+  }, [url, refreshKey, setLoading]);
 
   // Determine if we're in responsive mode (fixed viewport)
   const isResponsiveMode = viewportWidth > 0 && viewportHeight > 0;
@@ -205,6 +205,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   return (
     <div style={containerStyles}>
       <iframe
+        key={refreshKey}
         ref={iframeRef}
         src={iframeSrc}
         onLoad={handleLoad}

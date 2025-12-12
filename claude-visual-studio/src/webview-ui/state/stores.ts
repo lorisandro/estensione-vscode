@@ -13,6 +13,7 @@ interface NavigationState {
   canGoBack: boolean;
   canGoForward: boolean;
   serverBaseUrl: string;
+  refreshKey: number;
   setUrl: (url: string) => void;
   setServerBaseUrl: (baseUrl: string) => void;
   navigateTo: (url: string) => void;
@@ -29,6 +30,7 @@ const initialNavigationState = {
   canGoBack: false,
   canGoForward: false,
   serverBaseUrl: DEFAULT_SERVER_URL,
+  refreshKey: 0,
 };
 
 export const useNavigationStore = create<NavigationState>()(
@@ -84,12 +86,9 @@ export const useNavigationStore = create<NavigationState>()(
         },
 
         refresh: () => {
-          const { url } = get();
-          // Trigger re-render by appending a cache-busting timestamp
-          // This forces iframe reload without using setTimeout (avoids memory leaks)
-          const separator = url.includes('?') ? '&' : '?';
-          const refreshUrl = `${url.split('&_refresh=')[0].split('?_refresh=')[0]}${separator}_refresh=${Date.now()}`;
-          set({ url: refreshUrl }, undefined, 'navigation/refresh');
+          const { refreshKey } = get();
+          // Increment refresh key to force iframe remount without modifying URL
+          set({ refreshKey: refreshKey + 1 }, undefined, 'navigation/refresh');
         },
 
         reset: () => {
@@ -99,6 +98,7 @@ export const useNavigationStore = create<NavigationState>()(
             url: serverBaseUrl,
             history: [serverBaseUrl],
             serverBaseUrl,
+            refreshKey: 0,
           }, undefined, 'navigation/reset');
         },
       }),
