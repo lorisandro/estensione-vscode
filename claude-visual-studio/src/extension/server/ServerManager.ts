@@ -1,0 +1,381 @@
+import express from 'express';
+import * as http from 'http';
+import * as path from 'path';
+import * as fs from 'fs';
+import { promisify } from 'util';
+
+const readFile = promisify(fs.readFile);
+const stat = promisify(fs.stat);
+
+interface ServerConfig {
+  port: number;
+  rootPath: string;
+  hmrScriptPort?: number;
+}
+
+export class ServerManager {
+  private app: express.Express | null = null;
+  private server: http.Server | null = null;
+  private config: ServerConfig | null = null;
+
+  private readonly MIME_TYPES: Record<string, string> = {
+    '.html': 'text/html',
+    '.htm': 'text/html',
+    '.js': 'application/javascript',
+    '.mjs': 'application/javascript',
+    '.jsx': 'application/javascript',
+    '.ts': 'application/javascript', // Served as JS for preview
+    '.tsx': 'application/javascript',
+    '.css': 'text/css',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.eot': 'application/vnd.ms-fontobject',
+    '.webp': 'image/webp',
+    '.webm': 'video/webm',
+    '.mp4': 'video/mp4',
+    '.txt': 'text/plain',
+    '.xml': 'application/xml',
+  };
+
+  /**
+   * Start the development server
+   * @param port Port number to listen on
+   * @param rootPath Root directory to serve files from
+   * @param hmrScriptPort Optional WebSocket port for HMR client script
+   */
+  async start(port: number, rootPath: string, hmrScriptPort?: number): Promise<void> {
+    if (this.server) {
+      throw new Error('Server is already running. Call stop() first.');
+    }
+
+    this.config = { port, rootPath, hmrScriptPort };
+    this.app = express();
+
+    // Configure Express middleware
+    this.setupMiddleware();
+
+    // Setup routes
+    this.setupRoutes();
+
+    // Start listening
+    return new Promise((resolve, reject) => {
+      try {
+        this.server = this.app!.listen(port, () => {
+          console.log(`[ServerManager] Server started on port ${port}, serving ${rootPath}`);
+          resolve();
+        });
+
+        this.server.on('error', (error: NodeJS.ErrnoException) => {
+          if (error.code === 'EADDRINUSE') {
+            reject(new Error(`Port ${port} is already in use`));
+          } else {
+            reject(error);
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Stop the development server
+   */
+  async stop(): Promise<void> {
+    if (!this.server) {
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      this.server!.close((error) => {
+        if (error) {
+          reject(error);
+        } else {
+          console.log('[ServerManager] Server stopped');
+          this.server = null;
+          this.app = null;
+          this.config = null;
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Check if server is currently running
+   */
+  isRunning(): boolean {
+    return this.server !== null;
+  }
+
+  /**
+   * Get current server configuration
+   */
+  getConfig(): ServerConfig | null {
+    return this.config;
+  }
+
+  /**
+   * Setup Express middleware
+   */
+  private setupMiddleware(): void {
+    if (!this.app) return;
+
+    // CORS headers for webview - restricted to localhost for security
+    this.app.use((req, res, next) => {
+      const origin = req.headers.origin;
+      const allowedOrigins = [
+        'vscode-webview://',
+        `http://localhost:${this.config?.port}`,
+        `http://127.0.0.1:${this.config?.port}`,
+      ];
+
+      // Allow VS Code webview origins (they start with vscode-webview://)
+      if (origin && (origin.startsWith('vscode-webview://') || allowedOrigins.includes(origin))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      } else {
+        // Fallback for localhost development
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3333');
+      }
+
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      // Handle preflight requests
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+        return;
+      }
+
+      next();
+    });
+
+    // Request logging
+    this.app.use((req, res, next) => {
+      console.log(`[ServerManager] ${req.method} ${req.path}`);
+      next();
+    });
+
+    // Error handling
+    this.app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      console.error('[ServerManager] Error:', err);
+      res.status(500).send('Internal Server Error');
+    });
+  }
+
+  /**
+   * Setup server routes
+   */
+  private setupRoutes(): void {
+    if (!this.app || !this.config) return;
+
+    // Special route for element inspector script
+    this.app.get('/__claude-vs__/element-inspector.js', async (req, res) => {
+      try {
+        const inspectorPath = path.join(__dirname, '../../../injected-scripts/element-inspector.js');
+
+        // Check if compiled JS exists, otherwise serve TS (will be transpiled by browser)
+        let scriptPath = inspectorPath;
+        try {
+          await stat(inspectorPath);
+        } catch {
+          // Try TypeScript version
+          scriptPath = path.join(__dirname, '../../../injected-scripts/element-inspector.ts');
+        }
+
+        const content = await readFile(scriptPath, 'utf-8');
+        res.setHeader('Content-Type', 'application/javascript');
+        res.send(content);
+      } catch (error) {
+        console.error('[ServerManager] Error serving element inspector:', error);
+        res.status(500).send('// Error loading element inspector');
+      }
+    });
+
+    // Serve all files with proper MIME types and HTML injection
+    this.app.get('*', async (req, res) => {
+      try {
+        const filePath = await this.resolveFilePath(req.path);
+
+        if (!filePath) {
+          res.status(404).send('File not found');
+          return;
+        }
+
+        // Check if file exists and is accessible
+        try {
+          const stats = await stat(filePath);
+
+          if (!stats.isFile()) {
+            res.status(404).send('Not a file');
+            return;
+          }
+        } catch (error) {
+          res.status(404).send('File not found');
+          return;
+        }
+
+        // Determine MIME type
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeType = this.MIME_TYPES[ext] || 'application/octet-stream';
+        res.setHeader('Content-Type', mimeType);
+
+        // Read file
+        const content = await readFile(filePath);
+
+        // Inject element inspector script into HTML files
+        if (ext === '.html' || ext === '.htm') {
+          const injectedContent = this.injectInspectorScript(content.toString('utf-8'));
+          res.send(injectedContent);
+        } else {
+          res.send(content);
+        }
+      } catch (error) {
+        console.error('[ServerManager] Error serving file:', error);
+        res.status(500).send('Error reading file');
+      }
+    });
+  }
+
+  /**
+   * Resolve file path from URL path
+   */
+  private async resolveFilePath(urlPath: string): Promise<string | null> {
+    if (!this.config) return null;
+
+    // Remove leading slash and decode URI
+    const relativePath = decodeURIComponent(urlPath.replace(/^\/+/, ''));
+
+    // Construct full path
+    let filePath = path.join(this.config.rootPath, relativePath);
+
+    // Security check: ensure path is within rootPath
+    const normalizedPath = path.normalize(filePath);
+    const normalizedRoot = path.normalize(this.config.rootPath);
+
+    if (!normalizedPath.startsWith(normalizedRoot)) {
+      console.warn('[ServerManager] Attempted path traversal:', urlPath);
+      return null;
+    }
+
+    // Check if path exists
+    try {
+      const stats = await stat(filePath);
+
+      // If directory, look for index.html
+      if (stats.isDirectory()) {
+        const indexPath = path.join(filePath, 'index.html');
+        try {
+          await stat(indexPath);
+          return indexPath;
+        } catch {
+          // No index.html found
+          return null;
+        }
+      }
+
+      return filePath;
+    } catch {
+      // File doesn't exist, return null
+      return null;
+    }
+  }
+
+  /**
+   * Inject element inspector script into HTML content
+   */
+  private injectInspectorScript(htmlContent: string): string {
+    if (!this.config) return htmlContent;
+
+    const hmrPort = this.config.hmrScriptPort || this.config.port + 1;
+
+    // Create the script injection
+    const inspectorScript = `
+    <!-- Claude Visual Studio: Element Inspector & HMR -->
+    <script>
+      // HMR Configuration
+      window.__CLAUDE_VS_HMR_PORT__ = ${hmrPort};
+
+      // Load element inspector
+      (function() {
+        const script = document.createElement('script');
+        script.src = 'http://localhost:${this.config.port}/__claude-vs__/element-inspector.js';
+        script.async = true;
+        script.onerror = function() {
+          console.warn('[Claude VS] Failed to load element inspector');
+        };
+        document.head.appendChild(script);
+
+        // Load HMR client
+        const hmrScript = document.createElement('script');
+        hmrScript.textContent = \`
+          (function() {
+            let ws;
+            let reconnectAttempts = 0;
+            const maxReconnectAttempts = 10;
+            const reconnectDelay = 1000;
+
+            function connect() {
+              ws = new WebSocket('ws://localhost:${hmrPort}');
+
+              ws.onopen = function() {
+                console.log('[Claude VS HMR] Connected');
+                reconnectAttempts = 0;
+              };
+
+              ws.onmessage = function(event) {
+                try {
+                  const message = JSON.parse(event.data);
+
+                  if (message.type === 'file-changed') {
+                    console.log('[Claude VS HMR] File changed, reloading...');
+                    window.location.reload();
+                  }
+                } catch (error) {
+                  console.error('[Claude VS HMR] Error handling message:', error);
+                }
+              };
+
+              ws.onerror = function(error) {
+                console.error('[Claude VS HMR] WebSocket error:', error);
+              };
+
+              ws.onclose = function() {
+                console.log('[Claude VS HMR] Connection closed');
+
+                if (reconnectAttempts < maxReconnectAttempts) {
+                  reconnectAttempts++;
+                  console.log(\\\`[Claude VS HMR] Reconnecting (attempt \\\${reconnectAttempts}/\\\${maxReconnectAttempts})...\\\`);
+                  setTimeout(connect, reconnectDelay);
+                } else {
+                  console.log('[Claude VS HMR] Max reconnection attempts reached');
+                }
+              };
+            }
+
+            connect();
+          })();
+        \`;
+        document.head.appendChild(hmrScript);
+      })();
+    </script>
+    `;
+
+    // Try to inject before </head>, fallback to before </body>, or append to end
+    if (htmlContent.includes('</head>')) {
+      return htmlContent.replace('</head>', `${inspectorScript}</head>`);
+    } else if (htmlContent.includes('</body>')) {
+      return htmlContent.replace('</body>', `${inspectorScript}</body>`);
+    } else {
+      return htmlContent + inspectorScript;
+    }
+  }
+}
