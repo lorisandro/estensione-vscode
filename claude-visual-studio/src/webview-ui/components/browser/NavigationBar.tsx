@@ -99,16 +99,41 @@ export const NavigationBar: React.FC = () => {
     setUrlInput(url);
   }, [url]);
 
+  const normalizeUrl = useCallback((input: string): string => {
+    const trimmed = input.trim();
+    if (!trimmed) return trimmed;
+
+    // Already has a protocol
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+
+    // localhost without protocol
+    if (/^localhost(:\d+)?/i.test(trimmed)) {
+      return `http://${trimmed}`;
+    }
+
+    // Looks like a URL (has dot and no spaces)
+    if (trimmed.includes('.') && !trimmed.includes(' ')) {
+      return `https://${trimmed}`;
+    }
+
+    // Return as-is (might be a search or relative path)
+    return trimmed;
+  }, []);
+
   const handleUrlSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (urlInput.trim()) {
-      navigateTo(urlInput);
+    const normalizedUrl = normalizeUrl(urlInput);
+    if (normalizedUrl) {
+      navigateTo(normalizedUrl);
+      setUrlInput(normalizedUrl);
       postMessage({
         type: 'navigate',
-        payload: { url: urlInput },
+        payload: { url: normalizedUrl },
       });
     }
-  }, [urlInput, navigateTo, postMessage]);
+  }, [urlInput, navigateTo, normalizeUrl, postMessage]);
 
   const handleRefresh = useCallback(() => {
     refresh();
