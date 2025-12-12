@@ -85,15 +85,10 @@ export const useNavigationStore = create<NavigationState>()(
 
         refresh: () => {
           const { url } = get();
-          try {
-            // Properly handle URL with existing query parameters
-            const urlObj = new URL(url);
-            urlObj.searchParams.set('_t', Date.now().toString());
-            set({ url: urlObj.toString() });
-          } catch {
-            // Fallback for invalid URLs
-            set({ url: `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}` });
-          }
+          // Trigger re-render by setting url to empty then back
+          // This forces iframe reload without modifying the URL
+          set({ url: '' });
+          setTimeout(() => set({ url }), 0);
         },
 
         reset: () => {
