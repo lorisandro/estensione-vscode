@@ -41,6 +41,7 @@ class ElementInspector {
   private lastHoveredElement: HTMLElement | null = null;
   private overlay: HTMLDivElement | null = null;
   private selectedElement: HTMLElement | null = null;
+  private outlineStyleElement: HTMLStyleElement | null = null;
   private readonly IMPORTANT_STYLES = [
     'display',
     'position',
@@ -116,6 +117,42 @@ class ElementInspector {
       transition: all 0.1s ease;
     `;
     document.body.appendChild(this.overlay);
+  }
+
+  /**
+   * Create style element for showing all element boundaries
+   */
+  private createOutlineStyle(): void {
+    this.outlineStyleElement = document.createElement('style');
+    this.outlineStyleElement.id = '__claude-vs-inspector-outline-style__';
+    this.outlineStyleElement.textContent = `
+      .__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__) {
+        outline: 1px dashed rgba(66, 133, 244, 0.5) !important;
+        outline-offset: -1px !important;
+      }
+      .__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__):hover {
+        outline: 2px solid rgba(66, 133, 244, 0.8) !important;
+        outline-offset: -1px !important;
+      }
+    `;
+    document.head.appendChild(this.outlineStyleElement);
+  }
+
+  /**
+   * Show boundaries on all elements
+   */
+  private showAllElementBoundaries(): void {
+    if (!this.outlineStyleElement) {
+      this.createOutlineStyle();
+    }
+    document.body.classList.add('__claude-vs-show-outlines__');
+  }
+
+  /**
+   * Hide boundaries from all elements
+   */
+  private hideAllElementBoundaries(): void {
+    document.body.classList.remove('__claude-vs-show-outlines__');
   }
 
   /**
@@ -267,10 +304,16 @@ class ElementInspector {
   setSelectionMode(enabled: boolean): void {
     this.isSelectionMode = enabled;
 
-    if (!enabled) {
+    if (enabled) {
+      // Show boundaries on all elements when selection mode is enabled
+      this.showAllElementBoundaries();
+    } else {
       this.hideOverlay();
       this.lastHoveredElement = null;
       this.selectedElement = null;
+
+      // Hide boundaries from all elements
+      this.hideAllElementBoundaries();
 
       // Reset overlay style
       if (this.overlay) {
@@ -458,6 +501,11 @@ class ElementInspector {
       this.overlay.parentElement.removeChild(this.overlay);
     }
 
+    if (this.outlineStyleElement && this.outlineStyleElement.parentElement) {
+      this.outlineStyleElement.parentElement.removeChild(this.outlineStyleElement);
+    }
+
+    this.hideAllElementBoundaries();
     document.body.style.cursor = '';
   }
 }

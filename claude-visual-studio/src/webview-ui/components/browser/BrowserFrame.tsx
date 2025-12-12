@@ -167,6 +167,25 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
       // Check if script already exists
       if (doc.getElementById('selection-script')) return;
 
+      // Add outline style for showing all element boundaries
+      if (!doc.getElementById('selection-outline-style')) {
+        const style = doc.createElement('style');
+        style.id = 'selection-outline-style';
+        style.textContent =
+          'body.__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__) {' +
+          '  outline: 1px dashed rgba(66, 133, 244, 0.5) !important;' +
+          '  outline-offset: -1px !important;' +
+          '}' +
+          'body.__claude-vs-show-outlines__ *:not(#__claude-vs-inspector-overlay__):hover {' +
+          '  outline: 2px solid rgba(66, 133, 244, 0.8) !important;' +
+          '  outline-offset: -1px !important;' +
+          '}';
+        doc.head.appendChild(style);
+      }
+
+      // Enable outline mode
+      doc.body.classList.add('__claude-vs-show-outlines__');
+
       const script = doc.createElement('script');
       script.id = 'selection-script';
       script.textContent = `
@@ -319,8 +338,21 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
   // Reinject script when selection mode changes
   useEffect(() => {
-    if (selectionMode && iframeRef.current?.contentWindow) {
-      injectSelectionScript();
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+      if (selectionMode) {
+        injectSelectionScript();
+      } else {
+        // Remove outline mode when selection mode is disabled
+        doc.body.classList.remove('__claude-vs-show-outlines__');
+      }
+    } catch (err) {
+      // Cross-origin error - iframe content not accessible
+      console.error('Failed to update selection mode:', err);
     }
   }, [selectionMode, url, injectSelectionScript]);
 
