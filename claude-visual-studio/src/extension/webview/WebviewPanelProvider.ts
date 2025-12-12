@@ -103,10 +103,10 @@ export class WebviewPanelProvider {
     // Set up message handling
     this.setupMessageHandling();
 
-    // Handle panel disposal
+    // Handle panel disposal (when user closes the panel)
     this.panel.onDidDispose(
       () => {
-        this.dispose();
+        this.panel = undefined;
       },
       null,
       this.disposables
