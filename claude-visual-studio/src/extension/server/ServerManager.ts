@@ -246,6 +246,9 @@ export class ServerManager {
                 // Rewrite relative URLs in href and src attributes
                 html = this.rewriteHtmlUrls(html, baseUrl, this.config!.port);
 
+                // Inject element inspector script for selection mode
+                html = this.injectInspectorScript(html);
+
                 // Inject MCP bridge script for parent-iframe communication
                 html = this.injectMCPBridgeScript(html);
 
