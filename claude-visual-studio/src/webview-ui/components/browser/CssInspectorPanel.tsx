@@ -1265,13 +1265,25 @@ export const CssInspectorPanel: React.FC = () => {
           <div style={styles.gridRow}>
             <NumberInput
               label="X"
-              value={element.rect?.x || 0}
-              onChange={(v) => applyCssChange('left', `${v}px`)}
+              value={parseNumericValue(getStyle('left')).num || Math.round(element.rect?.x || 0)}
+              onChange={(v) => {
+                // Auto-switch to relative if position is static
+                if (position === 'static') {
+                  applyCssChange('position', 'relative');
+                }
+                applyCssChange('left', `${Math.round(v)}px`);
+              }}
             />
             <NumberInput
               label="Y"
-              value={element.rect?.y || 0}
-              onChange={(v) => applyCssChange('top', `${v}px`)}
+              value={parseNumericValue(getStyle('top')).num || Math.round(element.rect?.y || 0)}
+              onChange={(v) => {
+                // Auto-switch to relative if position is static
+                if (position === 'static') {
+                  applyCssChange('position', 'relative');
+                }
+                applyCssChange('top', `${Math.round(v)}px`);
+              }}
             />
           </div>
           <div style={styles.row}>
