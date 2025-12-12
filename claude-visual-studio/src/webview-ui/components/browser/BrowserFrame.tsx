@@ -81,14 +81,14 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
 
-      const { type, payload, source } = event.data;
+      const { type, data, payload, source } = event.data;
 
-      // Handle messages from element-inspector.ts
+      // Handle messages from element-inspector.ts (uses 'data' property)
       if (source === 'claude-vs-inspector') {
         if (type === 'element-hover') {
-          onElementHover?.(payload);
+          onElementHover?.(data);
         } else if (type === 'element-select') {
-          onElementClick?.(payload);
+          onElementClick?.(data);
         } else if (type === 'inspector-ready') {
           console.log('[BrowserFrame] Inspector ready in iframe');
           // Send current selection mode when inspector is ready
@@ -100,7 +100,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
         return;
       }
 
-      // Handle legacy messages
+      // Handle legacy messages (uses 'payload' property)
       if (type === 'element-hover') {
         onElementHover?.(payload);
       } else if (type === 'element-click') {
