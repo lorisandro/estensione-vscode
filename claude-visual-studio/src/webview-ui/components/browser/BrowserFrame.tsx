@@ -5,6 +5,7 @@ import { useVSCodeApi } from '../../hooks/useVSCodeApi';
 interface BrowserFrameProps {
   onElementHover?: (element: ElementInfo | null) => void;
   onElementClick?: (element: ElementInfo | null) => void;
+  iframeRef?: React.RefObject<HTMLIFrameElement>;
 }
 
 /**
@@ -35,8 +36,10 @@ function getProxiedUrl(url: string, serverBaseUrl: string): string {
 export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   onElementHover,
   onElementClick,
+  iframeRef: externalRef,
 }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const internalRef = useRef<HTMLIFrameElement>(null);
+  const iframeRef = externalRef || internalRef;
   const { url, serverBaseUrl } = useNavigationStore();
   const { selectionMode } = useSelectionStore();
   const { setLoading, setError } = useEditorStore();

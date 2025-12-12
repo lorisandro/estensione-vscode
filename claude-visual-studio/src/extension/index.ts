@@ -12,12 +12,14 @@ import * as vscode from 'vscode';
 import { WebviewPanelProvider } from './webview/WebviewPanelProvider';
 import { SidebarViewProvider } from './webview/SidebarViewProvider';
 import { OpenPreviewCommand } from './commands/OpenPreviewCommand';
+import { MCPBridge } from './mcp/MCPBridge';
 
 // Extension-wide state
 let webviewProvider: WebviewPanelProvider | undefined;
 let sidebarProvider: SidebarViewProvider | undefined;
 let openPreviewCommand: OpenPreviewCommand | undefined;
 let fileWatcher: vscode.FileSystemWatcher | undefined;
+let mcpBridge: MCPBridge | undefined;
 
 /**
  * Extension activation function
@@ -98,7 +100,143 @@ async function initializeServices(context: vscode.ExtensionContext): Promise<voi
   // Initialize commands
   openPreviewCommand = new OpenPreviewCommand(webviewProvider);
 
+  // Initialize MCP Bridge for Claude Code integration
+  await initializeMCPBridge();
+
   console.log('Services initialized');
+}
+
+/**
+ * Initialize MCP Bridge for browser control
+ */
+async function initializeMCPBridge(): Promise<void> {
+  const config = vscode.workspace.getConfiguration('claudeVisualStudio');
+  const serverPort = config.get<number>('serverPort', 3333);
+  const mcpPort = serverPort + 1; // MCP bridge port = server port + 1
+
+  mcpBridge = new MCPBridge(mcpPort);
+
+  // Register command handlers
+  mcpBridge.registerHandler('navigate', async (params) => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    await webviewProvider.postMessage({
+      type: 'navigate',
+      payload: { url: params.url },
+    });
+    return { success: true };
+  });
+
+  mcpBridge.registerHandler('getUrl', async () => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
+      webviewProvider!.requestFromWebview('getUrl', {}, (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      });
+    });
+  });
+
+  mcpBridge.registerHandler('getHtml', async (params) => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
+      webviewProvider!.requestFromWebview('getHtml', params, (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      });
+    });
+  });
+
+  mcpBridge.registerHandler('getText', async (params) => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
+      webviewProvider!.requestFromWebview('getText', params, (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      });
+    });
+  });
+
+  mcpBridge.registerHandler('screenshot', async () => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
+      webviewProvider!.requestFromWebview('screenshot', {}, (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      });
+    });
+  });
+
+  mcpBridge.registerHandler('click', async (params) => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
+      webviewProvider!.requestFromWebview('click', params, (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      });
+    });
+  });
+
+  mcpBridge.registerHandler('type', async (params) => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
+      webviewProvider!.requestFromWebview('type', params, (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      });
+    });
+  });
+
+  mcpBridge.registerHandler('refresh', async () => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    await webviewProvider.postMessage({
+      type: 'refreshPreview',
+      payload: { preserveScroll: false },
+    });
+    return { success: true };
+  });
+
+  mcpBridge.registerHandler('back', async () => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    await webviewProvider.postMessage({
+      type: 'navigate',
+      payload: { action: 'back' },
+    });
+    return { success: true };
+  });
+
+  mcpBridge.registerHandler('forward', async () => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    await webviewProvider.postMessage({
+      type: 'navigate',
+      payload: { action: 'forward' },
+    });
+    return { success: true };
+  });
+
+  mcpBridge.registerHandler('getElements', async (params) => {
+    if (!webviewProvider) throw new Error('Webview not initialized');
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
+      webviewProvider!.requestFromWebview('getElements', params, (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      });
+    });
+  });
+
+  // Start the bridge
+  try {
+    await mcpBridge.start();
+    console.log(`[MCP] Bridge started on port ${mcpPort}`);
+  } catch (error) {
+    console.error('[MCP] Failed to start bridge:', error);
+  }
 }
 
 /**
@@ -315,6 +453,12 @@ async function handleRefreshPreview(): Promise<void> {
  * Clean up extension resources
  */
 function cleanupResources(): void {
+  // Stop MCP bridge
+  if (mcpBridge) {
+    mcpBridge.stop();
+    mcpBridge = undefined;
+  }
+
   // Dispose webview provider
   if (webviewProvider) {
     webviewProvider.dispose();

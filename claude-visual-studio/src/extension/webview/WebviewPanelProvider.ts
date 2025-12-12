@@ -25,6 +25,8 @@ export class WebviewPanelProvider {
   private disposables: vscode.Disposable[] = [];
   private state: WebviewState = {};
   private readonly context: vscode.ExtensionContext;
+  private pendingRequests: Map<string, (result: any) => void> = new Map();
+  private requestId = 0;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -40,13 +42,19 @@ export class WebviewPanelProvider {
       return this.panel;
     }
 
-    // Create new webview panel
+    // Create new webview panel with browser icon
     this.panel = vscode.window.createWebviewPanel(
       'claudeVisualStudio',
       'Browser',
       column || vscode.ViewColumn.Beside,
       this.getWebviewOptions()
     );
+
+    // Set the browser icon for the tab
+    this.panel.iconPath = {
+      light: vscode.Uri.file(path.join(this.context.extensionPath, 'resources', 'browser-light.svg')),
+      dark: vscode.Uri.file(path.join(this.context.extensionPath, 'resources', 'browser-dark.svg')),
+    };
 
     // Initialize the panel
     this.initializePanel();
@@ -158,6 +166,33 @@ export class WebviewPanelProvider {
    */
   public isVisible(): boolean {
     return this.panel?.visible ?? false;
+  }
+
+  /**
+   * Send a request to the webview and wait for response
+   * Used by MCP bridge to execute commands in the browser
+   */
+  public requestFromWebview(
+    command: string,
+    params: Record<string, any>,
+    callback: (result: any) => void
+  ): void {
+    if (!this.panel) {
+      callback({ error: 'Webview not available' });
+      return;
+    }
+
+    const id = `mcp_${++this.requestId}`;
+    this.pendingRequests.set(id, callback);
+
+    this.panel.webview.postMessage({
+      type: 'mcpRequest',
+      payload: {
+        id,
+        command,
+        params,
+      },
+    });
   }
 
   /**
@@ -306,8 +341,24 @@ export class WebviewPanelProvider {
         this.handleStateUpdate(message);
         break;
 
+      case 'mcpResponse':
+        this.handleMCPResponse(message as any);
+        break;
+
       default:
         console.warn('Unknown message type:', (message as any).type);
+    }
+  }
+
+  /**
+   * Handle MCP response from webview
+   */
+  private handleMCPResponse(message: { type: 'mcpResponse'; payload: { id: string; result: any } }): void {
+    const { id, result } = message.payload;
+    const callback = this.pendingRequests.get(id);
+    if (callback) {
+      this.pendingRequests.delete(id);
+      callback(result);
     }
   }
 

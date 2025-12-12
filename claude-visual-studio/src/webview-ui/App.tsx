@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { NavigationBar } from './components/browser/NavigationBar';
 import { BrowserFrame } from './components/browser/BrowserFrame';
 import { SelectionOverlay } from './components/browser/SelectionOverlay';
 import { ElementInspector } from './components/ElementInspector';
 import { useSelectionStore, useEditorStore, useNavigationStore, type ElementInfo } from './state/stores';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
+import { useMCPCommands } from './hooks/useMCPCommands';
 
 const styles = {
   container: {
@@ -89,11 +90,15 @@ const styles = {
 export const App: React.FC = () => {
   const { setSelectedElement, setHoveredElement, selectedElement } = useSelectionStore();
   const { isLoading, error, inspectorWidth, setInspectorWidth } = useEditorStore();
-  const { setUrl } = useNavigationStore();
+  const { setUrl, navigateTo, goBack, goForward, refresh, url } = useNavigationStore();
   const { onMessage, postMessage } = useVSCodeApi();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const [isResizing, setIsResizing] = React.useState(false);
   const [resizerHover, setResizerHover] = React.useState(false);
+
+  // Initialize MCP commands handler
+  useMCPCommands(iframeRef, { navigateTo, goBack, goForward, refresh, url });
 
   // Handle element hover
   const handleElementHover = useCallback(
@@ -185,6 +190,7 @@ export const App: React.FC = () => {
             <BrowserFrame
               onElementHover={handleElementHover}
               onElementClick={handleElementClick}
+              iframeRef={iframeRef}
             />
 
             {/* Selection Overlay */}
