@@ -65,8 +65,8 @@
     "keybindings": [
       {
         "command": "claudeVisualStudio.openPreview",
-        "key": "ctrl+shift+v",
-        "mac": "cmd+shift+v"
+        "key": "ctrl+alt+b",
+        "mac": "cmd+alt+b"
       },
       {
         "command": "claudeVisualStudio.toggleSelection",
