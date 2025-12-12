@@ -1,5 +1,6 @@
-import { useEffect, RefObject } from 'react';
+import { useEffect, RefObject, useRef } from 'react';
 import { useVSCodeApi } from './useVSCodeApi';
+import { useNavigationStore } from '../state/stores';
 
 interface NavigationActions {
   navigateTo: (url: string) => void;
@@ -25,6 +26,16 @@ export function useMCPCommands(
 ) {
   const { onMessage, postMessage } = useVSCodeApi();
 
+  // Use refs to always have access to latest values in callbacks
+  const navigationRef = useRef(navigation);
+  const iframeRefCurrent = useRef(iframeRef);
+
+  // Keep refs updated
+  useEffect(() => {
+    navigationRef.current = navigation;
+    iframeRefCurrent.current = iframeRef;
+  }, [navigation, iframeRef]);
+
   useEffect(() => {
     const cleanup = onMessage((message) => {
       if (message.type === 'mcpRequest') {
@@ -33,19 +44,19 @@ export function useMCPCommands(
       } else if (message.type === 'navigate') {
         const payload = message.payload as { url?: string; action?: string };
         if (payload.url) {
-          navigation.navigateTo(payload.url);
+          navigationRef.current.navigateTo(payload.url);
         } else if (payload.action === 'back') {
-          navigation.goBack();
+          navigationRef.current.goBack();
         } else if (payload.action === 'forward') {
-          navigation.goForward();
+          navigationRef.current.goForward();
         }
       } else if (message.type === 'refreshPreview') {
-        navigation.refresh();
+        navigationRef.current.refresh();
       }
     });
 
     return cleanup;
-  }, [onMessage, navigation, iframeRef]);
+  }, [onMessage]);
 
   async function handleMCPCommand(request: MCPRequest) {
     const { id, command, params } = request;
@@ -54,7 +65,8 @@ export function useMCPCommands(
     try {
       switch (command) {
         case 'getUrl':
-          result = { url: navigation.url };
+          // Get current URL directly from Zustand store to avoid stale closure
+          result = { url: useNavigationStore.getState().url };
           break;
 
         case 'getHtml':

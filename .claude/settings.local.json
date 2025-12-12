@@ -45,7 +45,8 @@
       "Bash(powershell:*)",
       "mcp__claude-browser__browser_get_url",
       "mcp__claude-browser__browser_screenshot",
-      "mcp__claude-browser__browser_navigate"
+      "mcp__claude-browser__browser_navigate",
+      "mcp__claude-browser__browser_get_text"
     ]
   }
 }

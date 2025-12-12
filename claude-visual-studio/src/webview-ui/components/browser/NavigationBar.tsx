@@ -151,6 +151,12 @@ export const NavigationBar: React.FC = () => {
     });
   }, [selectionMode, setSelectionMode, postMessage]);
 
+  const handleScreenshot = useCallback(() => {
+    postMessage({
+      type: 'screenshot',
+    });
+  }, [postMessage]);
+
   const getButtonStyle = useCallback((buttonName: string, isActive = false, isDisabled = false) => {
     const baseStyle = { ...styles.button };
     if (isDisabled) {
@@ -227,6 +233,18 @@ export const NavigationBar: React.FC = () => {
       >
         <svg style={styles.icon} viewBox="0 0 16 16">
           <path d="M1 1l5 14 2-6 6-2L1 1zm3.5 4.5l5 1.8-2.8 1-1 2.8-1.2-5.6z" />
+        </svg>
+      </button>
+
+      <button
+        onClick={handleScreenshot}
+        style={getButtonStyle('screenshot')}
+        onMouseEnter={() => setHoveredButton('screenshot')}
+        onMouseLeave={() => setHoveredButton(null)}
+        title="Take Screenshot"
+      >
+        <svg style={styles.icon} viewBox="0 0 16 16">
+          <path d="M4 4H2v10h12V4h-2l-1-2H5L4 4zm4 8.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7zm0-1.5a2 2 0 100-4 2 2 0 000 4z" />
         </svg>
       </button>
     </div>
