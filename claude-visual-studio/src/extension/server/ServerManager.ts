@@ -1,8 +1,10 @@
 import express from 'express';
 import * as http from 'http';
+import * as https from 'https';
 import * as path from 'path';
 import * as fs from 'fs';
 import { promisify } from 'util';
+import { URL } from 'url';
 
 const readFile = promisify(fs.readFile);
 const stat = promisify(fs.stat);
@@ -170,6 +172,98 @@ export class ServerManager {
    */
   private setupRoutes(): void {
     if (!this.app || !this.config) return;
+
+    // Proxy route for external URLs (to bypass X-Frame-Options)
+    this.app.get('/__claude-vs__/proxy', async (req, res) => {
+      const targetUrl = req.query.url as string;
+
+      if (!targetUrl) {
+        res.status(400).send('Missing url parameter');
+        return;
+      }
+
+      try {
+        const parsedUrl = new URL(targetUrl);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const httpModule = isHttps ? https : http;
+
+        const proxyReq = httpModule.request(
+          {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (isHttps ? 443 : 80),
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'GET',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Accept-Encoding': 'identity', // Don't request compression for simplicity
+              'Host': parsedUrl.host,
+            },
+          },
+          (proxyRes) => {
+            // Handle redirects
+            if (proxyRes.statusCode && proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+              const redirectUrl = new URL(proxyRes.headers.location, targetUrl).href;
+              res.redirect(`/__claude-vs__/proxy?url=${encodeURIComponent(redirectUrl)}`);
+              return;
+            }
+
+            // Copy headers but remove frame-blocking ones
+            const headers = { ...proxyRes.headers };
+            delete headers['x-frame-options'];
+            delete headers['content-security-policy'];
+            delete headers['content-security-policy-report-only'];
+
+            // Set permissive CSP for iframe embedding
+            headers['content-security-policy'] = "frame-ancestors *";
+
+            // Set CORS headers
+            headers['access-control-allow-origin'] = '*';
+
+            res.status(proxyRes.statusCode || 200);
+
+            // Set headers
+            Object.entries(headers).forEach(([key, value]) => {
+              if (value && key !== 'transfer-encoding' && key !== 'content-encoding') {
+                res.setHeader(key, value as string);
+              }
+            });
+
+            // Collect response body
+            const chunks: Buffer[] = [];
+            proxyRes.on('data', (chunk) => chunks.push(chunk));
+            proxyRes.on('end', () => {
+              let body = Buffer.concat(chunks);
+
+              // For HTML content, rewrite relative URLs to use proxy
+              const contentType = proxyRes.headers['content-type'] || '';
+              if (contentType.includes('text/html')) {
+                const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                let html = body.toString('utf-8');
+
+                // Rewrite relative URLs in href and src attributes
+                html = this.rewriteHtmlUrls(html, baseUrl, this.config!.port);
+
+                res.send(html);
+              } else {
+                res.send(body);
+              }
+            });
+          }
+        );
+
+        proxyReq.on('error', (error) => {
+          console.error('[ServerManager] Proxy error:', error);
+          res.status(502).send(`Proxy error: ${error.message}`);
+        });
+
+        proxyReq.end();
+      } catch (error) {
+        console.error('[ServerManager] Proxy error:', error);
+        res.status(500).send(`Proxy error: ${(error as Error).message}`);
+      }
+    });
 
     // Special route for element inspector script
     this.app.get('/__claude-vs__/element-inspector.js', async (req, res) => {
@@ -377,5 +471,51 @@ export class ServerManager {
     } else {
       return htmlContent + inspectorScript;
     }
+  }
+
+  /**
+   * Rewrite HTML URLs to use the proxy for external resources
+   */
+  private rewriteHtmlUrls(html: string, baseUrl: string, proxyPort: number): string {
+    const proxyBase = `http://localhost:${proxyPort}/__claude-vs__/proxy?url=`;
+
+    // Rewrite absolute URLs in href and src attributes
+    html = html.replace(
+      /(href|src|action)=["'](https?:\/\/[^"']+)["']/gi,
+      (match, attr, url) => {
+        const proxiedUrl = `${proxyBase}${encodeURIComponent(url)}`;
+        return `${attr}="${proxiedUrl}"`;
+      }
+    );
+
+    // Rewrite relative URLs (starting with /)
+    html = html.replace(
+      /(href|src|action)=["'](\/[^"']+)["']/gi,
+      (match, attr, url) => {
+        const absoluteUrl = baseUrl + url;
+        const proxiedUrl = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
+        return `${attr}="${proxiedUrl}"`;
+      }
+    );
+
+    // Rewrite protocol-relative URLs (starting with //)
+    html = html.replace(
+      /(href|src|action)=["'](\/\/[^"']+)["']/gi,
+      (match, attr, url) => {
+        const absoluteUrl = 'https:' + url;
+        const proxiedUrl = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
+        return `${attr}="${proxiedUrl}"`;
+      }
+    );
+
+    // Add base tag for relative URLs that don't start with /
+    if (!html.includes('<base')) {
+      html = html.replace(
+        /<head[^>]*>/i,
+        `$&<base href="${proxyBase}${encodeURIComponent(baseUrl + '/')}">`
+      );
+    }
+
+    return html;
   }
 }

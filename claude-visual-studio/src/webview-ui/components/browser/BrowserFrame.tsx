@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigationStore, useSelectionStore, useEditorStore, type ElementInfo } from '../../state/stores';
 import { useVSCodeApi } from '../../hooks/useVSCodeApi';
 
@@ -7,15 +7,45 @@ interface BrowserFrameProps {
   onElementClick?: (element: ElementInfo | null) => void;
 }
 
+/**
+ * Check if URL is external (not localhost)
+ */
+function isExternalUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    return hostname !== 'localhost' && hostname !== '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Convert external URL to proxy URL
+ */
+function getProxiedUrl(url: string, serverBaseUrl: string): string {
+  if (!isExternalUrl(url)) {
+    return url;
+  }
+  // Route external URLs through the proxy
+  const proxyUrl = `${serverBaseUrl}/__claude-vs__/proxy?url=${encodeURIComponent(url)}`;
+  return proxyUrl;
+}
+
 export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   onElementHover,
   onElementClick,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { url } = useNavigationStore();
+  const { url, serverBaseUrl } = useNavigationStore();
   const { selectionMode } = useSelectionStore();
   const { setLoading, setError } = useEditorStore();
   const { postMessage } = useVSCodeApi();
+
+  // Convert external URLs to proxy URLs
+  const iframeSrc = useMemo(() => {
+    return getProxiedUrl(url, serverBaseUrl);
+  }, [url, serverBaseUrl]);
 
   // Handle iframe load
   const handleLoad = useCallback(() => {
@@ -205,13 +235,12 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   return (
     <iframe
       ref={iframeRef}
-      src={url}
+      src={iframeSrc}
       onLoad={handleLoad}
       onError={handleError}
       // Security Note: allow-same-origin is required for element inspector script injection.
-      // This is safe because we only load content from localhost dev server.
-      // In production, consider using postMessage-only communication.
-      sandbox="allow-same-origin allow-scripts allow-forms"
+      // External URLs are routed through proxy to bypass X-Frame-Options.
+      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
       style={{
         width: '100%',
         height: '100%',
