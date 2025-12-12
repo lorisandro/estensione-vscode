@@ -251,30 +251,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'browser_get_html':
         result = await sendCommand('getHtml', { selector: args?.selector });
-        return { content: [{ type: 'text', text: result.html }] };
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: result.html || '' }] };
 
       case 'browser_get_text':
         result = await sendCommand('getText', { selector: args?.selector });
-        return { content: [{ type: 'text', text: result.text }] };
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: result.text || '' }] };
 
       case 'browser_screenshot':
         result = await sendCommand('screenshot');
-        return {
-          content: [
-            {
-              type: 'image',
-              data: result.image,
-              mimeType: 'image/png',
-            },
-          ],
-        };
+        // Screenshots return text description due to cross-origin limitations
+        return { content: [{ type: 'text', text: result.text || 'Screenshot not available' }] };
 
       case 'browser_click':
         result = await sendCommand('click', { selector: args?.selector });
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
         return { content: [{ type: 'text', text: `Clicked element: ${args?.selector}` }] };
 
       case 'browser_type':
         result = await sendCommand('type', { selector: args?.selector, text: args?.text });
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
         return { content: [{ type: 'text', text: `Typed "${args?.text}" into ${args?.selector}` }] };
 
       case 'browser_refresh':
@@ -291,7 +296,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'browser_get_elements':
         result = await sendCommand('getElements', { selector: args?.selector });
-        return { content: [{ type: 'text', text: JSON.stringify(result.elements, null, 2) }] };
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: JSON.stringify(result.elements || [], null, 2) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

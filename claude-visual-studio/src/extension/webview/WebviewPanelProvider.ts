@@ -178,6 +178,7 @@ export class WebviewPanelProvider {
     callback: (result: any) => void
   ): void {
     if (!this.panel) {
+      console.log('[MCP] requestFromWebview: panel not available');
       callback({ error: 'Webview not available' });
       return;
     }
@@ -185,6 +186,7 @@ export class WebviewPanelProvider {
     const id = `mcp_${++this.requestId}`;
     this.pendingRequests.set(id, callback);
 
+    console.log('[MCP] Sending mcpRequest to webview:', command, id);
     this.panel.webview.postMessage({
       type: 'mcpRequest',
       payload: {
@@ -354,11 +356,15 @@ export class WebviewPanelProvider {
    * Handle MCP response from webview
    */
   private handleMCPResponse(message: { type: 'mcpResponse'; payload: { id: string; result: any } }): void {
+    console.log('[MCP] Received mcpResponse:', message.payload.id, message.payload.result);
     const { id, result } = message.payload;
     const callback = this.pendingRequests.get(id);
     if (callback) {
+      console.log('[MCP] Found callback for:', id);
       this.pendingRequests.delete(id);
       callback(result);
+    } else {
+      console.log('[MCP] No callback found for:', id);
     }
   }
 

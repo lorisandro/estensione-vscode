@@ -164,14 +164,30 @@ export const useSelectionStore = create<SelectionState>()(
   )
 );
 
+// Console log entry type
+export interface ConsoleLogEntry {
+  id: string;
+  type: 'log' | 'warn' | 'error' | 'info' | 'debug';
+  message: string;
+  timestamp: number;
+}
+
 // Editor state
 interface EditorState {
   isLoading: boolean;
   error: string | null;
   inspectorWidth: number;
+  consoleVisible: boolean;
+  consoleHeight: number;
+  consoleLogs: ConsoleLogEntry[];
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setInspectorWidth: (width: number) => void;
+  setConsoleVisible: (visible: boolean) => void;
+  toggleConsole: () => void;
+  setConsoleHeight: (height: number) => void;
+  addConsoleLog: (log: Omit<ConsoleLogEntry, 'id' | 'timestamp'>) => void;
+  clearConsoleLogs: () => void;
   clearError: () => void;
 }
 
@@ -179,12 +195,17 @@ const initialEditorState = {
   isLoading: false,
   error: null,
   inspectorWidth: 300,
+  consoleVisible: false,
+  consoleHeight: 150,
+  consoleLogs: [] as ConsoleLogEntry[],
 };
+
+let logIdCounter = 0;
 
 export const useEditorStore = create<EditorState>()(
   devtools(
     persist(
-      (set) => ({
+      (set, get) => ({
         ...initialEditorState,
 
         setLoading: (loading: boolean) => {
@@ -199,6 +220,33 @@ export const useEditorStore = create<EditorState>()(
           set({ inspectorWidth: Math.max(200, Math.min(600, width)) });
         },
 
+        setConsoleVisible: (visible: boolean) => {
+          set({ consoleVisible: visible });
+        },
+
+        toggleConsole: () => {
+          set({ consoleVisible: !get().consoleVisible });
+        },
+
+        setConsoleHeight: (height: number) => {
+          set({ consoleHeight: Math.max(80, Math.min(400, height)) });
+        },
+
+        addConsoleLog: (log: Omit<ConsoleLogEntry, 'id' | 'timestamp'>) => {
+          const newLog: ConsoleLogEntry = {
+            ...log,
+            id: `log-${++logIdCounter}`,
+            timestamp: Date.now(),
+          };
+          set((state) => ({
+            consoleLogs: [...state.consoleLogs.slice(-99), newLog], // Keep last 100 logs
+          }));
+        },
+
+        clearConsoleLogs: () => {
+          set({ consoleLogs: [] });
+        },
+
         clearError: () => {
           set({ error: null });
         },
@@ -208,6 +256,8 @@ export const useEditorStore = create<EditorState>()(
         storage: createJSONStorage(() => sessionStorage),
         partialize: (state) => ({
           inspectorWidth: state.inspectorWidth,
+          consoleVisible: state.consoleVisible,
+          consoleHeight: state.consoleHeight,
         }),
       }
     ),

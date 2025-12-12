@@ -246,6 +246,9 @@ export class ServerManager {
                 // Rewrite relative URLs in href and src attributes
                 html = this.rewriteHtmlUrls(html, baseUrl, this.config!.port);
 
+                // Inject MCP bridge script for parent-iframe communication
+                html = this.injectMCPBridgeScript(html);
+
                 res.send(html);
               } else {
                 res.send(body);
@@ -518,5 +521,110 @@ export class ServerManager {
     }
 
     return html;
+  }
+
+  /**
+   * Inject MCP bridge script for parent-iframe communication
+   * This allows the webview to access content from proxied pages
+   */
+  private injectMCPBridgeScript(html: string): string {
+    const mcpBridgeScript = `
+    <!-- Claude Visual Studio: MCP Bridge -->
+    <script>
+      (function() {
+        // Listen for commands from parent (VS Code webview)
+        window.addEventListener('message', function(event) {
+          // Only handle MCP commands
+          if (!event.data || event.data.type !== '__claude_mcp_command__') return;
+
+          const { id, command, params } = event.data;
+          let result;
+
+          try {
+            switch (command) {
+              case 'getText':
+                if (params.selector) {
+                  const el = document.querySelector(params.selector);
+                  result = { text: el ? el.textContent || '' : '' };
+                } else {
+                  result = { text: document.body.innerText || '' };
+                }
+                break;
+
+              case 'getHtml':
+                if (params.selector) {
+                  const el = document.querySelector(params.selector);
+                  result = { html: el ? el.outerHTML : '' };
+                } else {
+                  result = { html: document.documentElement.outerHTML };
+                }
+                break;
+
+              case 'click':
+                const clickEl = document.querySelector(params.selector);
+                if (clickEl) {
+                  clickEl.click();
+                  result = { success: true };
+                } else {
+                  result = { error: 'Element not found: ' + params.selector };
+                }
+                break;
+
+              case 'type':
+                const inputEl = document.querySelector(params.selector);
+                if (inputEl && (inputEl.tagName === 'INPUT' || inputEl.tagName === 'TEXTAREA')) {
+                  inputEl.value = params.text;
+                  inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                  inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+                  result = { success: true };
+                } else {
+                  result = { error: 'Input element not found: ' + params.selector };
+                }
+                break;
+
+              case 'getElements':
+                const elements = document.querySelectorAll(params.selector);
+                result = {
+                  elements: Array.from(elements).map(function(el, i) {
+                    return {
+                      index: i,
+                      tagName: el.tagName.toLowerCase(),
+                      id: el.id || undefined,
+                      className: el.className || undefined,
+                      textContent: (el.textContent || '').substring(0, 100)
+                    };
+                  })
+                };
+                break;
+
+              default:
+                result = { error: 'Unknown command: ' + command };
+            }
+          } catch (error) {
+            result = { error: error.message || 'Unknown error' };
+          }
+
+          // Send response back to parent
+          window.parent.postMessage({
+            type: '__claude_mcp_response__',
+            id: id,
+            result: result
+          }, '*');
+        });
+
+        // Notify parent that bridge is ready
+        window.parent.postMessage({ type: '__claude_mcp_bridge_ready__' }, '*');
+      })();
+    </script>
+    `;
+
+    // Inject before </body> or </html>, or append to end
+    if (html.includes('</body>')) {
+      return html.replace('</body>', `${mcpBridgeScript}</body>`);
+    } else if (html.includes('</html>')) {
+      return html.replace('</html>', `${mcpBridgeScript}</html>`);
+    } else {
+      return html + mcpBridgeScript;
+    }
   }
 }
