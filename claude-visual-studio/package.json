@@ -50,6 +50,18 @@
         "icon": "$(open-preview)"
       },
       {
+        "command": "claudeVisualStudio.openSettings",
+        "title": "Settings",
+        "category": "Claude Visual Studio",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "claudeVisualStudio.reloadExtension",
+        "title": "Reload Extension",
+        "category": "Claude Visual Studio",
+        "icon": "$(sync)"
+      },
+      {
         "command": "claudeVisualStudio.toggleSelection",
         "title": "Toggle Element Selection Mode",
         "category": "Claude Visual Studio",
@@ -78,6 +90,12 @@
       "commandPalette": [
         {
           "command": "claudeVisualStudio.openPreview"
+        },
+        {
+          "command": "claudeVisualStudio.openSettings"
+        },
+        {
+          "command": "claudeVisualStudio.reloadExtension"
         },
         {
           "command": "claudeVisualStudio.toggleSelection"

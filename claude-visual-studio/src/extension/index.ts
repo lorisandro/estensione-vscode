@@ -312,11 +312,39 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }
   );
 
+  // Command: Open Settings
+  const openSettingsDisposable = vscode.commands.registerCommand(
+    'claudeVisualStudio.openSettings',
+    async () => {
+      await vscode.commands.executeCommand(
+        'workbench.action.openSettings',
+        'claudeVisualStudio'
+      );
+    }
+  );
+
+  // Command: Reload Extension (reloads VS Code window)
+  const reloadExtensionDisposable = vscode.commands.registerCommand(
+    'claudeVisualStudio.reloadExtension',
+    async () => {
+      const answer = await vscode.window.showInformationMessage(
+        'Reload VS Code to apply extension updates?',
+        'Reload',
+        'Cancel'
+      );
+      if (answer === 'Reload') {
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+      }
+    }
+  );
+
   // Register disposables
   context.subscriptions.push(
     openPreviewDisposable,
     toggleSelectionDisposable,
-    refreshPreviewDisposable
+    refreshPreviewDisposable,
+    openSettingsDisposable,
+    reloadExtensionDisposable
   );
 
   console.log('Commands registered');
