@@ -555,42 +555,43 @@ export const SelectionOverlay: React.FC = () => {
 
   if (!selectionMode) return null;
 
-  // Determine cursor based on hovered handle or resize state
-  const getCursor = () => {
-    if (resizeState.isResizing && resizeState.handle) {
-      return CURSOR_MAP[resizeState.handle];
-    }
-    if (hoveredHandle) {
-      return CURSOR_MAP[hoveredHandle];
-    }
-    return 'default';
-  };
+  // Get handle positions for rendering interactive elements
+  const rectForHandles = liveRect || selectedElement?.rect;
+  const handleElements = rectForHandles ? getHandlePositions(rectForHandles) : [];
 
   return (
     <>
       <canvas ref={canvasRef} style={styles.canvas} />
-      {/* Interactive overlay for resize handles */}
-      {selectedElement && (
+      {/* Interactive resize handles - individual elements for each handle */}
+      {selectedElement && handleElements.map((handle) => (
         <div
-          ref={overlayRef}
+          key={handle.position}
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
+            left: `${handle.x - (HANDLE_HIT_AREA - HANDLE_SIZE) / 2}px`,
+            top: `${handle.y - (HANDLE_HIT_AREA - HANDLE_SIZE) / 2}px`,
+            width: `${HANDLE_HIT_AREA}px`,
+            height: `${HANDLE_HIT_AREA}px`,
+            cursor: CURSOR_MAP[handle.position],
             pointerEvents: 'auto',
-            zIndex: 1001,
-            cursor: getCursor(),
-            // Only capture events when hovering handles or resizing
-            backgroundColor: 'transparent',
+            zIndex: 1002,
+            // Debug: uncomment to see hit areas
+            // backgroundColor: 'rgba(255, 0, 0, 0.2)',
           }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setResizeState({
+              isResizing: true,
+              handle: handle.position,
+              startX: e.clientX,
+              startY: e.clientY,
+              startRect: { ...selectedElement.rect },
+            });
+            setLiveRect({ ...selectedElement.rect });
+          }}
         />
-      )}
+      ))}
       {tooltip && (
         <div
           style={{
