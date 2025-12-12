@@ -405,11 +405,13 @@ class ElementInspector {
    */
   private findDropTarget(mouseX: number, mouseY: number): { target: HTMLElement | null; position: 'before' | 'after' } {
     if (!this.dragElement || !this.originalParent) {
+      console.log('[Element Inspector] findDropTarget: no dragElement or originalParent');
       return { target: null, position: 'before' };
     }
 
     // Get siblings (excluding the dragged element and our inspector elements)
-    const siblings = Array.from(this.originalParent.children).filter(
+    const allChildren = Array.from(this.originalParent.children);
+    const siblings = allChildren.filter(
       child => child !== this.dragElement &&
                child !== this.dragPlaceholder &&
                child.nodeType === Node.ELEMENT_NODE &&
@@ -417,7 +419,10 @@ class ElementInspector {
                window.getComputedStyle(child as HTMLElement).display !== 'none'
     ) as HTMLElement[];
 
+    console.log('[Element Inspector] findDropTarget: parent has', allChildren.length, 'children,', siblings.length, 'valid siblings');
+
     if (siblings.length === 0) {
+      console.log('[Element Inspector] No siblings found - element is only child or all siblings hidden');
       return { target: null, position: 'before' };
     }
 
@@ -1511,6 +1516,8 @@ class ElementInspector {
       return;
     }
 
+    console.log('[Element Inspector] handleDragEnd - dropTarget:', this.dropTarget?.tagName, 'dropPosition:', this.dropPosition);
+
     // Perform DOM reorder if we have a valid drop target
     if (this.dropTarget && this.dropPosition && this.originalParent) {
       const elementSelector = this.getCSSSelector(this.dragElement);
@@ -1537,6 +1544,8 @@ class ElementInspector {
       });
 
       console.log('[Element Inspector] DOM Reorder completed:', elementSelector, this.dropPosition, targetSelector);
+    } else {
+      console.log('[Element Inspector] No valid drop target - element not moved. Element needs siblings to reorder with.');
     }
 
     // Clean up
