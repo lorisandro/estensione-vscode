@@ -38,11 +38,11 @@ export const useNavigationStore = create<NavigationState>()(
         ...initialNavigationState,
 
         setUrl: (url: string) => {
-          set({ url });
+          set({ url }, undefined, 'navigation/setUrl');
         },
 
         setServerBaseUrl: (baseUrl: string) => {
-          set({ serverBaseUrl: baseUrl });
+          set({ serverBaseUrl: baseUrl }, undefined, 'navigation/setServerBaseUrl');
         },
 
         navigateTo: (url: string) => {
@@ -54,7 +54,7 @@ export const useNavigationStore = create<NavigationState>()(
             historyIndex: newHistory.length - 1,
             canGoBack: newHistory.length > 1,
             canGoForward: false,
-          });
+          }, undefined, 'navigation/navigateTo');
         },
 
         goBack: () => {
@@ -66,7 +66,7 @@ export const useNavigationStore = create<NavigationState>()(
               historyIndex: newIndex,
               canGoBack: newIndex > 0,
               canGoForward: true,
-            });
+            }, undefined, 'navigation/goBack');
           }
         },
 
@@ -79,7 +79,7 @@ export const useNavigationStore = create<NavigationState>()(
               historyIndex: newIndex,
               canGoBack: true,
               canGoForward: newIndex < history.length - 1,
-            });
+            }, undefined, 'navigation/goForward');
           }
         },
 
@@ -89,7 +89,7 @@ export const useNavigationStore = create<NavigationState>()(
           // This forces iframe reload without using setTimeout (avoids memory leaks)
           const separator = url.includes('?') ? '&' : '?';
           const refreshUrl = `${url.split('&_refresh=')[0].split('?_refresh=')[0]}${separator}_refresh=${Date.now()}`;
-          set({ url: refreshUrl });
+          set({ url: refreshUrl }, undefined, 'navigation/refresh');
         },
 
         reset: () => {
@@ -99,7 +99,7 @@ export const useNavigationStore = create<NavigationState>()(
             url: serverBaseUrl,
             history: [serverBaseUrl],
             serverBaseUrl,
-          });
+          }, undefined, 'navigation/reset');
         },
       }),
       {
@@ -152,22 +152,22 @@ export const useSelectionStore = create<SelectionState>()(
       ...initialSelectionState,
 
       setSelectionMode: (mode: boolean) => {
-        set({ selectionMode: mode });
+        set({ selectionMode: mode }, undefined, 'selection/setSelectionMode');
         if (!mode) {
-          set({ selectedElement: null, hoveredElement: null });
+          set({ selectedElement: null, hoveredElement: null }, undefined, 'selection/clearOnModeOff');
         }
       },
 
       setSelectedElement: (element: ElementInfo | null) => {
-        set({ selectedElement: element });
+        set({ selectedElement: element }, undefined, 'selection/setSelectedElement');
       },
 
       setHoveredElement: (element: ElementInfo | null) => {
-        set({ hoveredElement: element });
+        set({ hoveredElement: element }, undefined, 'selection/setHoveredElement');
       },
 
       clearSelection: () => {
-        set({ selectedElement: null, hoveredElement: null });
+        set({ selectedElement: null, hoveredElement: null }, undefined, 'selection/clearSelection');
       },
     }),
     { name: 'SelectionStore' }
@@ -233,27 +233,27 @@ export const useEditorStore = create<EditorState>()(
         ...initialEditorState,
 
         setLoading: (loading: boolean) => {
-          set({ isLoading: loading });
+          set({ isLoading: loading }, undefined, 'editor/setLoading');
         },
 
         setError: (error: string | null) => {
-          set({ error });
+          set({ error }, undefined, 'editor/setError');
         },
 
         setInspectorWidth: (width: number) => {
-          set({ inspectorWidth: Math.max(200, Math.min(600, width)) });
+          set({ inspectorWidth: Math.max(200, Math.min(600, width)) }, undefined, 'editor/setInspectorWidth');
         },
 
         setConsoleVisible: (visible: boolean) => {
-          set({ consoleVisible: visible });
+          set({ consoleVisible: visible }, undefined, 'editor/setConsoleVisible');
         },
 
         toggleConsole: () => {
-          set({ consoleVisible: !get().consoleVisible });
+          set({ consoleVisible: !get().consoleVisible }, undefined, 'editor/toggleConsole');
         },
 
         setConsoleHeight: (height: number) => {
-          set({ consoleHeight: Math.max(80, Math.min(400, height)) });
+          set({ consoleHeight: Math.max(80, Math.min(400, height)) }, undefined, 'editor/setConsoleHeight');
         },
 
         addConsoleLog: (log: Omit<ConsoleLogEntry, 'id' | 'timestamp'>) => {
@@ -264,27 +264,27 @@ export const useEditorStore = create<EditorState>()(
           };
           set((state) => ({
             consoleLogs: [...state.consoleLogs.slice(-99), newLog], // Keep last 100 logs
-          }));
+          }), undefined, 'editor/addConsoleLog');
         },
 
         clearConsoleLogs: () => {
-          set({ consoleLogs: [] });
+          set({ consoleLogs: [] }, undefined, 'editor/clearConsoleLogs');
         },
 
         setCssInspectorVisible: (visible: boolean) => {
-          set({ cssInspectorVisible: visible });
+          set({ cssInspectorVisible: visible }, undefined, 'editor/setCssInspectorVisible');
         },
 
         toggleCssInspector: () => {
-          set({ cssInspectorVisible: !get().cssInspectorVisible });
+          set({ cssInspectorVisible: !get().cssInspectorVisible }, undefined, 'editor/toggleCssInspector');
         },
 
         setCssInspectorWidth: (width: number) => {
-          set({ cssInspectorWidth: Math.max(200, Math.min(500, width)) });
+          set({ cssInspectorWidth: Math.max(200, Math.min(500, width)) }, undefined, 'editor/setCssInspectorWidth');
         },
 
         clearError: () => {
-          set({ error: null });
+          set({ error: null }, undefined, 'editor/clearError');
         },
       }),
       {

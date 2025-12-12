@@ -8,6 +8,8 @@ export default defineConfig({
   build: {
     outDir: '../../dist/webview',
     emptyOutDir: true,
+    // Explicit build target per Context7 best practices
+    target: 'es2020',
     // Enable source maps for debugging in development
     sourcemap: process.env.NODE_ENV === 'development',
     rollupOptions: {
