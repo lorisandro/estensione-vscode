@@ -88,10 +88,37 @@ async function initializeServices(context: vscode.ExtensionContext): Promise<voi
   );
   context.subscriptions.push(sidebarDisposable);
 
+  // Register webview panel serializer for state restoration on VS Code restart
+  const serializerDisposable = vscode.window.registerWebviewPanelSerializer(
+    'claudeVisualStudio',
+    new ClaudeVisualStudioSerializer(context, webviewProvider)
+  );
+  context.subscriptions.push(serializerDisposable);
+
   // Initialize commands
   openPreviewCommand = new OpenPreviewCommand(webviewProvider);
 
   console.log('Services initialized');
+}
+
+/**
+ * Webview Panel Serializer - Restores webview state when VS Code restarts
+ */
+class ClaudeVisualStudioSerializer implements vscode.WebviewPanelSerializer {
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly provider: WebviewPanelProvider
+  ) {}
+
+  async deserializeWebviewPanel(
+    webviewPanel: vscode.WebviewPanel,
+    state: unknown
+  ): Promise<void> {
+    console.log('Deserializing webview panel with state:', state);
+
+    // Restore the webview panel through the provider
+    await this.provider.restoreWebviewPanel(webviewPanel, state);
+  }
 }
 
 /**

@@ -45,15 +45,57 @@ export class WebviewPanelProvider {
       'claudeVisualStudio',
       'Claude Visual Studio',
       column || vscode.ViewColumn.Beside,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [
-          vscode.Uri.file(path.join(this.context.extensionPath, 'dist')),
-          vscode.Uri.file(path.join(this.context.extensionPath, 'resources')),
-        ],
-      }
+      this.getWebviewOptions()
     );
+
+    // Initialize the panel
+    this.initializePanel();
+
+    return this.panel;
+  }
+
+  /**
+   * Restore webview panel from serialized state (called by WebviewPanelSerializer)
+   */
+  public async restoreWebviewPanel(
+    webviewPanel: vscode.WebviewPanel,
+    state: unknown
+  ): Promise<void> {
+    // Use the provided panel instead of creating a new one
+    this.panel = webviewPanel;
+
+    // Restore state if provided
+    if (state && typeof state === 'object') {
+      this.state = state as WebviewState;
+    }
+
+    // Initialize the panel with restored state
+    this.initializePanel();
+
+    console.log('Webview panel restored successfully');
+  }
+
+  /**
+   * Get webview panel options
+   */
+  private getWebviewOptions(): vscode.WebviewPanelOptions & vscode.WebviewOptions {
+    return {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [
+        vscode.Uri.file(path.join(this.context.extensionPath, 'dist')),
+        vscode.Uri.file(path.join(this.context.extensionPath, 'resources')),
+      ],
+    };
+  }
+
+  /**
+   * Initialize webview panel (shared between create and restore)
+   */
+  private initializePanel(): void {
+    if (!this.panel) {
+      return;
+    }
 
     // Set the HTML content
     this.panel.webview.html = this.getWebviewContent(this.panel.webview);
@@ -81,8 +123,6 @@ export class WebviewPanelProvider {
       null,
       this.disposables
     );
-
-    return this.panel;
   }
 
   /**
@@ -155,22 +195,25 @@ export class WebviewPanelProvider {
     // Generate a nonce for security
     const nonce = this.getNonce();
 
-    // Build HTML
+    // Build HTML with secure CSP
+    // Note: 'unsafe-eval' removed - React 18+ production builds work without it
+    // If you encounter issues with certain libraries, you may need to re-add it
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Security CSP -->
+  <!-- Security CSP - Strict policy without unsafe-eval -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none';
                  style-src ${webview.cspSource} 'unsafe-inline';
-                 script-src 'nonce-${nonce}' 'unsafe-eval';
-                 img-src ${webview.cspSource} https: data:;
-                 font-src ${webview.cspSource};
+                 script-src ${webview.cspSource} 'nonce-${nonce}';
+                 img-src ${webview.cspSource} https: data: blob:;
+                 font-src ${webview.cspSource} data:;
                  connect-src ws://localhost:* http://localhost:* https:;
-                 frame-src *;">
+                 frame-src http://localhost:* https:;
+                 worker-src ${webview.cspSource} blob:;">
 
   <title>Claude Visual Studio</title>
   <link rel="stylesheet" href="${styleUri}">

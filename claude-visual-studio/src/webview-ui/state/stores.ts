@@ -1,5 +1,9 @@
 import { create } from 'zustand';
+import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import type { WebviewElementInfo } from '../../shared/types/webview';
+
+// Default server URL - can be overridden via configuration
+const DEFAULT_SERVER_URL = 'http://localhost:3333';
 
 // Navigation state
 interface NavigationState {
@@ -8,67 +12,114 @@ interface NavigationState {
   historyIndex: number;
   canGoBack: boolean;
   canGoForward: boolean;
+  serverBaseUrl: string;
   setUrl: (url: string) => void;
+  setServerBaseUrl: (baseUrl: string) => void;
   navigateTo: (url: string) => void;
   goBack: () => void;
   goForward: () => void;
   refresh: () => void;
+  reset: () => void;
 }
 
-export const useNavigationStore = create<NavigationState>((set, get) => ({
-  url: 'http://localhost:3333',
-  history: ['http://localhost:3333'],
+const initialNavigationState = {
+  url: DEFAULT_SERVER_URL,
+  history: [DEFAULT_SERVER_URL],
   historyIndex: 0,
   canGoBack: false,
   canGoForward: false,
+  serverBaseUrl: DEFAULT_SERVER_URL,
+};
 
-  setUrl: (url: string) => {
-    set({ url });
-  },
+export const useNavigationStore = create<NavigationState>()(
+  devtools(
+    persist(
+      (set, get) => ({
+        ...initialNavigationState,
 
-  navigateTo: (url: string) => {
-    const { history, historyIndex } = get();
-    const newHistory = [...history.slice(0, historyIndex + 1), url];
-    set({
-      url,
-      history: newHistory,
-      historyIndex: newHistory.length - 1,
-      canGoBack: newHistory.length > 1,
-      canGoForward: false,
-    });
-  },
+        setUrl: (url: string) => {
+          set({ url });
+        },
 
-  goBack: () => {
-    const { history, historyIndex } = get();
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      set({
-        url: history[newIndex],
-        historyIndex: newIndex,
-        canGoBack: newIndex > 0,
-        canGoForward: true,
-      });
-    }
-  },
+        setServerBaseUrl: (baseUrl: string) => {
+          set({ serverBaseUrl: baseUrl });
+        },
 
-  goForward: () => {
-    const { history, historyIndex } = get();
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
-      set({
-        url: history[newIndex],
-        historyIndex: newIndex,
-        canGoBack: true,
-        canGoForward: newIndex < history.length - 1,
-      });
-    }
-  },
+        navigateTo: (url: string) => {
+          const { history, historyIndex } = get();
+          const newHistory = [...history.slice(0, historyIndex + 1), url];
+          set({
+            url,
+            history: newHistory,
+            historyIndex: newHistory.length - 1,
+            canGoBack: newHistory.length > 1,
+            canGoForward: false,
+          });
+        },
 
-  refresh: () => {
-    const { url } = get();
-    set({ url: url + '?t=' + Date.now() });
-  },
-}));
+        goBack: () => {
+          const { history, historyIndex } = get();
+          if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            set({
+              url: history[newIndex],
+              historyIndex: newIndex,
+              canGoBack: newIndex > 0,
+              canGoForward: true,
+            });
+          }
+        },
+
+        goForward: () => {
+          const { history, historyIndex } = get();
+          if (historyIndex < history.length - 1) {
+            const newIndex = historyIndex + 1;
+            set({
+              url: history[newIndex],
+              historyIndex: newIndex,
+              canGoBack: true,
+              canGoForward: newIndex < history.length - 1,
+            });
+          }
+        },
+
+        refresh: () => {
+          const { url } = get();
+          try {
+            // Properly handle URL with existing query parameters
+            const urlObj = new URL(url);
+            urlObj.searchParams.set('_t', Date.now().toString());
+            set({ url: urlObj.toString() });
+          } catch {
+            // Fallback for invalid URLs
+            set({ url: `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}` });
+          }
+        },
+
+        reset: () => {
+          const { serverBaseUrl } = get();
+          set({
+            ...initialNavigationState,
+            url: serverBaseUrl,
+            history: [serverBaseUrl],
+            serverBaseUrl,
+          });
+        },
+      }),
+      {
+        name: 'claude-vs-navigation',
+        storage: createJSONStorage(() => sessionStorage),
+        partialize: (state) => ({
+          url: state.url,
+          history: state.history,
+          historyIndex: state.historyIndex,
+          serverBaseUrl: state.serverBaseUrl,
+        }),
+      }
+    ),
+    { name: 'NavigationStore' }
+  )
+);
 
 // Re-export element info type for convenience
 export type ElementInfo = WebviewElementInfo;
@@ -84,30 +135,39 @@ interface SelectionState {
   clearSelection: () => void;
 }
 
-export const useSelectionStore = create<SelectionState>((set) => ({
+const initialSelectionState = {
   selectionMode: false,
   selectedElement: null,
   hoveredElement: null,
+};
 
-  setSelectionMode: (mode: boolean) => {
-    set({ selectionMode: mode });
-    if (!mode) {
-      set({ selectedElement: null, hoveredElement: null });
-    }
-  },
+export const useSelectionStore = create<SelectionState>()(
+  devtools(
+    (set) => ({
+      ...initialSelectionState,
 
-  setSelectedElement: (element: ElementInfo | null) => {
-    set({ selectedElement: element });
-  },
+      setSelectionMode: (mode: boolean) => {
+        set({ selectionMode: mode });
+        if (!mode) {
+          set({ selectedElement: null, hoveredElement: null });
+        }
+      },
 
-  setHoveredElement: (element: ElementInfo | null) => {
-    set({ hoveredElement: element });
-  },
+      setSelectedElement: (element: ElementInfo | null) => {
+        set({ selectedElement: element });
+      },
 
-  clearSelection: () => {
-    set({ selectedElement: null, hoveredElement: null });
-  },
-}));
+      setHoveredElement: (element: ElementInfo | null) => {
+        set({ hoveredElement: element });
+      },
+
+      clearSelection: () => {
+        set({ selectedElement: null, hoveredElement: null });
+      },
+    }),
+    { name: 'SelectionStore' }
+  )
+);
 
 // Editor state
 interface EditorState {
@@ -117,22 +177,45 @@ interface EditorState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setInspectorWidth: (width: number) => void;
+  clearError: () => void;
 }
 
-export const useEditorStore = create<EditorState>((set) => ({
+const initialEditorState = {
   isLoading: false,
   error: null,
   inspectorWidth: 300,
+};
 
-  setLoading: (loading: boolean) => {
-    set({ isLoading: loading });
-  },
+export const useEditorStore = create<EditorState>()(
+  devtools(
+    persist(
+      (set) => ({
+        ...initialEditorState,
 
-  setError: (error: string | null) => {
-    set({ error });
-  },
+        setLoading: (loading: boolean) => {
+          set({ isLoading: loading });
+        },
 
-  setInspectorWidth: (width: number) => {
-    set({ inspectorWidth: Math.max(200, Math.min(600, width)) });
-  },
-}));
+        setError: (error: string | null) => {
+          set({ error });
+        },
+
+        setInspectorWidth: (width: number) => {
+          set({ inspectorWidth: Math.max(200, Math.min(600, width)) });
+        },
+
+        clearError: () => {
+          set({ error: null });
+        },
+      }),
+      {
+        name: 'claude-vs-editor',
+        storage: createJSONStorage(() => sessionStorage),
+        partialize: (state) => ({
+          inspectorWidth: state.inspectorWidth,
+        }),
+      }
+    ),
+    { name: 'EditorStore' }
+  )
+);

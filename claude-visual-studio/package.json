@@ -19,7 +19,8 @@
     "ai"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onWebviewPanel:claudeVisualStudio"
   ],
   "main": "./dist/extension/index.js",
   "contributes": {
