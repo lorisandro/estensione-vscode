@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useEditorStore, useSelectionStore, VIEWPORT_PRESETS, type ElementInfo } from '../../state/stores';
+import { ElementInspector } from '../ElementInspector';
 
 // ============================================================================
 // Types
@@ -292,6 +293,46 @@ const styles = {
     cursor: 'pointer',
     userSelect: 'none',
     borderBottom: '1px solid #3c3c3c',
+  } as React.CSSProperties,
+
+  // Tab styles
+  tabContainer: {
+    display: 'flex',
+    backgroundColor: '#252526',
+    borderBottom: '1px solid #3c3c3c',
+    flexShrink: 0,
+  } as React.CSSProperties,
+
+  tab: {
+    flex: 1,
+    padding: '10px 16px',
+    fontSize: '11px',
+    fontWeight: 500,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    backgroundColor: 'transparent',
+    color: '#9d9d9d',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+  } as React.CSSProperties,
+
+  tabActive: {
+    color: '#ffffff',
+    borderBottomColor: '#0078d4',
+    backgroundColor: '#1e1e1e',
+  } as React.CSSProperties,
+
+  tabContent: {
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   } as React.CSSProperties,
 };
 
@@ -642,9 +683,24 @@ const RotateIcon = () => (
   </svg>
 );
 
+// Tab Icons
+const StylesTabIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M2 3h12v1H2V3zm0 3h8v1H2V6zm0 3h12v1H2V9zm0 3h8v1H2v-1z"/>
+  </svg>
+);
+
+const ElementTabIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M4.708 5.578L2.061 8.224l2.647 2.646.708-.708-1.94-1.939 1.939-1.939-.707-.706zm6.584 0l-.707.707 1.939 1.939-1.939 1.939.707.707 2.646-2.646-2.646-2.646zM6.5 11l2-6h1l-2 6h-1z"/>
+  </svg>
+);
+
 // ============================================================================
 // Main Component
 // ============================================================================
+
+type TabType = 'styles' | 'element';
 
 export const CssInspectorPanel: React.FC = () => {
   const {
@@ -661,6 +717,7 @@ export const CssInspectorPanel: React.FC = () => {
     resetViewport,
   } = useEditorStore();
   const { selectedElement, hoveredElement, setSelectedElement } = useSelectionStore();
+  const [activeTab, setActiveTab] = useState<TabType>('styles');
   const [isResizing, setIsResizing] = useState(false);
   const [resizerHover, setResizerHover] = useState(false);
   const [linkedPadding, setLinkedPadding] = useState(true);
@@ -780,7 +837,7 @@ export const CssInspectorPanel: React.FC = () => {
           onMouseLeave={() => setResizerHover(false)}
         />
         <div style={styles.header}>
-          <span style={styles.title}>CSS Inspector</span>
+          <span style={styles.title}>Elementor</span>
           <button
             style={styles.closeButton}
             onClick={toggleCssInspector}
@@ -791,13 +848,43 @@ export const CssInspectorPanel: React.FC = () => {
             </svg>
           </button>
         </div>
-        <div style={styles.noSelection}>
-          <svg width="48" height="48" viewBox="0 0 16 16" fill="currentColor" style={{ marginBottom: '12px', opacity: 0.5 }}>
-            <path d="M1 1l5 14 2-6 6-2L1 1zm3.5 4.5l5 1.8-2.8 1-1 2.8-1.2-5.6z" />
-          </svg>
-          <span style={{ fontSize: '12px' }}>
-            Enable selection mode and click on an element to inspect its CSS
-          </span>
+        {/* Tabs */}
+        <div style={styles.tabContainer}>
+          <button
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'styles' ? styles.tabActive : {}),
+            }}
+            onClick={() => setActiveTab('styles')}
+          >
+            <StylesTabIcon />
+            Styles
+          </button>
+          <button
+            style={{
+              ...styles.tab,
+              ...(activeTab === 'element' ? styles.tabActive : {}),
+            }}
+            onClick={() => setActiveTab('element')}
+          >
+            <ElementTabIcon />
+            Element
+          </button>
+        </div>
+        {/* Tab Content */}
+        <div style={styles.tabContent}>
+          {activeTab === 'styles' ? (
+            <div style={styles.noSelection}>
+              <svg width="48" height="48" viewBox="0 0 16 16" fill="currentColor" style={{ marginBottom: '12px', opacity: 0.5 }}>
+                <path d="M1 1l5 14 2-6 6-2L1 1zm3.5 4.5l5 1.8-2.8 1-1 2.8-1.2-5.6z" />
+              </svg>
+              <span style={{ fontSize: '12px' }}>
+                Enable selection mode and click on an element to inspect its CSS
+              </span>
+            </div>
+          ) : (
+            <ElementInspector />
+          )}
         </div>
       </div>
     );
@@ -819,7 +906,7 @@ export const CssInspectorPanel: React.FC = () => {
       {/* Header */}
       <div style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={styles.title}>CSS Inspector</span>
+          <span style={styles.title}>Elementor</span>
           <span style={styles.elementTag}>{element.tagName}</span>
         </div>
         <button
@@ -833,7 +920,34 @@ export const CssInspectorPanel: React.FC = () => {
         </button>
       </div>
 
-      {/* Content */}
+      {/* Tabs */}
+      <div style={styles.tabContainer}>
+        <button
+          style={{
+            ...styles.tab,
+            ...(activeTab === 'styles' ? styles.tabActive : {}),
+          }}
+          onClick={() => setActiveTab('styles')}
+        >
+          <StylesTabIcon />
+          Styles
+        </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(activeTab === 'element' ? styles.tabActive : {}),
+          }}
+          onClick={() => setActiveTab('element')}
+        >
+          <ElementTabIcon />
+          Element
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'element' ? (
+        <ElementInspector />
+      ) : (
       <div style={styles.content}>
         {/* Responsive Section - Always visible */}
         <CollapsibleSection title="Responsive">
@@ -1427,6 +1541,7 @@ export const CssInspectorPanel: React.FC = () => {
           </div>
         </CollapsibleSection>
       </div>
+      )}
     </div>
   );
 };

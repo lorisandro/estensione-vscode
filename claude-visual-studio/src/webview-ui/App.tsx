@@ -5,7 +5,6 @@ import { SelectionOverlay } from './components/browser/SelectionOverlay';
 import { ScreenshotOverlay } from './components/browser/ScreenshotOverlay';
 import { ConsolePanel } from './components/browser/ConsolePanel';
 import { CssInspectorPanel } from './components/browser/CssInspectorPanel';
-import { ElementInspector } from './components/ElementInspector';
 import { useSelectionStore, useEditorStore, useNavigationStore, type ElementInfo } from './state/stores';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { useMCPCommands } from './hooks/useMCPCommands';
@@ -41,11 +40,6 @@ const styles = {
     backgroundColor: '#fff',
   } as React.CSSProperties,
 
-  inspector: {
-    width: '300px',
-    flexShrink: 0,
-  } as React.CSSProperties,
-
   loadingOverlay: {
     position: 'absolute',
     top: 0,
@@ -77,29 +71,15 @@ const styles = {
     textAlign: 'center',
     zIndex: 1000,
   } as React.CSSProperties,
-
-  resizer: {
-    width: '4px',
-    backgroundColor: 'var(--vscode-panel-border)',
-    cursor: 'col-resize',
-    transition: 'background-color 0.1s',
-  } as React.CSSProperties,
-
-  resizerHover: {
-    backgroundColor: 'var(--vscode-focusBorder)',
-  } as React.CSSProperties,
 };
 
 export const App: React.FC = () => {
-  const { setSelectedElement, setHoveredElement, selectedElement, screenshotMode } = useSelectionStore();
-  const { isLoading, error, inspectorWidth, setInspectorWidth, consoleVisible, cssInspectorVisible } = useEditorStore();
+  const { setSelectedElement, setHoveredElement, screenshotMode } = useSelectionStore();
+  const { isLoading, error, consoleVisible, cssInspectorVisible } = useEditorStore();
   const { setUrl, navigateTo, goBack, goForward, refresh, url } = useNavigationStore();
   const { onMessage, postMessage } = useVSCodeApi();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const browserContainerRef = useRef<HTMLDivElement>(null);
-
-  const [isResizing, setIsResizing] = React.useState(false);
-  const [resizerHover, setResizerHover] = React.useState(false);
 
   // Initialize MCP commands handler
   useMCPCommands(iframeRef, { navigateTo, goBack, goForward, refresh, url });
@@ -148,32 +128,6 @@ export const App: React.FC = () => {
 
     return cleanup;
   }, [onMessage, setUrl, setSelectedElement, setHoveredElement]);
-
-  // Handle resizer drag
-  const handleResizerMouseDown = useCallback(() => {
-    setIsResizing(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = window.innerWidth - e.clientX;
-      setInspectorWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, setInspectorWidth]);
 
   // Send ready message on mount
   useEffect(() => {
@@ -259,27 +213,7 @@ export const App: React.FC = () => {
           {consoleVisible && <ConsolePanel />}
         </div>
 
-        {/* Resizer */}
-        {selectedElement && (
-          <div
-            style={{
-              ...styles.resizer,
-              ...(resizerHover || isResizing ? styles.resizerHover : {}),
-            }}
-            onMouseDown={handleResizerMouseDown}
-            onMouseEnter={() => setResizerHover(true)}
-            onMouseLeave={() => setResizerHover(false)}
-          />
-        )}
-
-        {/* Inspector Panel */}
-        {selectedElement && (
-          <div style={{ ...styles.inspector, width: `${inspectorWidth}px` }}>
-            <ElementInspector />
-          </div>
-        )}
-
-        {/* CSS Inspector Panel */}
+        {/* CSS Inspector Panel (includes Element Inspector as tab) */}
         {cssInspectorVisible && <CssInspectorPanel />}
       </div>
     </div>
