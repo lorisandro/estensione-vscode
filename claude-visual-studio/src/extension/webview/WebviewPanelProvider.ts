@@ -499,22 +499,42 @@ export class WebviewPanelProvider {
       const el = elementData.element;
       const selectorStr = `${el.tag}${el.id ? '#' + el.id : ''}${el.classes.length > 0 ? '.' + el.classes.join('.') : ''}`;
 
-      // Create formatted output for Claude Code
-      const formattedElement = [
-        `[SELECTED ELEMENT]`,
-        `Tag: ${el.tag}`,
-        el.id ? `ID: ${el.id}` : null,
-        el.classes.length > 0 ? `Classes: ${el.classes.join(', ')}` : null,
-        el.selector ? `Selector: ${el.selector}` : null,
-        el.textContent ? `Text: "${el.textContent.substring(0, 100)}${el.textContent.length > 100 ? '...' : ''}"` : null,
-        el.boundingBox ? `Size: ${Math.round(el.boundingBox.width)}x${Math.round(el.boundingBox.height)}px` : null,
+      // Clean text content: filter out CSS, scripts, and non-visible content
+      const cleanTextContent = (text: string | undefined): string | null => {
+        if (!text) return null;
+        const trimmed = text.trim();
+        // Skip if it looks like CSS or JavaScript
+        if (trimmed.startsWith('.') && trimmed.includes('{')) return null;
+        if (trimmed.startsWith('function') || trimmed.startsWith('var ') || trimmed.startsWith('const ')) return null;
+        if (trimmed.includes('margin:') || trimmed.includes('padding:') || trimmed.includes('display:')) return null;
+        // Get only meaningful text, limit to 150 chars
+        const cleaned = trimmed.replace(/\s+/g, ' ').substring(0, 150);
+        return cleaned.length > 0 ? cleaned : null;
+      };
+
+      const cleanedText = cleanTextContent(el.textContent);
+
+      // Build element descriptor (e.g., "button#submit.btn.primary")
+      const elementDescriptor = selectorStr;
+
+      // Build size string
+      const sizeStr = el.boundingBox
+        ? `${Math.round(el.boundingBox.width)}x${Math.round(el.boundingBox.height)}px`
+        : null;
+
+      // Create formatted output for Claude Code terminal
+      const terminalLines = [
+        `[ELEMENTO SELEZIONATO]`,
+        `Elemento: <${el.tag}>${el.id ? ` id="${el.id}"` : ''}${el.classes.length > 0 ? ` class="${el.classes.slice(0, 3).join(' ')}"` : ''}`,
+        sizeStr ? `Dimensioni: ${sizeStr}` : null,
+        cleanedText ? `Testo: "${cleanedText}${el.textContent && el.textContent.length > 150 ? '...' : ''}"` : null,
+        `Selector: ${el.selector || selectorStr}`,
       ].filter(Boolean).join('\n');
 
       // Send directly to active terminal (Claude Code)
       const terminal = vscode.window.activeTerminal;
       if (terminal) {
-        const terminalOutput = `[ELEMENTO SELEZIONATO: ${selectorStr}]\nSelector: ${el.selector || selectorStr}${el.textContent ? `\nText: "${el.textContent.substring(0, 50)}..."` : ''}`;
-        terminal.sendText(terminalOutput);
+        terminal.sendText(terminalLines);
       }
 
       console.log(`[Claude VS] Element selected: ${selectorStr}`);
