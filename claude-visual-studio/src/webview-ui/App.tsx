@@ -157,12 +157,25 @@ export const App: React.FC = () => {
       }
     };
 
+    const handleResizeElement = (event: CustomEvent) => {
+      const iframe = iframeRef.current;
+      if (iframe?.contentWindow && event.detail) {
+        iframe.contentWindow.postMessage({
+          type: 'resize-element',
+          payload: event.detail,
+        }, '*');
+        console.log('[App] Forwarded resize-element to iframe:', event.detail);
+      }
+    };
+
     window.addEventListener('claude-vs-apply-drag-changes', handleApplyDragChanges as EventListener);
     window.addEventListener('claude-vs-undo-drag-change', handleUndoDragChange as EventListener);
+    window.addEventListener('claude-vs-resize-element', handleResizeElement as EventListener);
 
     return () => {
       window.removeEventListener('claude-vs-apply-drag-changes', handleApplyDragChanges as EventListener);
       window.removeEventListener('claude-vs-undo-drag-change', handleUndoDragChange as EventListener);
+      window.removeEventListener('claude-vs-resize-element', handleResizeElement as EventListener);
     };
   }, []);
 

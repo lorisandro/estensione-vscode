@@ -96,6 +96,12 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           onElementHover?.(data);
         } else if (type === 'element-select') {
           onElementClick?.(data);
+        } else if (type === 'element-updated') {
+          // Update selected element with new rect info after resize/style change
+          onElementClick?.(data);
+          console.log('[BrowserFrame] Element updated:', data);
+        } else if (type === 'element-resized') {
+          console.log('[BrowserFrame] Element resized:', data);
         } else if (type === 'inspector-ready') {
           console.log('[BrowserFrame] Inspector ready in iframe');
           // Send current modes when inspector is ready

@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useSelectionStore, type ElementInfo } from '../../state/stores';
 
-const HANDLE_SIZE = 8;
+const HANDLE_SIZE = 10;
 const HANDLE_OFFSET = HANDLE_SIZE / 2;
+const HANDLE_HIT_AREA = 16; // Larger hit area for easier clicking
 
 // Colors for better visual feedback
 const COLORS = {
@@ -47,18 +48,50 @@ const styles = {
   } as React.CSSProperties,
 };
 
+type HandlePosition = 'nw' | 'n' | 'ne' | 'w' | 'e' | 'sw' | 's' | 'se';
+
 interface ResizeHandle {
   x: number;
   y: number;
-  position: string;
+  position: HandlePosition;
 }
+
+interface ResizeState {
+  isResizing: boolean;
+  handle: HandlePosition | null;
+  startX: number;
+  startY: number;
+  startRect: { x: number; y: number; width: number; height: number } | null;
+}
+
+// Cursor styles for each handle position
+const CURSOR_MAP: Record<HandlePosition, string> = {
+  nw: 'nwse-resize',
+  n: 'ns-resize',
+  ne: 'nesw-resize',
+  w: 'ew-resize',
+  e: 'ew-resize',
+  sw: 'nesw-resize',
+  s: 'ns-resize',
+  se: 'nwse-resize',
+};
 
 export const SelectionOverlay: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const rafIdRef = useRef<number | null>(null);
   const dprRef = useRef<number>(1);
   const { selectionMode, selectedElement, hoveredElement } = useSelectionStore();
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<HandlePosition | null>(null);
+  const [resizeState, setResizeState] = useState<ResizeState>({
+    isResizing: false,
+    handle: null,
+    startX: 0,
+    startY: 0,
+    startRect: null,
+  });
+  const [liveRect, setLiveRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // Get element label - memoized for performance
   const getElementLabel = useCallback((element: ElementInfo): string => {
@@ -80,6 +113,223 @@ export const SelectionOverlay: React.FC = () => {
 
     return parts.join('');
   }, []);
+
+  // Get handle positions for a given rect
+  const getHandlePositions = useCallback((rect: { x: number; y: number; width: number; height: number }): ResizeHandle[] => {
+    const x = Math.round(rect.x);
+    const y = Math.round(rect.y);
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
+
+    return [
+      { x: x - HANDLE_OFFSET, y: y - HANDLE_OFFSET, position: 'nw' },
+      { x: x + w / 2 - HANDLE_OFFSET, y: y - HANDLE_OFFSET, position: 'n' },
+      { x: x + w - HANDLE_OFFSET, y: y - HANDLE_OFFSET, position: 'ne' },
+      { x: x - HANDLE_OFFSET, y: y + h / 2 - HANDLE_OFFSET, position: 'w' },
+      { x: x + w - HANDLE_OFFSET, y: y + h / 2 - HANDLE_OFFSET, position: 'e' },
+      { x: x - HANDLE_OFFSET, y: y + h - HANDLE_OFFSET, position: 'sw' },
+      { x: x + w / 2 - HANDLE_OFFSET, y: y + h - HANDLE_OFFSET, position: 's' },
+      { x: x + w - HANDLE_OFFSET, y: y + h - HANDLE_OFFSET, position: 'se' },
+    ];
+  }, []);
+
+  // Check if a point is inside a handle's hit area
+  const getHandleAtPoint = useCallback((mouseX: number, mouseY: number, rect: { x: number; y: number; width: number; height: number }): HandlePosition | null => {
+    const handles = getHandlePositions(rect);
+    const hitOffset = (HANDLE_HIT_AREA - HANDLE_SIZE) / 2;
+
+    for (const handle of handles) {
+      const hitX = handle.x - hitOffset;
+      const hitY = handle.y - hitOffset;
+
+      if (
+        mouseX >= hitX &&
+        mouseX <= hitX + HANDLE_HIT_AREA &&
+        mouseY >= hitY &&
+        mouseY <= hitY + HANDLE_HIT_AREA
+      ) {
+        return handle.position;
+      }
+    }
+    return null;
+  }, [getHandlePositions]);
+
+  // Calculate new rect based on handle drag
+  const calculateNewRect = useCallback((
+    handle: HandlePosition,
+    startRect: { x: number; y: number; width: number; height: number },
+    deltaX: number,
+    deltaY: number
+  ): { x: number; y: number; width: number; height: number } => {
+    let { x, y, width, height } = startRect;
+    const minSize = 20;
+
+    switch (handle) {
+      case 'nw':
+        x += deltaX;
+        y += deltaY;
+        width -= deltaX;
+        height -= deltaY;
+        break;
+      case 'n':
+        y += deltaY;
+        height -= deltaY;
+        break;
+      case 'ne':
+        y += deltaY;
+        width += deltaX;
+        height -= deltaY;
+        break;
+      case 'w':
+        x += deltaX;
+        width -= deltaX;
+        break;
+      case 'e':
+        width += deltaX;
+        break;
+      case 'sw':
+        x += deltaX;
+        width -= deltaX;
+        height += deltaY;
+        break;
+      case 's':
+        height += deltaY;
+        break;
+      case 'se':
+        width += deltaX;
+        height += deltaY;
+        break;
+    }
+
+    // Enforce minimum size and adjust position if needed
+    if (width < minSize) {
+      if (handle.includes('w')) {
+        x = startRect.x + startRect.width - minSize;
+      }
+      width = minSize;
+    }
+    if (height < minSize) {
+      if (handle.includes('n')) {
+        y = startRect.y + startRect.height - minSize;
+      }
+      height = minSize;
+    }
+
+    return { x, y, width, height };
+  }, []);
+
+  // Send resize message to iframe
+  const sendResizeToIframe = useCallback((
+    selector: string,
+    newWidth: number,
+    newHeight: number
+  ) => {
+    // Dispatch custom event that App.tsx will forward to iframe
+    window.dispatchEvent(new CustomEvent('claude-vs-resize-element', {
+      detail: {
+        selector,
+        width: Math.round(newWidth),
+        height: Math.round(newHeight),
+      }
+    }));
+  }, []);
+
+  // Handle mouse down on overlay
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!selectionMode || !selectedElement) return;
+
+    const rect = selectedElement.rect;
+    const handle = getHandleAtPoint(e.clientX, e.clientY, rect);
+
+    if (handle) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      setResizeState({
+        isResizing: true,
+        handle,
+        startX: e.clientX,
+        startY: e.clientY,
+        startRect: { ...rect },
+      });
+      setLiveRect({ ...rect });
+    }
+  }, [selectionMode, selectedElement, getHandleAtPoint]);
+
+  // Handle mouse move
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!selectionMode || !selectedElement) return;
+
+    if (resizeState.isResizing && resizeState.handle && resizeState.startRect) {
+      e.preventDefault();
+
+      const deltaX = e.clientX - resizeState.startX;
+      const deltaY = e.clientY - resizeState.startY;
+      const newRect = calculateNewRect(resizeState.handle, resizeState.startRect, deltaX, deltaY);
+      setLiveRect(newRect);
+    } else {
+      // Check for handle hover
+      const handle = getHandleAtPoint(e.clientX, e.clientY, selectedElement.rect);
+      setHoveredHandle(handle);
+    }
+  }, [selectionMode, selectedElement, resizeState, calculateNewRect, getHandleAtPoint]);
+
+  // Handle mouse up
+  const handleMouseUp = useCallback(() => {
+    if (resizeState.isResizing && liveRect && selectedElement) {
+      // Send final size to iframe
+      sendResizeToIframe(selectedElement.selector, liveRect.width, liveRect.height);
+
+      console.log('[SelectionOverlay] Resize complete:', {
+        selector: selectedElement.selector,
+        width: liveRect.width,
+        height: liveRect.height,
+      });
+    }
+
+    setResizeState({
+      isResizing: false,
+      handle: null,
+      startX: 0,
+      startY: 0,
+      startRect: null,
+    });
+    setLiveRect(null);
+    setHoveredHandle(null);
+  }, [resizeState.isResizing, liveRect, selectedElement, sendResizeToIframe]);
+
+  // Handle mouse leave
+  const handleMouseLeave = useCallback(() => {
+    if (!resizeState.isResizing) {
+      setHoveredHandle(null);
+    }
+  }, [resizeState.isResizing]);
+
+  // Add global mouse event listeners during resize
+  useEffect(() => {
+    if (!resizeState.isResizing) return;
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (resizeState.handle && resizeState.startRect) {
+        const deltaX = e.clientX - resizeState.startX;
+        const deltaY = e.clientY - resizeState.startY;
+        const newRect = calculateNewRect(resizeState.handle, resizeState.startRect, deltaX, deltaY);
+        setLiveRect(newRect);
+      }
+    };
+
+    const handleGlobalMouseUp = () => {
+      handleMouseUp();
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [resizeState, calculateNewRect, handleMouseUp]);
 
   // Setup canvas with proper DPI scaling
   const setupCanvas = useCallback(() => {
@@ -138,17 +388,26 @@ export const SelectionOverlay: React.FC = () => {
         drawElementHighlight(ctx, hoveredElement.rect, COLORS.hoverFill, COLORS.hoverStroke, 2);
       }
 
-      // Draw selected element
+      // Draw selected element - use liveRect during resize for live feedback
       if (selectedElement) {
-        drawElementHighlight(ctx, selectedElement.rect, COLORS.selectedFill, COLORS.selectedStroke, 2);
-        drawResizeHandles(ctx, selectedElement.rect);
+        const rectToDraw = liveRect || selectedElement.rect;
+
+        // Use different colors during resize
+        const fillColor = resizeState.isResizing ? 'rgba(66, 133, 244, 0.2)' : COLORS.selectedFill;
+        const strokeColor = resizeState.isResizing ? 'rgba(66, 133, 244, 1)' : COLORS.selectedStroke;
+
+        drawElementHighlight(ctx, rectToDraw, fillColor, strokeColor, 2);
+        drawResizeHandles(ctx, rectToDraw, hoveredHandle);
 
         // Update tooltip
         const label = getElementLabel(selectedElement);
+        const dimensionLabel = resizeState.isResizing && liveRect
+          ? ` (${Math.round(liveRect.width)}×${Math.round(liveRect.height)})`
+          : '';
         setTooltip({
-          x: selectedElement.rect.x,
-          y: Math.max(24, selectedElement.rect.y) - 24,
-          text: label,
+          x: rectToDraw.x,
+          y: Math.max(24, rectToDraw.y) - 24,
+          text: label + dimensionLabel,
         });
       } else {
         setTooltip(null);
@@ -164,7 +423,7 @@ export const SelectionOverlay: React.FC = () => {
         rafIdRef.current = null;
       }
     };
-  }, [selectionMode, selectedElement, hoveredElement, getElementLabel, setupCanvas]);
+  }, [selectionMode, selectedElement, hoveredElement, getElementLabel, setupCanvas, liveRect, resizeState.isResizing, hoveredHandle]);
 
   // Draw element highlight with crisp edges
   const drawElementHighlight = (
@@ -223,7 +482,8 @@ export const SelectionOverlay: React.FC = () => {
   // Draw resize handles with crisp rendering
   const drawResizeHandles = (
     ctx: CanvasRenderingContext2D,
-    rect: { x: number; y: number; width: number; height: number }
+    rect: { x: number; y: number; width: number; height: number },
+    activeHandle?: HandlePosition | null
   ) => {
     // Round coordinates for crisp rendering
     const x = Math.round(rect.x);
@@ -247,14 +507,15 @@ export const SelectionOverlay: React.FC = () => {
     handles.forEach((handle) => {
       const hx = Math.round(handle.x);
       const hy = Math.round(handle.y);
+      const isActive = activeHandle === handle.position || resizeState.handle === handle.position;
 
-      // Draw handle background (white square)
-      ctx.fillStyle = COLORS.handleFill;
+      // Draw handle background (white or highlighted)
+      ctx.fillStyle = isActive ? COLORS.handleStroke : COLORS.handleFill;
       ctx.fillRect(hx, hy, HANDLE_SIZE, HANDLE_SIZE);
 
       // Draw handle border with crisp edges
-      ctx.strokeStyle = COLORS.handleStroke;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = isActive ? '#0056b3' : COLORS.handleStroke;
+      ctx.lineWidth = isActive ? 2 : 1;
       ctx.strokeRect(hx + 0.5, hy + 0.5, HANDLE_SIZE - 1, HANDLE_SIZE - 1);
     });
 
@@ -294,9 +555,42 @@ export const SelectionOverlay: React.FC = () => {
 
   if (!selectionMode) return null;
 
+  // Determine cursor based on hovered handle or resize state
+  const getCursor = () => {
+    if (resizeState.isResizing && resizeState.handle) {
+      return CURSOR_MAP[resizeState.handle];
+    }
+    if (hoveredHandle) {
+      return CURSOR_MAP[hoveredHandle];
+    }
+    return 'default';
+  };
+
   return (
     <>
       <canvas ref={canvasRef} style={styles.canvas} />
+      {/* Interactive overlay for resize handles */}
+      {selectedElement && (
+        <div
+          ref={overlayRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'auto',
+            zIndex: 1001,
+            cursor: getCursor(),
+            // Only capture events when hovering handles or resizing
+            backgroundColor: 'transparent',
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+        />
+      )}
       {tooltip && (
         <div
           style={{

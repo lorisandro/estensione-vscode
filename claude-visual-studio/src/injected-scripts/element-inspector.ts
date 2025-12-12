@@ -31,9 +31,17 @@ interface ElementInfo {
 }
 
 interface InspectorMessage {
-  type: 'element-hover' | 'element-select' | 'inspector-ready' | 'selection-mode-changed' | 'element-drag-start' | 'element-drag-end' | 'drag-mode-changed' | 'css-style-applied' | 'element-updated';
-  data?: ElementInfo | boolean | DragChangeData | CssStyleChange;
+  type: 'element-hover' | 'element-select' | 'inspector-ready' | 'selection-mode-changed' | 'element-drag-start' | 'element-drag-end' | 'drag-mode-changed' | 'css-style-applied' | 'element-updated' | 'element-resized';
+  data?: ElementInfo | boolean | DragChangeData | CssStyleChange | ResizeData;
   timestamp: number;
+}
+
+interface ResizeData {
+  selector: string;
+  width: number;
+  height: number;
+  previousWidth?: number;
+  previousHeight?: number;
 }
 
 interface DragChangeData {
@@ -1272,6 +1280,59 @@ class ElementInspector {
       this.applyCssStyle(payload);
     } else if (type === 'get-element-info') {
       this.sendSelectedElementInfo();
+    } else if (type === 'resize-element') {
+      this.resizeElement(payload);
+    }
+  }
+
+  /**
+   * Resize an element by selector
+   */
+  private resizeElement(payload: { selector?: string; width: number; height: number }): void {
+    if (!payload?.selector) {
+      console.warn('[Element Inspector] Invalid resize payload - no selector');
+      return;
+    }
+
+    const element = document.querySelector(payload.selector) as HTMLElement;
+    if (!element) {
+      console.warn('[Element Inspector] Element not found for resize:', payload.selector);
+      return;
+    }
+
+    // Get current computed dimensions for undo support
+    const computedStyle = window.getComputedStyle(element);
+    const previousWidth = parseFloat(computedStyle.width);
+    const previousHeight = parseFloat(computedStyle.height);
+
+    // Apply new dimensions
+    try {
+      element.style.width = `${payload.width}px`;
+      element.style.height = `${payload.height}px`;
+
+      // Send confirmation
+      this.sendMessage({
+        type: 'element-resized',
+        data: {
+          selector: payload.selector,
+          width: payload.width,
+          height: payload.height,
+          previousWidth,
+          previousHeight,
+        } as ResizeData,
+        timestamp: Date.now(),
+      });
+
+      // Also send updated element info so the selection overlay can update
+      this.sendMessage({
+        type: 'element-updated',
+        data: this.getElementInfo(element),
+        timestamp: Date.now(),
+      });
+
+      console.log('[Element Inspector] Element resized:', payload.selector, `${payload.width}x${payload.height}`);
+    } catch (error) {
+      console.error('[Element Inspector] Error resizing element:', error);
     }
   }
 
