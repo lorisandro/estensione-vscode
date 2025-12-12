@@ -119,18 +119,21 @@ class ElementInspector {
   private dragElement: HTMLElement | null = null;
   private dragStartX: number = 0;
   private dragStartY: number = 0;
-  private elementStartX: number = 0;
-  private elementStartY: number = 0;
-  private originalPosition: { x: number; y: number } | null = null;
   private dragOverlay: HTMLDivElement | null = null;
 
-  // Guided drag properties
-  private readonly SNAP_THRESHOLD = 5;
+  // DOM reorder drag properties
+  private dropIndicator: HTMLDivElement | null = null;
+  private dropTarget: HTMLElement | null = null;
+  private dropPosition: 'before' | 'after' | null = null;
+  private dragPlaceholder: HTMLDivElement | null = null;
+  private originalNextSibling: Node | null = null;
+  private originalParent: HTMLElement | null = null;
+
+  // Guide properties (for visual feedback)
   private readonly GUIDE_COLOR = '#ff00ff';
   private readonly GUIDE_CENTER_COLOR = '#00d4ff';
   private guidesContainer: SVGSVGElement | null = null;
   private distanceContainer: HTMLDivElement | null = null;
-  private dragGuideState: DragGuideState | null = null;
 
   // Drag mode hover overlay (replaces CSS :hover)
   private dragHoverOverlay: HTMLDivElement | null = null;
@@ -245,7 +248,7 @@ class ElementInspector {
     // Create drag mode elements
     this.createDragStyle();
     this.createDragOverlay();
-    this.createGuidesContainer();
+    this.createDropIndicator();
     this.createDragHoverOverlay();
 
     // Setup event listeners
@@ -339,7 +342,7 @@ class ElementInspector {
   }
 
   /**
-   * Create drag overlay for visual feedback during drag
+   * Create drag overlay for visual feedback during drag (follows dragged element)
    */
   private createDragOverlay(): void {
     this.dragOverlay = document.createElement('div');
@@ -349,13 +352,94 @@ class ElementInspector {
       top: 0;
       left: 0;
       pointer-events: none;
-      border: 2px dashed rgba(0, 122, 204, 0.8);
-      background-color: rgba(0, 122, 204, 0.05);
+      border: 2px solid #007acc;
+      background-color: rgba(0, 122, 204, 0.1);
       z-index: 999997;
       display: none;
       box-sizing: border-box;
+      opacity: 0.7;
     `;
     document.body.appendChild(this.dragOverlay);
+  }
+
+  /**
+   * Create drop indicator (horizontal line showing where element will be inserted)
+   */
+  private createDropIndicator(): void {
+    this.dropIndicator = document.createElement('div');
+    this.dropIndicator.id = '__claude-vs-drop-indicator__';
+    this.dropIndicator.style.cssText = `
+      position: fixed;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, #007acc, #007acc, transparent);
+      border-radius: 2px;
+      z-index: 999998;
+      display: none;
+      pointer-events: none;
+      box-shadow: 0 0 8px rgba(0, 122, 204, 0.6);
+    `;
+    document.body.appendChild(this.dropIndicator);
+  }
+
+  /**
+   * Show drop indicator at position
+   */
+  private showDropIndicator(x: number, y: number, width: number): void {
+    if (!this.dropIndicator) return;
+    this.dropIndicator.style.left = `${x}px`;
+    this.dropIndicator.style.top = `${y - 2}px`;
+    this.dropIndicator.style.width = `${width}px`;
+    this.dropIndicator.style.display = 'block';
+  }
+
+  /**
+   * Hide drop indicator
+   */
+  private hideDropIndicator(): void {
+    if (!this.dropIndicator) return;
+    this.dropIndicator.style.display = 'none';
+  }
+
+  /**
+   * Find drop target and position based on mouse coordinates
+   */
+  private findDropTarget(mouseX: number, mouseY: number): { target: HTMLElement | null; position: 'before' | 'after' } {
+    if (!this.dragElement || !this.originalParent) {
+      return { target: null, position: 'before' };
+    }
+
+    // Get siblings (excluding the dragged element and our inspector elements)
+    const siblings = Array.from(this.originalParent.children).filter(
+      child => child !== this.dragElement &&
+               child !== this.dragPlaceholder &&
+               child.nodeType === Node.ELEMENT_NODE &&
+               !((child as HTMLElement).id?.startsWith('__claude-vs-')) &&
+               window.getComputedStyle(child as HTMLElement).display !== 'none'
+    ) as HTMLElement[];
+
+    if (siblings.length === 0) {
+      return { target: null, position: 'before' };
+    }
+
+    // Find the closest sibling based on mouse Y position
+    let closestSibling: HTMLElement | null = null;
+    let closestDistance = Infinity;
+    let position: 'before' | 'after' = 'before';
+
+    for (const sibling of siblings) {
+      const rect = sibling.getBoundingClientRect();
+      const siblingCenterY = rect.top + rect.height / 2;
+      const distance = Math.abs(mouseY - siblingCenterY);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestSibling = sibling;
+        // If mouse is above center, insert before; otherwise after
+        position = mouseY < siblingCenterY ? 'before' : 'after';
+      }
+    }
+
+    return { target: closestSibling, position };
   }
 
   /**
@@ -1325,7 +1409,7 @@ class ElementInspector {
   }
 
   /**
-   * Handle drag start
+   * Handle drag start - DOM reorder approach
    */
   private handleDragStart(event: MouseEvent): void {
     if (!this.isDragMode || this.isSelectionMode || this.isDragging) {
@@ -1350,26 +1434,12 @@ class ElementInspector {
     this.dragStartX = event.clientX;
     this.dragStartY = event.clientY;
 
-    // Get current position
+    // Store original DOM position for potential cancel
+    this.originalParent = target.parentElement;
+    this.originalNextSibling = target.nextSibling;
+
+    // Get element dimensions for overlay
     const rect = target.getBoundingClientRect();
-    const computedStyle = window.getComputedStyle(target);
-    const originalPosition = computedStyle.position;
-
-    // Store original CSS position values
-    // For static elements, left/top are "auto", so we use 0
-    const leftValue = computedStyle.left;
-    const topValue = computedStyle.top;
-    const currentLeft = (leftValue === 'auto' || leftValue === '') ? 0 : parseFloat(leftValue) || 0;
-    const currentTop = (topValue === 'auto' || topValue === '') ? 0 : parseFloat(topValue) || 0;
-    this.originalPosition = { x: currentLeft, y: currentTop };
-
-    this.elementStartX = rect.left;
-    this.elementStartY = rect.top;
-
-    // Ensure element has position for dragging
-    if (originalPosition === 'static') {
-      target.style.position = 'relative';
-    }
 
     // Add visual feedback
     target.classList.add('__claude-vs-drag-element__');
@@ -1379,7 +1449,7 @@ class ElementInspector {
     document.body.style.userSelect = 'none';
     document.body.style.webkitUserSelect = 'none';
 
-    // Show drag overlay at original position
+    // Show drag overlay following the element
     if (this.dragOverlay) {
       this.dragOverlay.style.left = `${rect.left}px`;
       this.dragOverlay.style.top = `${rect.top}px`;
@@ -1395,14 +1465,11 @@ class ElementInspector {
       timestamp: Date.now(),
     });
 
-    // Collect alignment points for guided drag
-    this.dragGuideState = this.collectAlignmentPoints(target);
-
-    console.log('[Element Inspector] Drag started:', target.tagName, 'originalPosition:', this.originalPosition);
+    console.log('[Element Inspector] DOM Reorder drag started:', target.tagName);
   }
 
   /**
-   * Handle drag move
+   * Handle drag move - DOM reorder approach
    */
   private handleDragMove(event: MouseEvent): void {
     if (!this.isDragging || !this.dragElement) {
@@ -1411,72 +1478,65 @@ class ElementInspector {
 
     event.preventDefault();
 
-    const deltaX = event.clientX - this.dragStartX;
-    const deltaY = event.clientY - this.dragStartY;
+    // Update drag overlay position to follow mouse
+    const rect = this.dragElement.getBoundingClientRect();
+    if (this.dragOverlay) {
+      this.dragOverlay.style.left = `${rect.left}px`;
+      this.dragOverlay.style.top = `${rect.top}px`;
+    }
 
-    // Calculate proposed position
-    const proposedLeft = (this.originalPosition?.x || 0) + deltaX;
-    const proposedTop = (this.originalPosition?.y || 0) + deltaY;
+    // Find where the element would be dropped
+    const { target, position } = this.findDropTarget(event.clientX, event.clientY);
 
-    // Get current element rect for snapping calculation
-    const currentRect = this.dragElement.getBoundingClientRect();
+    if (target) {
+      this.dropTarget = target;
+      this.dropPosition = position;
 
-    // Check if we have guide state for snapping
-    if (this.dragGuideState) {
-      // Find snap positions
-      const snap = this.findSnapPosition(currentRect, this.dragGuideState, proposedLeft, proposedTop);
-
-      // Apply snapped position
-      this.dragElement.style.left = `${snap.snappedX}px`;
-      this.dragElement.style.top = `${snap.snappedY}px`;
-
-      // Get updated rect after snapping
-      const newRect = this.dragElement.getBoundingClientRect();
-
-      // Calculate distance indicators
-      const distances = this.calculateDistanceIndicators(newRect, this.dragGuideState);
-
-      // Update visual guides
-      const allGuides = [...snap.horizontalGuides, ...snap.verticalGuides];
-      this.updateGuidesDisplay(allGuides, distances);
+      // Show drop indicator
+      const targetRect = target.getBoundingClientRect();
+      const indicatorY = position === 'before' ? targetRect.top : targetRect.bottom;
+      this.showDropIndicator(targetRect.left, indicatorY, targetRect.width);
     } else {
-      // Fallback: no snapping
-      this.dragElement.style.left = `${proposedLeft}px`;
-      this.dragElement.style.top = `${proposedTop}px`;
+      this.dropTarget = null;
+      this.dropPosition = null;
+      this.hideDropIndicator();
     }
   }
 
   /**
-   * Handle drag end
+   * Handle drag end - DOM reorder approach
    */
   private handleDragEnd(event: MouseEvent): void {
     if (!this.isDragging || !this.dragElement) {
       return;
     }
 
-    const deltaX = event.clientX - this.dragStartX;
-    const deltaY = event.clientY - this.dragStartY;
+    // Perform DOM reorder if we have a valid drop target
+    if (this.dropTarget && this.dropPosition && this.originalParent) {
+      const elementSelector = this.getCSSSelector(this.dragElement);
+      const targetSelector = this.getCSSSelector(this.dropTarget);
 
-    // Only record change if element actually moved
-    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
-      const computedStyle = window.getComputedStyle(this.dragElement);
-      const newLeft = parseFloat(computedStyle.left) || 0;
-      const newTop = parseFloat(computedStyle.top) || 0;
+      // Move element in DOM
+      if (this.dropPosition === 'before') {
+        this.dropTarget.parentElement?.insertBefore(this.dragElement, this.dropTarget);
+      } else {
+        // Insert after = insert before the next sibling
+        this.dropTarget.parentElement?.insertBefore(this.dragElement, this.dropTarget.nextSibling);
+      }
 
-      // Send drag end message with change data
-      const changeData: DragChangeData = {
-        elementSelector: this.getCSSSelector(this.dragElement),
-        originalPosition: this.originalPosition || { x: 0, y: 0 },
-        newPosition: { x: newLeft, y: newTop },
-      };
-
+      // Send message with DOM change info
       this.sendMessage({
         type: 'element-drag-end',
-        data: changeData,
+        data: {
+          elementSelector,
+          action: 'reorder',
+          targetSelector,
+          position: this.dropPosition,
+        },
         timestamp: Date.now(),
       });
 
-      console.log('[Element Inspector] Drag ended:', changeData);
+      console.log('[Element Inspector] DOM Reorder completed:', elementSelector, this.dropPosition, targetSelector);
     }
 
     // Clean up
@@ -1484,21 +1544,22 @@ class ElementInspector {
   }
 
   /**
-   * Cancel current drag operation
+   * Cancel current drag operation - restore element to original DOM position
    */
   private cancelDrag(): void {
     if (!this.isDragging || !this.dragElement) {
       return;
     }
 
-    // Restore original position
-    if (this.originalPosition) {
-      this.dragElement.style.left = `${this.originalPosition.x}px`;
-      this.dragElement.style.top = `${this.originalPosition.y}px`;
+    // Restore to original DOM position
+    if (this.originalParent && this.originalNextSibling) {
+      this.originalParent.insertBefore(this.dragElement, this.originalNextSibling);
+    } else if (this.originalParent) {
+      this.originalParent.appendChild(this.dragElement);
     }
 
     this.finishDrag();
-    console.log('[Element Inspector] Drag cancelled');
+    console.log('[Element Inspector] Drag cancelled - restored to original position');
   }
 
   /**
@@ -1514,17 +1575,19 @@ class ElementInspector {
     document.body.style.userSelect = '';
     document.body.style.webkitUserSelect = '';
 
+    // Hide overlays
     if (this.dragOverlay) {
       this.dragOverlay.style.display = 'none';
     }
+    this.hideDropIndicator();
 
-    // Clear alignment guides
-    this.clearGuides();
-    this.dragGuideState = null;
-
+    // Reset state
     this.isDragging = false;
     this.dragElement = null;
-    this.originalPosition = null;
+    this.dropTarget = null;
+    this.dropPosition = null;
+    this.originalParent = null;
+    this.originalNextSibling = null;
   }
 
   /**
@@ -1888,6 +1951,10 @@ class ElementInspector {
 
     if (this.dragHoverOverlay && this.dragHoverOverlay.parentElement) {
       this.dragHoverOverlay.parentElement.removeChild(this.dragHoverOverlay);
+    }
+
+    if (this.dropIndicator && this.dropIndicator.parentElement) {
+      this.dropIndicator.parentElement.removeChild(this.dropIndicator);
     }
 
     // Remove guide containers
