@@ -291,6 +291,20 @@ export interface ElementSelectedKebabMessage extends BaseMessage {
   };
 }
 
+/**
+ * Apply drag changes from webview
+ */
+export interface ApplyDragChangesMessage extends BaseMessage {
+  type: 'apply-drag-changes';
+  payload: {
+    changes: Array<{
+      elementSelector: string;
+      originalPosition: { x: number; y: number };
+      newPosition: { x: number; y: number };
+    }>;
+  };
+}
+
 // Union types for type safety
 // ============================
 
@@ -326,7 +340,8 @@ export type WebviewToExtensionMessage =
   | ScreenshotMessage
   | CaptureScreenshotAreaMessage
   | OpenDevToolsMessage
-  | ElementSelectedKebabMessage;
+  | ElementSelectedKebabMessage
+  | ApplyDragChangesMessage;
 
 /**
  * All possible messages in either direction
@@ -371,6 +386,7 @@ export function isWebviewToExtensionMessage(
     'capture-screenshot-area',
     'openDevTools',
     'element-selected',
+    'apply-drag-changes',
   ].includes(message.type);
 }
 

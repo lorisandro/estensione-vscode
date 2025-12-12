@@ -420,6 +420,11 @@ export class WebviewPanelProvider {
         }
         break;
 
+      // Handle apply-drag-changes from webview
+      case 'apply-drag-changes':
+        await this.handleApplyDragChanges(message as any);
+        break;
+
       default:
         console.warn('Unknown message type:', (message as any).type);
     }
@@ -841,6 +846,86 @@ export class WebviewPanelProvider {
       [key]: value,
     };
     this.saveState();
+  }
+
+  /**
+   * Handle apply drag changes from webview
+   * Writes changes to file and sends to Claude Code terminal
+   */
+  private async handleApplyDragChanges(message: {
+    type: 'apply-drag-changes';
+    payload: {
+      changes: Array<{
+        elementSelector: string;
+        originalPosition: { x: number; y: number };
+        newPosition: { x: number; y: number };
+      }>;
+    };
+  }): Promise<void> {
+    const { changes } = message.payload;
+
+    if (!changes || changes.length === 0) {
+      return;
+    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      return;
+    }
+
+    // Write changes to file
+    const outputPath = path.join(workspaceFolders[0].uri.fsPath, '.claude-drag-changes.json');
+    const changeData = {
+      timestamp: new Date().toISOString(),
+      changesCount: changes.length,
+      changes: changes.map((change, index) => ({
+        index: index + 1,
+        selector: change.elementSelector,
+        from: `left: ${change.originalPosition.x}px, top: ${change.originalPosition.y}px`,
+        to: `left: ${change.newPosition.x}px, top: ${change.newPosition.y}px`,
+        deltaX: change.newPosition.x - change.originalPosition.x,
+        deltaY: change.newPosition.y - change.originalPosition.y,
+      })),
+    };
+
+    try {
+      fs.writeFileSync(outputPath, JSON.stringify(changeData, null, 2), 'utf-8');
+
+      // Create formatted output for Claude Code terminal
+      const terminalLines = [
+        `[MODIFICHE DRAG & DROP APPLICATE]`,
+        `Numero modifiche: ${changes.length}`,
+        ``,
+        ...changes.map((change, i) => {
+          const deltaX = change.newPosition.x - change.originalPosition.x;
+          const deltaY = change.newPosition.y - change.originalPosition.y;
+          return [
+            `Modifica ${i + 1}:`,
+            `  Elemento: ${change.elementSelector}`,
+            `  Da: left=${change.originalPosition.x}px, top=${change.originalPosition.y}px`,
+            `  A:  left=${change.newPosition.x}px, top=${change.newPosition.y}px`,
+            `  Delta: x=${deltaX > 0 ? '+' : ''}${deltaX}px, y=${deltaY > 0 ? '+' : ''}${deltaY}px`,
+          ].join('\n');
+        }),
+        ``,
+        `File dettagli: .claude-drag-changes.json`,
+      ].join('\n');
+
+      // Send directly to active terminal (Claude Code)
+      const terminal = vscode.window.activeTerminal;
+      if (terminal) {
+        terminal.sendText(terminalLines);
+      }
+
+      // Also show VS Code notification
+      vscode.window.showInformationMessage(
+        `${changes.length} drag change(s) applied. Details saved to .claude-drag-changes.json`
+      );
+
+      console.log(`[Claude VS] Drag changes applied: ${changes.length}`);
+    } catch (err) {
+      console.error('[Claude VS] Failed to write drag changes:', err);
+    }
   }
 
   /**

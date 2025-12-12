@@ -146,6 +146,7 @@ export const NavigationBar: React.FC = () => {
     screenshotMode,
     setScreenshotMode,
     hasPendingChanges,
+    dragChanges,
     undoLastChange,
     applyChanges,
     clearDragChanges,
@@ -222,10 +223,23 @@ export const NavigationBar: React.FC = () => {
   }, [screenshotMode, setScreenshotMode]);
 
   const handleApply = useCallback(() => {
+    // Send drag changes to extension for Claude Code integration
+    if (dragChanges.length > 0) {
+      postMessage({
+        type: 'apply-drag-changes',
+        payload: {
+          changes: dragChanges.map(change => ({
+            elementSelector: change.elementSelector,
+            originalPosition: change.originalPosition,
+            newPosition: change.newPosition,
+          })),
+        },
+      });
+    }
     // Dispatch custom event to be handled by App.tsx which forwards to iframe
     window.dispatchEvent(new CustomEvent('claude-vs-apply-drag-changes'));
     applyChanges();
-  }, [applyChanges]);
+  }, [applyChanges, dragChanges, postMessage]);
 
   const handleUndo = useCallback(() => {
     const lastChange = undoLastChange();
