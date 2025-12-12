@@ -420,6 +420,101 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   );
 };
 
+// Scrub Label Component - for labels that can be dragged to change values
+interface ScrubLabelProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  sensitivity?: number;
+  disabled?: boolean;
+  style?: React.CSSProperties;
+}
+
+const ScrubLabel: React.FC<ScrubLabelProps> = ({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  sensitivity = 2,
+  disabled = false,
+  style,
+}) => {
+  const scrubRef = useRef<{
+    isDragging: boolean;
+    startX: number;
+    startValue: number;
+  }>({ isDragging: false, startX: 0, startValue: 0 });
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (disabled) return;
+    e.preventDefault();
+
+    scrubRef.current = {
+      isDragging: true,
+      startX: e.clientX,
+      startValue: value,
+    };
+
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!scrubRef.current.isDragging) return;
+
+      const deltaX = moveEvent.clientX - scrubRef.current.startX;
+      const deltaValue = Math.round(deltaX / sensitivity) * step;
+      let newValue = scrubRef.current.startValue + deltaValue;
+
+      if (min !== undefined) newValue = Math.max(min, newValue);
+      if (max !== undefined) newValue = Math.min(max, newValue);
+
+      onChange(newValue);
+    };
+
+    const handleMouseUp = () => {
+      scrubRef.current.isDragging = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [disabled, value, step, min, max, onChange, sensitivity]);
+
+  return (
+    <span
+      style={{
+        ...styles.label,
+        cursor: disabled ? 'default' : 'ew-resize',
+        userSelect: 'none',
+        padding: '2px 4px',
+        borderRadius: '2px',
+        transition: 'background-color 0.15s',
+        ...style,
+      }}
+      onMouseDown={handleMouseDown}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+      }}
+      title={disabled ? '' : 'Drag to adjust value'}
+    >
+      {label}
+    </span>
+  );
+};
+
 interface NumberInputProps {
   value: number;
   unit?: string;
@@ -432,6 +527,7 @@ interface NumberInputProps {
   units?: string[];
   disabled?: boolean;
   label?: string;
+  scrubSensitivity?: number; // pixels per step change
 }
 
 const NumberInput: React.FC<NumberInputProps> = ({
@@ -446,10 +542,87 @@ const NumberInput: React.FC<NumberInputProps> = ({
   units = ['px', '%', 'em', 'rem', 'vw', 'vh'],
   disabled = false,
   label,
+  scrubSensitivity = 2, // default: 2 pixels = 1 step
 }) => {
+  const scrubRef = useRef<{
+    isDragging: boolean;
+    startX: number;
+    startValue: number;
+  }>({ isDragging: false, startX: 0, startValue: 0 });
+  const labelRef = useRef<HTMLSpanElement>(null);
+
+  // Handle scrubbing (drag on label to change value)
+  const handleLabelMouseDown = useCallback((e: React.MouseEvent) => {
+    if (disabled) return;
+    e.preventDefault();
+
+    scrubRef.current = {
+      isDragging: true,
+      startX: e.clientX,
+      startValue: value,
+    };
+
+    // Change cursor globally during drag
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!scrubRef.current.isDragging) return;
+
+      const deltaX = moveEvent.clientX - scrubRef.current.startX;
+      const deltaValue = Math.round(deltaX / scrubSensitivity) * step;
+      let newValue = scrubRef.current.startValue + deltaValue;
+
+      // Clamp to min/max
+      if (min !== undefined) newValue = Math.max(min, newValue);
+      if (max !== undefined) newValue = Math.min(max, newValue);
+
+      onChange(newValue);
+    };
+
+    const handleMouseUp = () => {
+      scrubRef.current.isDragging = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [disabled, value, step, min, max, onChange, scrubSensitivity]);
+
+  const scrubLabelStyle: React.CSSProperties = {
+    ...styles.label,
+    minWidth: 'auto',
+    marginRight: '4px',
+    cursor: disabled ? 'default' : 'ew-resize',
+    userSelect: 'none',
+    padding: '2px 4px',
+    borderRadius: '2px',
+    transition: 'background-color 0.15s',
+  };
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
-      {label && <span style={{ ...styles.label, minWidth: 'auto', marginRight: '4px' }}>{label}</span>}
+      {label && (
+        <span
+          ref={labelRef}
+          style={scrubLabelStyle}
+          onMouseDown={handleLabelMouseDown}
+          onMouseEnter={(e) => {
+            if (!disabled) {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+          title={disabled ? '' : 'Drag to adjust value'}
+        >
+          {label}
+        </span>
+      )}
       <input
         type="number"
         value={value}
@@ -1116,7 +1289,12 @@ export const CssInspectorPanel: React.FC = () => {
             </select>
           </div>
           <div style={styles.row}>
-            <span style={styles.label}>Z-Index</span>
+            <ScrubLabel
+              label="Z-Index"
+              value={parseInt(getStyle('zIndex')) || 0}
+              onChange={(v) => applyCssChange('zIndex', String(v))}
+              step={1}
+            />
             <input
               type="number"
               value={parseInt(getStyle('zIndex')) || 0}
@@ -1287,7 +1465,14 @@ export const CssInspectorPanel: React.FC = () => {
         <CollapsibleSection title="Appearance">
           {/* Opacity */}
           <div style={styles.row}>
-            <span style={styles.label}>Opacity</span>
+            <ScrubLabel
+              label="Opacity"
+              value={opacity}
+              onChange={(v) => applyCssChange('opacity', String(v / 100))}
+              min={0}
+              max={100}
+              step={1}
+            />
             <div style={styles.sliderContainer}>
               <input
                 type="range"
@@ -1382,6 +1567,7 @@ export const CssInspectorPanel: React.FC = () => {
             {/* Font Weight & Size */}
             <div style={styles.gridRow}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ ...styles.label, minWidth: 'auto' }}>Weight</span>
                 <select
                   value={fontWeight}
                   onChange={(e) => applyCssChange('fontWeight', e.target.value)}
@@ -1399,6 +1585,7 @@ export const CssInspectorPanel: React.FC = () => {
                 </select>
               </div>
               <NumberInput
+                label="Size"
                 value={fontSize}
                 onChange={(v) => applyCssChange('fontSize', `${v}px`)}
               />
@@ -1484,10 +1671,11 @@ export const CssInspectorPanel: React.FC = () => {
         {/* Border Section */}
         <CollapsibleSection title="Border" defaultOpen={false}>
           <div style={styles.row}>
-            <span style={styles.label}>Width</span>
             <NumberInput
+              label="Width"
               value={parseNumericValue(getStyle('borderWidth')).num}
               onChange={(v) => applyCssChange('borderWidth', `${v}px`)}
+              min={0}
             />
           </div>
           <div style={styles.row}>
