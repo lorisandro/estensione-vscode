@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { NavigationBar } from './components/browser/NavigationBar';
 import { BrowserFrame } from './components/browser/BrowserFrame';
 import { SelectionOverlay } from './components/browser/SelectionOverlay';
+import { ConsolePanel } from './components/browser/ConsolePanel';
+import { CssInspectorPanel } from './components/browser/CssInspectorPanel';
 import { ElementInspector } from './components/ElementInspector';
 import { useSelectionStore, useEditorStore, useNavigationStore, type ElementInfo } from './state/stores';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
@@ -89,7 +91,7 @@ const styles = {
 
 export const App: React.FC = () => {
   const { setSelectedElement, setHoveredElement, selectedElement } = useSelectionStore();
-  const { isLoading, error, inspectorWidth, setInspectorWidth } = useEditorStore();
+  const { isLoading, error, inspectorWidth, setInspectorWidth, consoleVisible, cssInspectorVisible } = useEditorStore();
   const { setUrl, navigateTo, goBack, goForward, refresh, url } = useNavigationStore();
   const { onMessage, postMessage } = useVSCodeApi();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -213,6 +215,9 @@ export const App: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Console Panel */}
+          {consoleVisible && <ConsolePanel />}
         </div>
 
         {/* Resizer */}
@@ -234,6 +239,9 @@ export const App: React.FC = () => {
             <ElementInspector />
           </div>
         )}
+
+        {/* CSS Inspector Panel */}
+        {cssInspectorVisible && <CssInspectorPanel />}
       </div>
     </div>
   );

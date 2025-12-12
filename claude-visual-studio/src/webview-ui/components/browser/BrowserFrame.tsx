@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
-import { useNavigationStore, useSelectionStore, useEditorStore, type ElementInfo } from '../../state/stores';
+import { useNavigationStore, useSelectionStore, useEditorStore, type ElementInfo, type ConsoleLogEntry } from '../../state/stores';
 import { useVSCodeApi } from '../../hooks/useVSCodeApi';
 
 interface BrowserFrameProps {
@@ -42,7 +42,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const iframeRef = externalRef || internalRef;
   const { url, serverBaseUrl } = useNavigationStore();
   const { selectionMode } = useSelectionStore();
-  const { setLoading, setError } = useEditorStore();
+  const { setLoading, setError, addConsoleLog } = useEditorStore();
   const { postMessage } = useVSCodeApi();
 
   // Convert external URLs to proxy URLs
@@ -50,16 +50,105 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     return getProxiedUrl(url, serverBaseUrl);
   }, [url, serverBaseUrl]);
 
+  // Inject console capture script into iframe
+  const injectConsoleScript = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+      // Check if script already exists
+      if (doc.getElementById('console-capture-script')) return;
+
+      const script = doc.createElement('script');
+      script.id = 'console-capture-script';
+      script.textContent = `
+        (function() {
+          const originalConsole = {
+            log: console.log.bind(console),
+            warn: console.warn.bind(console),
+            error: console.error.bind(console),
+            info: console.info.bind(console),
+            debug: console.debug.bind(console),
+          };
+
+          function formatArgs(args) {
+            return Array.from(args).map(arg => {
+              if (typeof arg === 'object') {
+                try {
+                  return JSON.stringify(arg, null, 2);
+                } catch {
+                  return String(arg);
+                }
+              }
+              return String(arg);
+            }).join(' ');
+          }
+
+          function interceptConsole(type) {
+            console[type] = function() {
+              originalConsole[type].apply(console, arguments);
+              window.parent.postMessage({
+                type: 'console-log',
+                payload: {
+                  logType: type,
+                  message: formatArgs(arguments)
+                }
+              }, '*');
+            };
+          }
+
+          ['log', 'warn', 'error', 'info', 'debug'].forEach(interceptConsole);
+
+          // Capture unhandled errors
+          window.onerror = function(message, source, lineno, colno, error) {
+            window.parent.postMessage({
+              type: 'console-log',
+              payload: {
+                logType: 'error',
+                message: message + ' at ' + source + ':' + lineno + ':' + colno
+              }
+            }, '*');
+          };
+
+          // Capture unhandled promise rejections
+          window.onunhandledrejection = function(event) {
+            window.parent.postMessage({
+              type: 'console-log',
+              payload: {
+                logType: 'error',
+                message: 'Unhandled Promise Rejection: ' + (event.reason?.message || event.reason || 'Unknown error')
+              }
+            }, '*');
+          };
+        })();
+      `;
+
+      // Insert at the beginning of head to capture early logs
+      if (doc.head) {
+        doc.head.insertBefore(script, doc.head.firstChild);
+      } else if (doc.body) {
+        doc.body.insertBefore(script, doc.body.firstChild);
+      }
+    } catch (err) {
+      console.error('Failed to inject console capture script:', err);
+    }
+  }, []);
+
   // Handle iframe load
   const handleLoad = useCallback(() => {
     setLoading(false);
     setError(null);
 
+    // Always inject console capture script
+    injectConsoleScript();
+
     // Inject selection script if in selection mode
     if (selectionMode && iframeRef.current?.contentWindow) {
       injectSelectionScript();
     }
-  }, [selectionMode, setLoading, setError]);
+  }, [selectionMode, setLoading, setError, injectConsoleScript]);
 
   // Handle iframe error
   const handleError = useCallback(() => {
@@ -216,12 +305,17 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
         onElementHover?.(payload);
       } else if (type === 'element-click') {
         onElementClick?.(payload);
+      } else if (type === 'console-log') {
+        addConsoleLog({
+          type: payload.logType as ConsoleLogEntry['type'],
+          message: payload.message,
+        });
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementHover, onElementClick]);
+  }, [onElementHover, onElementClick, addConsoleLog]);
 
   // Reinject script when selection mode changes
   useEffect(() => {

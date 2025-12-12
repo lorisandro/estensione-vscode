@@ -180,6 +180,8 @@ interface EditorState {
   consoleVisible: boolean;
   consoleHeight: number;
   consoleLogs: ConsoleLogEntry[];
+  cssInspectorVisible: boolean;
+  cssInspectorWidth: number;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setInspectorWidth: (width: number) => void;
@@ -188,6 +190,9 @@ interface EditorState {
   setConsoleHeight: (height: number) => void;
   addConsoleLog: (log: Omit<ConsoleLogEntry, 'id' | 'timestamp'>) => void;
   clearConsoleLogs: () => void;
+  setCssInspectorVisible: (visible: boolean) => void;
+  toggleCssInspector: () => void;
+  setCssInspectorWidth: (width: number) => void;
   clearError: () => void;
 }
 
@@ -198,6 +203,8 @@ const initialEditorState = {
   consoleVisible: false,
   consoleHeight: 150,
   consoleLogs: [] as ConsoleLogEntry[],
+  cssInspectorVisible: false,
+  cssInspectorWidth: 280,
 };
 
 let logIdCounter = 0;
@@ -247,6 +254,18 @@ export const useEditorStore = create<EditorState>()(
           set({ consoleLogs: [] });
         },
 
+        setCssInspectorVisible: (visible: boolean) => {
+          set({ cssInspectorVisible: visible });
+        },
+
+        toggleCssInspector: () => {
+          set({ cssInspectorVisible: !get().cssInspectorVisible });
+        },
+
+        setCssInspectorWidth: (width: number) => {
+          set({ cssInspectorWidth: Math.max(200, Math.min(500, width)) });
+        },
+
         clearError: () => {
           set({ error: null });
         },
@@ -258,6 +277,8 @@ export const useEditorStore = create<EditorState>()(
           inspectorWidth: state.inspectorWidth,
           consoleVisible: state.consoleVisible,
           consoleHeight: state.consoleHeight,
+          cssInspectorVisible: state.cssInspectorVisible,
+          cssInspectorWidth: state.cssInspectorWidth,
         }),
       }
     ),

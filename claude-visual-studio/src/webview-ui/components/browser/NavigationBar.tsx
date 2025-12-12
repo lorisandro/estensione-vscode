@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigationStore, useSelectionStore } from '../../state/stores';
+import { useNavigationStore, useSelectionStore, useEditorStore } from '../../state/stores';
 import { useVSCodeApi } from '../../hooks/useVSCodeApi';
 
 const styles = {
@@ -89,6 +89,7 @@ export const NavigationBar: React.FC = () => {
   } = useNavigationStore();
 
   const { selectionMode, setSelectionMode } = useSelectionStore();
+  const { consoleVisible, toggleConsole, cssInspectorVisible, toggleCssInspector } = useEditorStore();
   const { postMessage } = useVSCodeApi();
 
   const [urlInput, setUrlInput] = useState(url);
@@ -245,6 +246,32 @@ export const NavigationBar: React.FC = () => {
       >
         <svg style={styles.icon} viewBox="0 0 16 16">
           <path d="M4 4H2v10h12V4h-2l-1-2H5L4 4zm4 8.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7zm0-1.5a2 2 0 100-4 2 2 0 000 4z" />
+        </svg>
+      </button>
+
+      <button
+        onClick={toggleConsole}
+        style={getButtonStyle('console', consoleVisible)}
+        onMouseEnter={() => setHoveredButton('console')}
+        onMouseLeave={() => setHoveredButton(null)}
+        title={consoleVisible ? 'Hide Console' : 'Show Console'}
+      >
+        <svg style={styles.icon} viewBox="0 0 16 16">
+          <path d="M0 2v12h16V2H0zm15 11H1V5h14v8zM1 4V3h14v1H1z" />
+          <path d="M2 6l3 2-3 2v1l4-3-4-3v1zm5 4h4v1H7v-1z" />
+        </svg>
+      </button>
+
+      <button
+        onClick={toggleCssInspector}
+        style={getButtonStyle('cssInspector', cssInspectorVisible)}
+        onMouseEnter={() => setHoveredButton('cssInspector')}
+        onMouseLeave={() => setHoveredButton(null)}
+        title={cssInspectorVisible ? 'Hide CSS Inspector' : 'Show CSS Inspector'}
+      >
+        <svg style={styles.icon} viewBox="0 0 16 16">
+          <path d="M2 1.5l-.5 3v9l.5.5h12l.5-.5v-9l-.5-3H2zm0 12V5h12v8.5H2zm0-9.5V2h12v2H2z" />
+          <path d="M3 7h2v1H3V7zm0 2h4v1H3V9zm6-2h4v1H9V7zm0 2h2v1H9V9z" />
         </svg>
       </button>
     </div>
