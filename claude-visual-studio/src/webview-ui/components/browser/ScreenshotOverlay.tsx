@@ -144,81 +144,46 @@ export const ScreenshotOverlay: React.FC<ScreenshotOverlayProps> = ({ containerR
     }));
   }, [dragState.isDragging]);
 
-  // Capture screenshot from iframe
+  // Capture screenshot from iframe via postMessage
   const captureScreenshot = useCallback(async (area: ScreenshotArea): Promise<string | null> => {
     const iframe = iframeRef?.current;
-    if (!iframe) {
-      console.error('No iframe reference available for screenshot');
+    if (!iframe || !iframe.contentWindow) {
+      console.error('[ScreenshotOverlay] No iframe reference available for screenshot');
       return null;
     }
 
     try {
-      // Try to capture using canvas (works for same-origin content)
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
+      // Request the iframe to capture the screenshot via postMessage
+      // This avoids cross-origin access issues
+      const capturePromise = new Promise<string | null>((resolve) => {
+        const timeout = setTimeout(() => {
+          console.warn('[ScreenshotOverlay] Screenshot capture timed out');
+          resolve(null);
+        }, 5000);
 
-      // Set canvas size to selection area
-      canvas.width = area.width;
-      canvas.height = area.height;
+        const handleCaptureResponse = (event: MessageEvent) => {
+          // Check if this is our screenshot response
+          if (event.data?.type === 'screenshot-captured' && event.data?.source === 'claude-vs-inspector') {
+            clearTimeout(timeout);
+            window.removeEventListener('message', handleCaptureResponse);
+            console.log('[ScreenshotOverlay] Received screenshot from iframe');
+            resolve(event.data.imageData);
+          }
+        };
 
-      // Try drawing iframe content directly
-      // This works if content is same-origin
-      const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document;
+        window.addEventListener('message', handleCaptureResponse);
 
-      if (iframeDocument) {
-        // Use html2canvas-like approach by creating an image from the iframe
-        // For cross-origin, we need to request the iframe to capture itself
+        // Request iframe to capture the area
+        console.log('[ScreenshotOverlay] Requesting screenshot from iframe:', area);
+        iframe.contentWindow?.postMessage({
+          type: 'capture-screenshot',
+          payload: area,
+        }, '*');
+      });
 
-        // Send message to iframe to capture the area
-        const capturePromise = new Promise<string | null>((resolve) => {
-          const timeout = setTimeout(() => {
-            resolve(null);
-          }, 3000);
-
-          const handleCaptureResponse = (event: MessageEvent) => {
-            if (event.source === iframe.contentWindow && event.data?.type === 'screenshot-captured') {
-              clearTimeout(timeout);
-              window.removeEventListener('message', handleCaptureResponse);
-              resolve(event.data.imageData);
-            }
-          };
-
-          window.addEventListener('message', handleCaptureResponse);
-
-          // Request iframe to capture
-          iframe.contentWindow?.postMessage({
-            type: 'capture-screenshot',
-            payload: area,
-          }, '*');
-        });
-
-        const imageData = await capturePromise;
-        if (imageData) {
-          return imageData;
-        }
-      }
-
-      // Fallback: capture the iframe as-is using drawImage
-      // Note: This may not work for cross-origin iframes
-      try {
-        // Create a temporary image from iframe
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw text indicating area was selected (fallback)
-        ctx.fillStyle = '#333';
-        ctx.font = '14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`Screenshot area: ${area.width}x${area.height}`, canvas.width / 2, canvas.height / 2);
-
-        return canvas.toDataURL('image/png');
-      } catch (e) {
-        console.error('Canvas capture failed:', e);
-        return null;
-      }
+      return await capturePromise;
     } catch (error) {
-      console.error('Screenshot capture failed:', error);
+      console.error('[ScreenshotOverlay] Screenshot capture failed:', error);
       return null;
     }
   }, [iframeRef]);
