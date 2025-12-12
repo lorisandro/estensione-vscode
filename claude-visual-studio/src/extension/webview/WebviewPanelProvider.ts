@@ -30,7 +30,7 @@ export class WebviewPanelProvider {
   private readonly context: vscode.ExtensionContext;
   private pendingRequests: Map<string, (result: any) => void> = new Map();
   private requestId = 0;
-  private lastSelectionLineCount: number = 0;
+  private pendingTerminalMessage: string | null = null;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -421,6 +421,11 @@ export class WebviewPanelProvider {
         }
         break;
 
+      // Handle send-to-claude button click
+      case 'send-to-claude':
+        this.sendPendingMessageToTerminal();
+        break;
+
       // Handle apply-drag-changes from webview
       case 'apply-drag-changes':
         await this.handleApplyDragChanges(message as any);
@@ -533,8 +538,8 @@ export class WebviewPanelProvider {
         ? `${Math.round(el.boundingBox.width)}x${Math.round(el.boundingBox.height)}px`
         : null;
 
-      // Create formatted output for Claude Code terminal
-      const terminalLines = [
+      // Store formatted output for Claude Code terminal (sent on demand via button)
+      this.pendingTerminalMessage = [
         `[ELEMENTO SELEZIONATO]`,
         `Elemento: <${el.tag}>${el.id ? ` id="${el.id}"` : ''}${el.classes.length > 0 ? ` class="${el.classes.slice(0, 3).join(' ')}"` : ''}`,
         sizeStr ? `Dimensioni: ${sizeStr}` : null,
@@ -542,25 +547,27 @@ export class WebviewPanelProvider {
         `Selector: ${el.selector || selectorStr}`,
       ].filter(Boolean).join('\n');
 
-      // Send directly to active terminal (Claude Code)
-      const terminal = vscode.window.activeTerminal;
-      if (terminal) {
-        // Clear previous selection message if exists using ANSI escape codes
-        if (this.lastSelectionLineCount > 0) {
-          // \x1b[A = move cursor up one line, \x1b[2K = clear entire line
-          const clearSequence = Array(this.lastSelectionLineCount)
-            .fill('\x1b[A\x1b[2K')
-            .join('');
-          terminal.sendText(clearSequence, false); // false = don't add newline
-        }
-
-        terminal.sendText(terminalLines);
-        this.lastSelectionLineCount = terminalLines.split('\n').length;
-      }
-
       console.log(`[Claude VS] Element selected: ${selectorStr}`);
     } catch (err) {
       console.error('[Claude VS] Failed to write element info:', err);
+    }
+  }
+
+  /**
+   * Send the pending element selection message to Claude Code terminal
+   */
+  private sendPendingMessageToTerminal(): void {
+    if (!this.pendingTerminalMessage) {
+      console.log('[Claude VS] No element selected to send');
+      return;
+    }
+
+    const terminal = vscode.window.activeTerminal;
+    if (terminal) {
+      terminal.sendText(this.pendingTerminalMessage);
+      console.log('[Claude VS] Sent element to Claude Code terminal');
+    } else {
+      console.log('[Claude VS] No active terminal found');
     }
   }
 

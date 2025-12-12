@@ -150,6 +150,7 @@ export const NavigationBar: React.FC = () => {
     undoLastChange,
     applyChanges,
     clearDragChanges,
+    selectedElement,
   } = useSelectionStore();
   const { cssInspectorVisible, toggleCssInspector } = useEditorStore();
   const { postMessage } = useVSCodeApi();
@@ -216,6 +217,12 @@ export const NavigationBar: React.FC = () => {
       payload: { enabled: newMode },
     });
   }, [selectionMode, setSelectionMode, postMessage]);
+
+  const handleSendToClaude = useCallback(() => {
+    postMessage({
+      type: 'send-to-claude',
+    });
+  }, [postMessage]);
 
   const handleScreenshot = useCallback(() => {
     // Toggle screenshot mode for area capture
@@ -375,6 +382,25 @@ export const NavigationBar: React.FC = () => {
           <path d="M1 1l5 14 2-6 6-2L1 1zm3.5 4.5l5 1.8-2.8 1-1 2.8-1.2-5.6z" />
         </svg>
       </button>
+
+      {/* Send to Claude button - only visible when element is selected */}
+      {selectedElement && (
+        <button
+          onClick={handleSendToClaude}
+          style={{
+            ...styles.applyButton,
+            ...(hoveredButton === 'sendToClaude' ? { backgroundColor: 'var(--vscode-button-hoverBackground)' } : {}),
+          }}
+          onMouseEnter={() => setHoveredButton('sendToClaude')}
+          onMouseLeave={() => setHoveredButton(null)}
+          title="Invia elemento selezionato a Claude Code"
+        >
+          <svg style={{ width: '12px', height: '12px', fill: 'currentColor' }} viewBox="0 0 16 16">
+            <path d="M1 1v14h14V1H1zm13 13H2V2h12v12zM4 8l4 4 4-4H9V4H7v4H4z" transform="rotate(90,8,8)"/>
+          </svg>
+          Invia a Claude
+        </button>
+      )}
 
       <button
         onClick={handleScreenshot}
