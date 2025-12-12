@@ -108,10 +108,18 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
             payload: { enabled: isDragMode }
           }, '*');
         } else if (type === 'element-drag-end') {
-          // Handle drag end - add change to store
+          // Handle drag end - add change to store (DOM reorder data)
           if (data?.elementSelector) {
             addDragChange({
               elementSelector: data.elementSelector,
+              // DOM reorder fields
+              originalParentSelector: data.originalParentSelector,
+              originalNextSiblingSelector: data.originalNextSiblingSelector,
+              action: data.action,
+              targetSelector: data.targetSelector,
+              containerSelector: data.containerSelector,
+              position: data.position,
+              // Legacy CSS positioning (if present)
               originalPosition: data.originalPosition,
               newPosition: data.newPosition,
             });
