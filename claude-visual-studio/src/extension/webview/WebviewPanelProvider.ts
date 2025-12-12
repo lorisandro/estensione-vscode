@@ -188,27 +188,22 @@ export class WebviewPanelProvider {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(this.context.extensionPath, 'dist', 'webview', 'index.js'))
     );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.file(path.join(this.context.extensionPath, 'dist', 'webview', 'index.css'))
-    );
 
     // Generate a nonce for security
     const nonce = this.getNonce();
 
     // Build HTML with secure CSP
-    // Note: 'unsafe-eval' removed - React 18+ production builds work without it
-    // If you encounter issues with certain libraries, you may need to re-add it
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Security CSP - Strict policy without unsafe-eval -->
+  <!-- Security CSP -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none';
                  style-src ${webview.cspSource} 'unsafe-inline';
-                 script-src ${webview.cspSource} 'nonce-${nonce}';
+                 script-src ${webview.cspSource} 'unsafe-inline';
                  img-src ${webview.cspSource} https: data: blob:;
                  font-src ${webview.cspSource} data:;
                  connect-src ws://localhost:* http://localhost:* https:;
@@ -216,12 +211,23 @@ export class WebviewPanelProvider {
                  worker-src ${webview.cspSource} blob:;">
 
   <title>Claude Visual Studio</title>
-  <link rel="stylesheet" href="${styleUri}">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #root {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--vscode-font-family);
+      font-size: var(--vscode-font-size);
+      color: var(--vscode-foreground);
+      background-color: var(--vscode-editor-background);
+    }
+  </style>
 </head>
 <body>
   <div id="root"></div>
 
-  <script nonce="${nonce}">
+  <script>
     // Make vscode API available to React app
     window.vscode = acquireVsCodeApi();
 
@@ -232,7 +238,7 @@ export class WebviewPanelProvider {
     }
   </script>
 
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script src="${scriptUri}"></script>
 </body>
 </html>`;
   }
