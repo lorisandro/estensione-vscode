@@ -13,6 +13,7 @@ interface ServerConfig {
   port: number;
   rootPath: string;
   hmrScriptPort?: number;
+  extensionPath?: string;
 }
 
 export class ServerManager {
@@ -52,13 +53,14 @@ export class ServerManager {
    * @param port Port number to listen on
    * @param rootPath Root directory to serve files from
    * @param hmrScriptPort Optional WebSocket port for HMR client script
+   * @param extensionPath Optional path to the extension folder (for finding injected scripts)
    */
-  async start(port: number, rootPath: string, hmrScriptPort?: number): Promise<void> {
+  async start(port: number, rootPath: string, hmrScriptPort?: number, extensionPath?: string): Promise<void> {
     if (this.server) {
       throw new Error('Server is already running. Call stop() first.');
     }
 
-    this.config = { port, rootPath, hmrScriptPort };
+    this.config = { port, rootPath, hmrScriptPort, extensionPath };
     this.app = express();
 
     // Configure Express middleware
@@ -275,23 +277,39 @@ export class ServerManager {
     // Special route for element inspector script
     this.app.get('/__claude-vs__/element-inspector.js', async (req, res) => {
       try {
-        // First try the compiled JS in dist folder (relative to dist/extension/)
-        const distPath = path.join(__dirname, '../injected-scripts/element-inspector.js');
-        // Fallback to source folder if running in dev mode
-        const srcPath = path.join(__dirname, '../../../src/injected-scripts/element-inspector.js');
+        // Build possible paths for the element inspector script
+        const possiblePaths: string[] = [];
 
-        let scriptPath = distPath;
-        try {
-          await stat(distPath);
-        } catch {
-          // Try source path
+        // If extensionPath is provided, use it as the primary source
+        if (this.config?.extensionPath) {
+          possiblePaths.push(
+            path.join(this.config.extensionPath, 'dist/injected-scripts/element-inspector.js'),
+            path.join(this.config.extensionPath, 'src/injected-scripts/element-inspector.js')
+          );
+        }
+
+        // Fallback to __dirname-based paths (may work in some configurations)
+        possiblePaths.push(
+          path.join(__dirname, '../injected-scripts/element-inspector.js'),
+          path.join(__dirname, '../../injected-scripts/element-inspector.js'),
+          path.join(__dirname, '../../../dist/injected-scripts/element-inspector.js'),
+          path.join(__dirname, '../../../src/injected-scripts/element-inspector.js')
+        );
+
+        // Try each path until we find one that exists
+        let scriptPath: string | null = null;
+        for (const p of possiblePaths) {
           try {
-            await stat(srcPath);
-            scriptPath = srcPath;
+            await stat(p);
+            scriptPath = p;
+            break;
           } catch {
-            // Last resort: try TypeScript source (won't work in browser but useful for debugging)
-            scriptPath = path.join(__dirname, '../../../src/injected-scripts/element-inspector.ts');
+            // Continue to next path
           }
+        }
+
+        if (!scriptPath) {
+          throw new Error(`Element inspector script not found. Tried paths: ${possiblePaths.join(', ')}`);
         }
 
         const content = await readFile(scriptPath, 'utf-8');
@@ -301,7 +319,7 @@ export class ServerManager {
         console.log('[ServerManager] Serving element inspector from:', scriptPath);
       } catch (error) {
         console.error('[ServerManager] Error serving element inspector:', error);
-        res.status(500).send('// Error loading element inspector');
+        res.status(500).send(`// Error loading element inspector: ${(error as Error).message}`);
       }
     });
 

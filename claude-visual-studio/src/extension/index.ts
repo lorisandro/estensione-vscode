@@ -103,7 +103,7 @@ async function initializeServices(context: vscode.ExtensionContext): Promise<voi
   openPreviewCommand = new OpenPreviewCommand(webviewProvider);
 
   // Initialize development server
-  await initializeServer();
+  await initializeServer(context.extensionPath);
 
   // Initialize MCP Bridge for Claude Code integration
   await initializeMCPBridge();
@@ -113,8 +113,9 @@ async function initializeServices(context: vscode.ExtensionContext): Promise<voi
 
 /**
  * Initialize the development server for serving preview content
+ * @param extensionPath Path to the extension folder
  */
-async function initializeServer(): Promise<void> {
+async function initializeServer(extensionPath: string): Promise<void> {
   const config = vscode.workspace.getConfiguration('claudeVisualStudio');
   const serverPort = config.get<number>('serverPort', 3333);
 
@@ -125,7 +126,8 @@ async function initializeServer(): Promise<void> {
   serverManager = new ServerManager();
 
   try {
-    await serverManager.start(serverPort, rootPath);
+    // Pass extensionPath to enable finding injected scripts
+    await serverManager.start(serverPort, rootPath, undefined, extensionPath);
     console.log(`[Server] Development server started on port ${serverPort}`);
   } catch (error) {
     // Port might be in use, log but don't fail activation
