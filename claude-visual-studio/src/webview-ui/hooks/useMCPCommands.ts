@@ -139,8 +139,8 @@ export function useMCPCommands(
           break;
 
         case 'screenshot':
-          // Screenshot still has limitations, return info message
-          result = await captureScreenshot(iframeRef);
+          // Use html2canvas in iframe to capture screenshot
+          result = await sendToIframe('screenshot', {});
           break;
 
         case 'click':

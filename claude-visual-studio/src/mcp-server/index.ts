@@ -265,8 +265,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'browser_screenshot':
         result = await sendCommand('screenshot');
-        // Screenshots return text description due to cross-origin limitations
-        return { content: [{ type: 'text', text: result.text || 'Screenshot not available' }] };
+        // Return image if screenshot was captured successfully
+        if (result.screenshot) {
+          return {
+            content: [
+              {
+                type: 'image',
+                data: result.screenshot,
+                mimeType: 'image/png',
+              },
+            ],
+          };
+        } else if (result.error) {
+          return { content: [{ type: 'text', text: `Screenshot error: ${result.error}` }], isError: true };
+        } else {
+          return { content: [{ type: 'text', text: result.text || 'Screenshot not available' }] };
+        }
 
       case 'browser_click':
         result = await sendCommand('click', { selector: args?.selector });

@@ -561,10 +561,50 @@ export class ServerManager {
   private injectMCPBridgeScript(html: string): string {
     const mcpBridgeScript = `
     <!-- Claude Visual Studio: MCP Bridge -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
       (function() {
+        // Screenshot function using html2canvas
+        async function captureScreenshot() {
+          try {
+            // Wait for html2canvas to be available
+            if (typeof html2canvas === 'undefined') {
+              return { error: 'html2canvas not loaded' };
+            }
+
+            const canvas = await html2canvas(document.body, {
+              useCORS: true,
+              allowTaint: true,
+              backgroundColor: '#ffffff',
+              scale: 1,
+              logging: false,
+              imageTimeout: 15000,
+              onclone: function(clonedDoc) {
+                // Remove any fixed positioned elements that might cause issues
+                const fixedElements = clonedDoc.querySelectorAll('[style*="position: fixed"]');
+                fixedElements.forEach(function(el) {
+                  el.style.position = 'absolute';
+                });
+              }
+            });
+
+            // Convert to base64 PNG
+            const dataUrl = canvas.toDataURL('image/png');
+            // Remove the "data:image/png;base64," prefix
+            const base64 = dataUrl.split(',')[1];
+
+            return {
+              screenshot: base64,
+              width: canvas.width,
+              height: canvas.height
+            };
+          } catch (error) {
+            return { error: 'Screenshot failed: ' + (error.message || error) };
+          }
+        }
+
         // Listen for commands from parent (VS Code webview)
-        window.addEventListener('message', function(event) {
+        window.addEventListener('message', async function(event) {
           // Only handle MCP commands
           if (!event.data || event.data.type !== '__claude_mcp_command__') return;
 
@@ -626,6 +666,10 @@ export class ServerManager {
                     };
                   })
                 };
+                break;
+
+              case 'screenshot':
+                result = await captureScreenshot();
                 break;
 
               default:
