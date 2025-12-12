@@ -24,45 +24,47 @@ export class OpenPreviewCommand {
       // Get the file to preview
       const fileUri = uri || this.getActiveEditorUri();
 
-      if (!fileUri) {
-        const action = await vscode.window.showWarningMessage(
-          'No file to preview. Please open an HTML, JavaScript, or TypeScript file.',
-          'Browse Files'
-        );
-
-        if (action === 'Browse Files') {
-          const selected = await vscode.window.showOpenDialog({
-            canSelectFiles: true,
-            canSelectFolders: false,
-            canSelectMany: false,
-            filters: {
-              'Web Files': ['html', 'htm', 'js', 'jsx', 'ts', 'tsx'],
-            },
-          });
-
-          if (selected && selected[0]) {
-            await this.openPreview(selected[0]);
-          }
-        }
+      // If we have a previewable file, use it
+      if (fileUri && this.isPreviewableFile(fileUri)) {
+        await this.openPreview(fileUri);
         return;
       }
 
-      // Validate file type
-      if (!this.isPreviewableFile(fileUri)) {
-        vscode.window.showWarningMessage(
-          `File type not supported for preview: ${path.extname(fileUri.fsPath)}`
-        );
+      // Otherwise, try to find an index.html or just open the browser
+      const indexHtml = await this.findIndexHtml();
+      if (indexHtml) {
+        await this.openPreview(indexHtml);
         return;
       }
 
-      // Open the preview
-      await this.openPreview(fileUri);
+      // Just open the browser panel without a specific file
+      await this.openBrowserOnly();
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to open preview: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       console.error('Error in OpenPreviewCommand:', error);
     }
+  }
+
+  /**
+   * Open just the browser panel without a specific file
+   */
+  private async openBrowserOnly(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('claudeVisualStudio');
+    const serverPort = config.get<number>('serverPort', 3333);
+
+    // Create or reveal the webview panel
+    await this.webviewProvider.createWebviewPanel(vscode.ViewColumn.Beside);
+
+    // Send navigation to localhost
+    await this.webviewProvider.postMessage({
+      type: 'requestNavigate',
+      payload: {
+        url: `http://localhost:${serverPort}`,
+        filePath: '',
+      },
+    });
   }
 
   /**
