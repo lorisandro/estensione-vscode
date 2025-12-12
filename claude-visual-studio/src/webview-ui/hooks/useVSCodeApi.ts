@@ -43,17 +43,18 @@ function getVSCodeApi(): VSCodeApi {
 
   // Check if already stored on window (VS Code sets this after first acquisition)
   if ((window as any).vscode) {
-    globalVscodeApi = (window as any).vscode;
+    globalVscodeApi = (window as any).vscode as VSCodeApi;
     return globalVscodeApi;
   }
 
   // Try to acquire VS Code API (only available in VS Code webview context)
   if (typeof (window as any).acquireVsCodeApi === 'function') {
     try {
-      globalVscodeApi = (window as any).acquireVsCodeApi();
+      const api = (window as any).acquireVsCodeApi() as VSCodeApi;
+      globalVscodeApi = api;
       // Store on window for subsequent calls
-      (window as any).vscode = globalVscodeApi;
-      return globalVscodeApi;
+      (window as any).vscode = api;
+      return api;
     } catch (e) {
       console.warn('Failed to acquire VS Code API:', e);
     }

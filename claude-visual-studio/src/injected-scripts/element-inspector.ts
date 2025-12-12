@@ -31,21 +31,39 @@ interface ElementInfo {
 }
 
 interface InspectorMessage {
-  type: 'element-hover' | 'element-select' | 'inspector-ready' | 'selection-mode-changed';
-  data?: ElementInfo | boolean;
+  type: 'element-hover' | 'element-select' | 'inspector-ready' | 'selection-mode-changed' | 'element-drag-start' | 'element-drag-end' | 'drag-mode-changed';
+  data?: ElementInfo | boolean | DragChangeData;
   timestamp: number;
+}
+
+interface DragChangeData {
+  elementSelector: string;
+  originalPosition: { x: number; y: number };
+  newPosition: { x: number; y: number };
 }
 
 class ElementInspector {
   private isSelectionMode: boolean = false;
+  private isDragMode: boolean = true; // Drag mode enabled by default
   private lastHoveredElement: HTMLElement | null = null;
   private overlay: HTMLDivElement | null = null;
   private selectedElement: HTMLElement | null = null;
   private outlineStyleElement: HTMLStyleElement | null = null;
+  private dragStyleElement: HTMLStyleElement | null = null;
   private rafId: number | null = null;
   private pendingUpdate: { element: HTMLElement; rect: DOMRect } | null = null;
   private lastMessageTime: number = 0;
   private readonly MESSAGE_THROTTLE_MS = 16; // ~60fps for messages
+
+  // Drag mode properties
+  private isDragging: boolean = false;
+  private dragElement: HTMLElement | null = null;
+  private dragStartX: number = 0;
+  private dragStartY: number = 0;
+  private elementStartX: number = 0;
+  private elementStartY: number = 0;
+  private originalPosition: { x: number; y: number } | null = null;
+  private dragOverlay: HTMLDivElement | null = null;
   private readonly IMPORTANT_STYLES = [
     'display',
     'position',
@@ -89,11 +107,18 @@ class ElementInspector {
     // Create overlay for highlighting
     this.createOverlay();
 
+    // Create drag mode elements
+    this.createDragStyle();
+    this.createDragOverlay();
+
     // Setup event listeners
     this.setupEventListeners();
 
     // Setup global interface
     this.setupGlobalInterface();
+
+    // Enable drag mode by default
+    this.setDragMode(true);
 
     // Notify parent that inspector is ready
     this.sendMessage({
@@ -101,7 +126,7 @@ class ElementInspector {
       timestamp: Date.now(),
     });
 
-    console.log('[Element Inspector] Initialized');
+    console.log('[Element Inspector] Initialized with drag mode enabled');
   }
 
   /**
@@ -149,6 +174,56 @@ class ElementInspector {
   }
 
   /**
+   * Create style element for drag mode
+   */
+  private createDragStyle(): void {
+    this.dragStyleElement = document.createElement('style');
+    this.dragStyleElement.id = '__claude-vs-inspector-drag-style__';
+    this.dragStyleElement.textContent = `
+      .__claude-vs-drag-mode__ *:not(#__claude-vs-inspector-overlay__):not(#__claude-vs-drag-overlay__):not(script):not(style):not(head):not(html):not(body) {
+        cursor: grab !important;
+      }
+      .__claude-vs-drag-mode__ *:not(#__claude-vs-inspector-overlay__):not(#__claude-vs-drag-overlay__):not(script):not(style):not(head):not(html):not(body):hover {
+        outline: 2px dashed rgba(0, 122, 204, 0.6) !important;
+        outline-offset: 2px !important;
+      }
+      .__claude-vs-dragging__ {
+        cursor: grabbing !important;
+      }
+      .__claude-vs-dragging__ * {
+        cursor: grabbing !important;
+      }
+      .__claude-vs-drag-element__ {
+        opacity: 0.8 !important;
+        z-index: 999998 !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3) !important;
+        outline: 2px solid #007acc !important;
+      }
+    `;
+    document.head.appendChild(this.dragStyleElement);
+  }
+
+  /**
+   * Create drag overlay for visual feedback during drag
+   */
+  private createDragOverlay(): void {
+    this.dragOverlay = document.createElement('div');
+    this.dragOverlay.id = '__claude-vs-drag-overlay__';
+    this.dragOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      border: 2px dashed rgba(0, 122, 204, 0.8);
+      background-color: rgba(0, 122, 204, 0.05);
+      z-index: 999997;
+      display: none;
+      box-sizing: border-box;
+    `;
+    document.body.appendChild(this.dragOverlay);
+  }
+
+  /**
    * Show boundaries on all elements
    */
   private showAllElementBoundaries(): void {
@@ -193,6 +268,114 @@ class ElementInspector {
 
     if (type === 'set-selection-mode') {
       this.setSelectionMode(!!payload?.enabled);
+    } else if (type === 'capture-screenshot') {
+      this.captureScreenshot(payload);
+    }
+  }
+
+  /**
+   * Capture screenshot of specified area using html2canvas or canvas
+   */
+  private async captureScreenshot(area: { x: number; y: number; width: number; height: number }): Promise<void> {
+    try {
+      // Try to use html2canvas if available
+      if (typeof (window as any).html2canvas === 'function') {
+        const canvas = await (window as any).html2canvas(document.body, {
+          x: area.x,
+          y: area.y,
+          width: area.width,
+          height: area.height,
+          windowWidth: document.documentElement.scrollWidth,
+          windowHeight: document.documentElement.scrollHeight,
+          scale: window.devicePixelRatio || 1,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+        });
+
+        const imageData = canvas.toDataURL('image/png');
+        this.sendScreenshotResponse(imageData);
+        return;
+      }
+
+      // Fallback: capture using canvas and DOM serialization
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        this.sendScreenshotResponse(null);
+        return;
+      }
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = area.width * dpr;
+      canvas.height = area.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      // Draw a white background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, area.width, area.height);
+
+      // Try to serialize the DOM and draw it using SVG foreignObject
+      try {
+        const svg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${area.width}" height="${area.height}">
+            <foreignObject width="100%" height="100%">
+              <div xmlns="http://www.w3.org/1999/xhtml" style="position: absolute; left: -${area.x}px; top: -${area.y}px;">
+                ${new XMLSerializer().serializeToString(document.documentElement)}
+              </div>
+            </foreignObject>
+          </svg>
+        `;
+
+        const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('Failed to load SVG'));
+          img.src = url;
+        });
+
+        ctx.drawImage(img, 0, 0, area.width, area.height);
+        URL.revokeObjectURL(url);
+
+        const imageData = canvas.toDataURL('image/png');
+        this.sendScreenshotResponse(imageData);
+      } catch (svgError) {
+        console.error('[Element Inspector] SVG capture failed:', svgError);
+        // Send a placeholder with area info
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillRect(0, 0, area.width, area.height);
+        ctx.fillStyle = '#333';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`Area: ${area.width}x${area.height}`, area.width / 2, area.height / 2);
+
+        const imageData = canvas.toDataURL('image/png');
+        this.sendScreenshotResponse(imageData);
+      }
+    } catch (error) {
+      console.error('[Element Inspector] Screenshot capture failed:', error);
+      this.sendScreenshotResponse(null);
+    }
+  }
+
+  /**
+   * Send screenshot response to parent window
+   */
+  private sendScreenshotResponse(imageData: string | null): void {
+    try {
+      if (window.parent !== window) {
+        window.parent.postMessage({
+          type: 'screenshot-captured',
+          imageData: imageData,
+          source: 'claude-vs-inspector',
+        }, '*');
+      }
+    } catch (error) {
+      console.error('[Element Inspector] Error sending screenshot:', error);
     }
   }
 

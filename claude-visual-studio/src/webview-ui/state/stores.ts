@@ -129,26 +129,67 @@ export const useNavigationStore = create<NavigationState>()(
 // Re-export element info type for convenience
 export type ElementInfo = WebviewElementInfo;
 
+// Screenshot area selection state
+export interface ScreenshotArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// Drag change represents a single drag operation for undo
+export interface DragChange {
+  id: string;
+  elementSelector: string;
+  originalPosition: { x: number; y: number };
+  newPosition: { x: number; y: number };
+  timestamp: number;
+}
+
 // Selection state
 interface SelectionState {
   selectionMode: boolean;
+  screenshotMode: boolean;
+  screenshotArea: ScreenshotArea | null;
   selectedElement: ElementInfo | null;
   hoveredElement: ElementInfo | null;
+  // Drag mode state
+  dragChanges: DragChange[];
+  hasPendingChanges: boolean;
   setSelectionMode: (mode: boolean) => void;
+  setScreenshotMode: (mode: boolean) => void;
+  setScreenshotArea: (area: ScreenshotArea | null) => void;
   setSelectedElement: (element: ElementInfo | null) => void;
   setHoveredElement: (element: ElementInfo | null) => void;
   clearSelection: () => void;
+  // Drag mode actions
+  addDragChange: (change: Omit<DragChange, 'id' | 'timestamp'>) => void;
+  undoLastChange: () => DragChange | null;
+  applyChanges: () => void;
+  clearDragChanges: () => void;
 }
 
 const initialSelectionState = {
   selectionMode: false,
+  screenshotMode: false,
+  screenshotArea: null,
   selectedElement: null,
   hoveredElement: null,
+  dragChanges: [] as DragChange[],
+  hasPendingChanges: false,
+};
+
+// Generate unique IDs for drag changes
+const generateDragChangeId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `drag-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 };
 
 export const useSelectionStore = create<SelectionState>()(
   devtools(
-    (set) => ({
+    (set, get) => ({
       ...initialSelectionState,
 
       setSelectionMode: (mode: boolean) => {
@@ -156,6 +197,18 @@ export const useSelectionStore = create<SelectionState>()(
         if (!mode) {
           set({ selectedElement: null, hoveredElement: null }, undefined, 'selection/clearOnModeOff');
         }
+      },
+
+      setScreenshotMode: (mode: boolean) => {
+        set({ screenshotMode: mode, screenshotArea: null }, undefined, 'selection/setScreenshotMode');
+        // Disable selection mode when entering screenshot mode
+        if (mode) {
+          set({ selectionMode: false }, undefined, 'selection/disableSelectionForScreenshot');
+        }
+      },
+
+      setScreenshotArea: (area: ScreenshotArea | null) => {
+        set({ screenshotArea: area }, undefined, 'selection/setScreenshotArea');
       },
 
       setSelectedElement: (element: ElementInfo | null) => {
@@ -168,6 +221,47 @@ export const useSelectionStore = create<SelectionState>()(
 
       clearSelection: () => {
         set({ selectedElement: null, hoveredElement: null }, undefined, 'selection/clearSelection');
+      },
+
+      // Drag mode actions
+      addDragChange: (change: Omit<DragChange, 'id' | 'timestamp'>) => {
+        const newChange: DragChange = {
+          ...change,
+          id: generateDragChangeId(),
+          timestamp: Date.now(),
+        };
+        set((state) => ({
+          dragChanges: [...state.dragChanges, newChange],
+          hasPendingChanges: true,
+        }), undefined, 'selection/addDragChange');
+      },
+
+      undoLastChange: () => {
+        const { dragChanges } = get();
+        if (dragChanges.length === 0) return null;
+
+        const lastChange = dragChanges[dragChanges.length - 1];
+        set((state) => ({
+          dragChanges: state.dragChanges.slice(0, -1),
+          hasPendingChanges: state.dragChanges.length > 1,
+        }), undefined, 'selection/undoLastChange');
+
+        return lastChange;
+      },
+
+      applyChanges: () => {
+        // Clear pending changes after applying
+        set({
+          dragChanges: [],
+          hasPendingChanges: false,
+        }, undefined, 'selection/applyChanges');
+      },
+
+      clearDragChanges: () => {
+        set({
+          dragChanges: [],
+          hasPendingChanges: false,
+        }, undefined, 'selection/clearDragChanges');
       },
     }),
     { name: 'SelectionStore' }

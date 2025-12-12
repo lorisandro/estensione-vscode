@@ -19,6 +19,58 @@ const styles = {
     gap: '4px',
   } as React.CSSProperties,
 
+  applyUndoGroup: {
+    display: 'flex',
+    gap: '4px',
+    marginLeft: '4px',
+    paddingLeft: '8px',
+    borderLeft: '1px solid var(--vscode-panel-border)',
+  } as React.CSSProperties,
+
+  applyButton: {
+    padding: '4px 12px',
+    backgroundColor: 'var(--vscode-button-background)',
+    color: 'var(--vscode-button-foreground)',
+    border: 'none',
+    borderRadius: '2px',
+    cursor: 'pointer',
+    fontSize: '11px',
+    fontWeight: 500,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    height: '28px',
+    transition: 'background-color 0.1s',
+  } as React.CSSProperties,
+
+  undoButton: {
+    padding: '4px 12px',
+    backgroundColor: 'var(--vscode-button-secondaryBackground)',
+    color: 'var(--vscode-button-secondaryForeground)',
+    border: 'none',
+    borderRadius: '2px',
+    cursor: 'pointer',
+    fontSize: '11px',
+    fontWeight: 500,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    height: '28px',
+    transition: 'background-color 0.1s',
+  } as React.CSSProperties,
+
+  dragModeIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '2px 8px',
+    backgroundColor: 'var(--vscode-badge-background)',
+    color: 'var(--vscode-badge-foreground)',
+    borderRadius: '10px',
+    fontSize: '10px',
+    fontWeight: 500,
+  } as React.CSSProperties,
+
   button: {
     padding: '4px 8px',
     backgroundColor: 'var(--vscode-button-secondaryBackground)',
@@ -88,9 +140,21 @@ export const NavigationBar: React.FC = () => {
     navigateTo,
   } = useNavigationStore();
 
-  const { selectionMode, setSelectionMode } = useSelectionStore();
+  const {
+    selectionMode,
+    setSelectionMode,
+    screenshotMode,
+    setScreenshotMode,
+    hasPendingChanges,
+    undoLastChange,
+    applyChanges,
+    clearDragChanges,
+  } = useSelectionStore();
   const { cssInspectorVisible, toggleCssInspector } = useEditorStore();
   const { postMessage } = useVSCodeApi();
+
+  // Drag mode is active when no other mode is enabled
+  const isDragMode = !selectionMode && !screenshotMode;
 
   const [urlInput, setUrlInput] = useState(url);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
@@ -153,10 +217,28 @@ export const NavigationBar: React.FC = () => {
   }, [selectionMode, setSelectionMode, postMessage]);
 
   const handleScreenshot = useCallback(() => {
+    // Toggle screenshot mode for area capture
+    setScreenshotMode(!screenshotMode);
+  }, [screenshotMode, setScreenshotMode]);
+
+  const handleApply = useCallback(() => {
+    // Send apply message to iframe to persist changes
     postMessage({
-      type: 'screenshot',
+      type: 'apply-drag-changes',
     });
-  }, [postMessage]);
+    applyChanges();
+  }, [postMessage, applyChanges]);
+
+  const handleUndo = useCallback(() => {
+    const lastChange = undoLastChange();
+    if (lastChange) {
+      // Send undo message to iframe to revert the element position
+      postMessage({
+        type: 'undo-drag-change',
+        payload: lastChange,
+      });
+    }
+  }, [postMessage, undoLastChange]);
 
   const getButtonStyle = useCallback((buttonName: string, isActive = false, isDisabled = false) => {
     const baseStyle = { ...styles.button };
@@ -225,6 +307,52 @@ export const NavigationBar: React.FC = () => {
         />
       </form>
 
+      {/* Drag mode indicator */}
+      {isDragMode && (
+        <div style={styles.dragModeIndicator} title="Drag elements to reposition them">
+          <svg style={{ width: '12px', height: '12px', fill: 'currentColor' }} viewBox="0 0 16 16">
+            <path d="M3 2h2v2H3V2zm0 5h2v2H3V7zm0 5h2v2H3v-2zm4-10h2v2H7V2zm0 5h2v2H7V7zm0 5h2v2H7v-2zm4-10h2v2h-2V2zm0 5h2v2h-2V7zm0 5h2v2h-2v-2z"/>
+          </svg>
+          DRAG
+        </div>
+      )}
+
+      {/* Apply/Undo buttons when there are pending changes */}
+      {hasPendingChanges && (
+        <div style={styles.applyUndoGroup}>
+          <button
+            onClick={handleApply}
+            style={{
+              ...styles.applyButton,
+              ...(hoveredButton === 'apply' ? { backgroundColor: 'var(--vscode-button-hoverBackground)' } : {}),
+            }}
+            onMouseEnter={() => setHoveredButton('apply')}
+            onMouseLeave={() => setHoveredButton(null)}
+            title="Apply all changes"
+          >
+            <svg style={{ width: '12px', height: '12px', fill: 'currentColor' }} viewBox="0 0 16 16">
+              <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/>
+            </svg>
+            Apply
+          </button>
+          <button
+            onClick={handleUndo}
+            style={{
+              ...styles.undoButton,
+              ...(hoveredButton === 'undo' ? { backgroundColor: 'var(--vscode-button-secondaryHoverBackground)' } : {}),
+            }}
+            onMouseEnter={() => setHoveredButton('undo')}
+            onMouseLeave={() => setHoveredButton(null)}
+            title="Undo last change"
+          >
+            <svg style={{ width: '12px', height: '12px', fill: 'currentColor' }} viewBox="0 0 16 16">
+              <path d="M4.5 3A3.5 3.5 0 018 6.5V8h1.5a.5.5 0 01.4.8l-3 4a.5.5 0 01-.8 0l-3-4A.5.5 0 013.5 8H5V6.5A2.5 2.5 0 017.5 4H12a.5.5 0 010 1H7.5A1.5 1.5 0 006 6.5V8h-.5a.5.5 0 00-.4.8L8 12.5 10.9 8.8a.5.5 0 00-.4-.8H8V6.5A3.5 3.5 0 004.5 3z" transform="scale(-1,1) translate(-16,0)"/>
+            </svg>
+            Undo
+          </button>
+        </div>
+      )}
+
       <button
         onClick={handleToggleSelection}
         style={getButtonStyle('selection', selectionMode)}
@@ -239,13 +367,16 @@ export const NavigationBar: React.FC = () => {
 
       <button
         onClick={handleScreenshot}
-        style={getButtonStyle('screenshot')}
+        style={getButtonStyle('screenshot', screenshotMode)}
         onMouseEnter={() => setHoveredButton('screenshot')}
         onMouseLeave={() => setHoveredButton(null)}
-        title="Take Screenshot"
+        title={screenshotMode ? 'Cancel Area Capture' : 'Capture Area Screenshot'}
       >
         <svg style={styles.icon} viewBox="0 0 16 16">
-          <path d="M4 4H2v10h12V4h-2l-1-2H5L4 4zm4 8.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7zm0-1.5a2 2 0 100-4 2 2 0 000 4z" />
+          {/* Crosshair/target icon for area capture */}
+          <path d="M8 1v3M8 12v3M1 8h3M12 8h3" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+          <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+          <circle cx="8" cy="8" r="1" fill="currentColor"/>
         </svg>
       </button>
 

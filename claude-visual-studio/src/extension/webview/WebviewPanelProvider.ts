@@ -396,9 +396,14 @@ export class WebviewPanelProvider {
         console.log('Refresh requested');
         break;
 
-      // Handle screenshot request
+      // Handle screenshot request (legacy - full page)
       case 'screenshot':
         console.log('Screenshot requested');
+        break;
+
+      // Handle area screenshot capture
+      case 'capture-screenshot-area':
+        await this.handleCaptureScreenshotArea(message as any);
         break;
 
       // Handle open DevTools request
@@ -601,6 +606,111 @@ export class WebviewPanelProvider {
 
     req.write(data);
     req.end();
+  }
+
+  /**
+   * Handle area screenshot capture
+   */
+  private async handleCaptureScreenshotArea(message: {
+    type: 'capture-screenshot-area';
+    payload: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      imageData?: string | null;
+    };
+  }): Promise<void> {
+    const { payload } = message;
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      vscode.window.showErrorMessage('No workspace folder open. Cannot save screenshot.');
+      return;
+    }
+
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    const imgFolder = path.join(workspaceRoot, 'img');
+
+    // Create img folder if it doesn't exist
+    if (!fs.existsSync(imgFolder)) {
+      fs.mkdirSync(imgFolder, { recursive: true });
+    }
+
+    // Generate unique filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, -5);
+    const filename = `screenshot_${timestamp}_${payload.width}x${payload.height}.png`;
+    const filePath = path.join(imgFolder, filename);
+
+    try {
+      if (payload.imageData) {
+        // Remove data URL prefix if present
+        const base64Data = payload.imageData.replace(/^data:image\/\w+;base64,/, '');
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        // Save the image
+        fs.writeFileSync(filePath, imageBuffer);
+        console.log(`[Claude VS] Screenshot saved: ${filePath}`);
+      } else {
+        // No image data - create a placeholder file with metadata
+        const metadataContent = JSON.stringify({
+          type: 'screenshot_area',
+          timestamp: new Date().toISOString(),
+          area: {
+            x: payload.x,
+            y: payload.y,
+            width: payload.width,
+            height: payload.height,
+          },
+          note: 'Image capture not available - coordinates saved',
+        }, null, 2);
+
+        const metadataPath = filePath.replace('.png', '.json');
+        fs.writeFileSync(metadataPath, metadataContent);
+        console.log(`[Claude VS] Screenshot metadata saved: ${metadataPath}`);
+      }
+
+      // Get relative path for display
+      const relativePath = path.relative(workspaceRoot, filePath);
+
+      // Create formatted output for Claude Code terminal
+      const terminalLines = [
+        `[SCREENSHOT CATTURATO]`,
+        `File: ${relativePath}`,
+        `Dimensioni: ${payload.width}x${payload.height}px`,
+        `Area: x=${payload.x}, y=${payload.y}`,
+        payload.imageData ? `Percorso completo: ${filePath}` : `Nota: Solo metadati salvati (immagine non disponibile)`,
+      ].join('\n');
+
+      // Send directly to active terminal (Claude Code)
+      const terminal = vscode.window.activeTerminal;
+      if (terminal) {
+        terminal.sendText(terminalLines);
+      }
+
+      // Show success message with option to open the file
+      const action = await vscode.window.showInformationMessage(
+        `Screenshot saved: ${relativePath}`,
+        'Open File',
+        'Open Folder'
+      );
+
+      if (action === 'Open File') {
+        if (payload.imageData) {
+          // Open the image in VS Code
+          const uri = vscode.Uri.file(filePath);
+          await vscode.commands.executeCommand('vscode.open', uri);
+        }
+      } else if (action === 'Open Folder') {
+        const folderUri = vscode.Uri.file(imgFolder);
+        await vscode.commands.executeCommand('revealFileInOS', folderUri);
+      }
+    } catch (error) {
+      console.error('[Claude VS] Failed to save screenshot:', error);
+      vscode.window.showErrorMessage(
+        `Failed to save screenshot: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   /**

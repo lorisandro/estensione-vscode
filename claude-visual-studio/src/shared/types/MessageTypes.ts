@@ -91,6 +91,17 @@ export interface ErrorMessage extends BaseMessage {
   };
 }
 
+/**
+ * Navigate command from extension to webview (for MCP bridge)
+ */
+export interface NavigateCommandMessage extends BaseMessage {
+  type: 'navigate';
+  payload: {
+    url?: string;
+    action?: 'back' | 'forward';
+  };
+}
+
 // Webview -> Extension Messages
 // ==============================
 
@@ -183,6 +194,103 @@ export interface StateUpdateMessage extends BaseMessage {
   };
 }
 
+/**
+ * MCP response from webview
+ */
+export interface MCPResponseMessage extends BaseMessage {
+  type: 'mcpResponse';
+  payload: {
+    id: string;
+    result: unknown;
+  };
+}
+
+/**
+ * Toggle selection mode from webview toolbar
+ */
+export interface ToggleSelectionMessage extends BaseMessage {
+  type: 'toggle-selection';
+  payload: {
+    enabled: boolean;
+  };
+}
+
+/**
+ * Navigate request from webview
+ */
+export interface NavigateMessage extends BaseMessage {
+  type: 'navigate';
+  payload: {
+    url: string;
+  };
+}
+
+/**
+ * Webview ready (kebab-case variant)
+ */
+export interface WebviewReadyKebabMessage extends BaseMessage {
+  type: 'webview-ready';
+}
+
+/**
+ * Refresh request from webview
+ */
+export interface RefreshMessage extends BaseMessage {
+  type: 'refresh';
+}
+
+/**
+ * Screenshot request from webview
+ */
+export interface ScreenshotMessage extends BaseMessage {
+  type: 'screenshot';
+}
+
+/**
+ * Capture screenshot area from webview
+ */
+export interface CaptureScreenshotAreaMessage extends BaseMessage {
+  type: 'capture-screenshot-area';
+  payload: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    imageData?: string | null;
+  };
+}
+
+/**
+ * Open DevTools request from webview
+ */
+export interface OpenDevToolsMessage extends BaseMessage {
+  type: 'openDevTools';
+}
+
+/**
+ * Element selected from iframe inspector (kebab-case)
+ */
+export interface ElementSelectedKebabMessage extends BaseMessage {
+  type: 'element-selected';
+  payload: {
+    tagName?: string;
+    tag?: string;
+    id?: string;
+    classes?: string[];
+    className?: string;
+    selector?: string;
+    xpath?: string;
+    textContent?: string;
+    attributes?: Record<string, string>;
+    boundingBox?: { x: number; y: number; width: number; height: number };
+    rect?: { x: number; y: number; width: number; height: number };
+    computedStyles?: Record<string, string>;
+    styles?: { computed?: Record<string, string> };
+    parent?: string;
+    children?: number;
+  };
+}
+
 // Union types for type safety
 // ============================
 
@@ -196,7 +304,8 @@ export type ExtensionToWebviewMessage =
   | UpdateStylesMessage
   | UpdateHTMLMessage
   | ConfigUpdateMessage
-  | ErrorMessage;
+  | ErrorMessage
+  | NavigateCommandMessage;
 
 /**
  * All possible messages from Webview to Extension
@@ -208,7 +317,16 @@ export type WebviewToExtensionMessage =
   | SaveFileMessage
   | NavigationMessage
   | ConsoleLogMessage
-  | StateUpdateMessage;
+  | StateUpdateMessage
+  | MCPResponseMessage
+  | ToggleSelectionMessage
+  | NavigateMessage
+  | WebviewReadyKebabMessage
+  | RefreshMessage
+  | ScreenshotMessage
+  | CaptureScreenshotAreaMessage
+  | OpenDevToolsMessage
+  | ElementSelectedKebabMessage;
 
 /**
  * All possible messages in either direction
@@ -229,6 +347,7 @@ export function isExtensionToWebviewMessage(
     'updateHTML',
     'configUpdate',
     'error',
+    'navigate',
   ].includes(message.type);
 }
 
@@ -243,6 +362,15 @@ export function isWebviewToExtensionMessage(
     'navigation',
     'consoleLog',
     'stateUpdate',
+    'mcpResponse',
+    'toggle-selection',
+    'navigate',
+    'webview-ready',
+    'refresh',
+    'screenshot',
+    'capture-screenshot-area',
+    'openDevTools',
+    'element-selected',
   ].includes(message.type);
 }
 

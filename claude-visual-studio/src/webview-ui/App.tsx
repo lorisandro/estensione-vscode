@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { NavigationBar } from './components/browser/NavigationBar';
 import { BrowserFrame } from './components/browser/BrowserFrame';
 import { SelectionOverlay } from './components/browser/SelectionOverlay';
+import { ScreenshotOverlay } from './components/browser/ScreenshotOverlay';
 import { ConsolePanel } from './components/browser/ConsolePanel';
 import { CssInspectorPanel } from './components/browser/CssInspectorPanel';
 import { ElementInspector } from './components/ElementInspector';
@@ -90,11 +91,12 @@ const styles = {
 };
 
 export const App: React.FC = () => {
-  const { setSelectedElement, setHoveredElement, selectedElement } = useSelectionStore();
+  const { setSelectedElement, setHoveredElement, selectedElement, screenshotMode } = useSelectionStore();
   const { isLoading, error, inspectorWidth, setInspectorWidth, consoleVisible, cssInspectorVisible } = useEditorStore();
   const { setUrl, navigateTo, goBack, goForward, refresh, url } = useNavigationStore();
   const { onMessage, postMessage } = useVSCodeApi();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const browserContainerRef = useRef<HTMLDivElement>(null);
 
   const [isResizing, setIsResizing] = React.useState(false);
   const [resizerHover, setResizerHover] = React.useState(false);
@@ -187,7 +189,7 @@ export const App: React.FC = () => {
       <div style={styles.mainContent}>
         {/* Preview Container */}
         <div style={styles.previewContainer}>
-          <div style={styles.browserContainer}>
+          <div ref={browserContainerRef} style={styles.browserContainer}>
             {/* Browser Frame */}
             <BrowserFrame
               onElementHover={handleElementHover}
@@ -197,6 +199,11 @@ export const App: React.FC = () => {
 
             {/* Selection Overlay */}
             <SelectionOverlay />
+
+            {/* Screenshot Area Selection Overlay */}
+            {screenshotMode && (
+              <ScreenshotOverlay containerRef={browserContainerRef} iframeRef={iframeRef} />
+            )}
 
             {/* Loading Overlay */}
             {isLoading && (
