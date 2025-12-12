@@ -448,16 +448,36 @@ const ScrubLabel: React.FC<ScrubLabelProps> = ({
     isDragging: boolean;
     startX: number;
     startValue: number;
-  }>({ isDragging: false, startX: 0, startValue: 0 });
+    cleanup: (() => void) | null;
+  }>({ isDragging: false, startX: 0, startValue: 0, cleanup: null });
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrubRef.current.cleanup) {
+        scrubRef.current.cleanup();
+      }
+    };
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (disabled) return;
     e.preventDefault();
+    e.stopPropagation();
+
+    // Cleanup any existing drag operation
+    if (scrubRef.current.cleanup) {
+      scrubRef.current.cleanup();
+    }
+
+    const startX = e.clientX;
+    const startValue = value;
 
     scrubRef.current = {
       isDragging: true,
-      startX: e.clientX,
-      startValue: value,
+      startX,
+      startValue,
+      cleanup: null,
     };
 
     document.body.style.cursor = 'ew-resize';
@@ -466,9 +486,9 @@ const ScrubLabel: React.FC<ScrubLabelProps> = ({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!scrubRef.current.isDragging) return;
 
-      const deltaX = moveEvent.clientX - scrubRef.current.startX;
+      const deltaX = moveEvent.clientX - startX;
       const deltaValue = Math.round(deltaX / sensitivity) * step;
-      let newValue = scrubRef.current.startValue + deltaValue;
+      let newValue = startValue + deltaValue;
 
       if (min !== undefined) newValue = Math.max(min, newValue);
       if (max !== undefined) newValue = Math.min(max, newValue);
@@ -476,16 +496,25 @@ const ScrubLabel: React.FC<ScrubLabelProps> = ({
       onChange(newValue);
     };
 
-    const handleMouseUp = () => {
+    const cleanup = () => {
       scrubRef.current.isDragging = false;
+      scrubRef.current.cleanup = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseleave', handleMouseUp);
     };
+
+    const handleMouseUp = () => {
+      cleanup();
+    };
+
+    scrubRef.current.cleanup = cleanup;
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseleave', handleMouseUp);
   }, [disabled, value, step, min, max, onChange, sensitivity]);
 
   return (
@@ -523,6 +552,7 @@ interface NumberInputProps {
   step?: number;
   onChange: (value: number) => void;
   onUnitChange?: (unit: string) => void;
+  onScrubEnd?: () => void; // Called when scrub ends
   showUnit?: boolean;
   units?: string[];
   disabled?: boolean;
@@ -538,6 +568,7 @@ const NumberInput: React.FC<NumberInputProps> = ({
   step = 1,
   onChange,
   onUnitChange,
+  onScrubEnd,
   showUnit = true,
   units = ['px', '%', 'em', 'rem', 'vw', 'vh'],
   disabled = false,
@@ -548,18 +579,38 @@ const NumberInput: React.FC<NumberInputProps> = ({
     isDragging: boolean;
     startX: number;
     startValue: number;
-  }>({ isDragging: false, startX: 0, startValue: 0 });
+    cleanup: (() => void) | null;
+  }>({ isDragging: false, startX: 0, startValue: 0, cleanup: null });
   const labelRef = useRef<HTMLSpanElement>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrubRef.current.cleanup) {
+        scrubRef.current.cleanup();
+      }
+    };
+  }, []);
 
   // Handle scrubbing (drag on label to change value)
   const handleLabelMouseDown = useCallback((e: React.MouseEvent) => {
     if (disabled) return;
     e.preventDefault();
+    e.stopPropagation();
+
+    // Cleanup any existing drag operation
+    if (scrubRef.current.cleanup) {
+      scrubRef.current.cleanup();
+    }
+
+    const startX = e.clientX;
+    const startValue = value;
 
     scrubRef.current = {
       isDragging: true,
-      startX: e.clientX,
-      startValue: value,
+      startX,
+      startValue,
+      cleanup: null,
     };
 
     // Change cursor globally during drag
@@ -569,9 +620,9 @@ const NumberInput: React.FC<NumberInputProps> = ({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!scrubRef.current.isDragging) return;
 
-      const deltaX = moveEvent.clientX - scrubRef.current.startX;
+      const deltaX = moveEvent.clientX - startX;
       const deltaValue = Math.round(deltaX / scrubSensitivity) * step;
-      let newValue = scrubRef.current.startValue + deltaValue;
+      let newValue = startValue + deltaValue;
 
       // Clamp to min/max
       if (min !== undefined) newValue = Math.max(min, newValue);
@@ -580,17 +631,29 @@ const NumberInput: React.FC<NumberInputProps> = ({
       onChange(newValue);
     };
 
-    const handleMouseUp = () => {
+    const cleanup = () => {
       scrubRef.current.isDragging = false;
+      scrubRef.current.cleanup = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseleave', handleMouseUp);
+      // Call onScrubEnd callback if provided
+      onScrubEnd?.();
     };
+
+    const handleMouseUp = () => {
+      cleanup();
+    };
+
+    scrubRef.current.cleanup = cleanup;
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [disabled, value, step, min, max, onChange, scrubSensitivity]);
+    // Also listen for mouse leaving the window
+    document.addEventListener('mouseleave', handleMouseUp);
+  }, [disabled, value, step, min, max, onChange, scrubSensitivity, onScrubEnd]);
 
   const scrubLabelStyle: React.CSSProperties = {
     ...styles.label,
@@ -897,8 +960,15 @@ export const CssInspectorPanel: React.FC = () => {
   const [linkedMargin, setLinkedMargin] = useState(true);
   const [linkedRadius, setLinkedRadius] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Track if we've applied position: relative during current scrub session
+  const positionAppliedRef = useRef(false);
 
   const element = selectedElement || hoveredElement;
+
+  // Reset position applied flag when element changes
+  useEffect(() => {
+    positionAppliedRef.current = false;
+  }, [element?.selector]);
 
   // Get computed styles from element
   const getStyle = useCallback((property: string): string => {
@@ -1267,23 +1337,27 @@ export const CssInspectorPanel: React.FC = () => {
               label="X"
               value={parseNumericValue(getStyle('left')).num || Math.round(element.rect?.x || 0)}
               onChange={(v) => {
-                // Auto-switch to relative if position is static
-                if (position === 'static') {
+                // Auto-switch to relative if position is static (only once per scrub session)
+                if (position === 'static' && !positionAppliedRef.current) {
+                  positionAppliedRef.current = true;
                   applyCssChange('position', 'relative');
                 }
                 applyCssChange('left', `${Math.round(v)}px`);
               }}
+              onScrubEnd={() => { positionAppliedRef.current = false; }}
             />
             <NumberInput
               label="Y"
               value={parseNumericValue(getStyle('top')).num || Math.round(element.rect?.y || 0)}
               onChange={(v) => {
-                // Auto-switch to relative if position is static
-                if (position === 'static') {
+                // Auto-switch to relative if position is static (only once per scrub session)
+                if (position === 'static' && !positionAppliedRef.current) {
+                  positionAppliedRef.current = true;
                   applyCssChange('position', 'relative');
                 }
                 applyCssChange('top', `${Math.round(v)}px`);
               }}
+              onScrubEnd={() => { positionAppliedRef.current = false; }}
             />
           </div>
           <div style={styles.row}>
