@@ -75,14 +75,15 @@
       }
     ],
     "menus": {
-      "editor/title": [
+      "commandPalette": [
         {
-          "command": "claudeVisualStudio.openPreview",
-          "group": "navigation"
+          "command": "claudeVisualStudio.openPreview"
         },
         {
-          "command": "claudeVisualStudio.toggleSelection",
-          "group": "navigation"
+          "command": "claudeVisualStudio.toggleSelection"
+        },
+        {
+          "command": "claudeVisualStudio.refreshPreview"
         }
       ]
     },
