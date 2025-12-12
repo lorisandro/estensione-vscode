@@ -41,7 +41,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const internalRef = useRef<HTMLIFrameElement>(null);
   const iframeRef = externalRef || internalRef;
   const { url, serverBaseUrl, refreshKey } = useNavigationStore();
-  const { selectionMode, screenshotMode, addDragChange } = useSelectionStore();
+  const { selectionMode, screenshotMode, addDragChange, setSelectedElement } = useSelectionStore();
   const { setLoading, setError, addConsoleLog, viewportWidth, viewportHeight } = useEditorStore();
   const { postMessage } = useVSCodeApi();
 
@@ -98,8 +98,9 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           onElementClick?.(data);
         } else if (type === 'element-updated') {
           // Update selected element with new rect info after resize/style change
-          onElementClick?.(data);
-          console.log('[BrowserFrame] Element updated:', data);
+          // Use setSelectedElement directly to avoid triggering element-selected message to extension
+          setSelectedElement(data);
+          console.log('[BrowserFrame] Element rect updated:', data?.selector);
         } else if (type === 'element-resized') {
           console.log('[BrowserFrame] Element resized:', data);
         } else if (type === 'inspector-ready') {
@@ -152,7 +153,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementHover, onElementClick, addConsoleLog, selectionMode, isDragMode, addDragChange]);
+  }, [onElementHover, onElementClick, addConsoleLog, selectionMode, isDragMode, addDragChange, setSelectedElement]);
 
   // Send selection mode change to iframe via postMessage
   useEffect(() => {
