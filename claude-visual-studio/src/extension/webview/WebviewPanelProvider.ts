@@ -30,6 +30,7 @@ export class WebviewPanelProvider {
   private readonly context: vscode.ExtensionContext;
   private pendingRequests: Map<string, (result: any) => void> = new Map();
   private requestId = 0;
+  private lastSelectionLineCount: number = 0;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -544,7 +545,17 @@ export class WebviewPanelProvider {
       // Send directly to active terminal (Claude Code)
       const terminal = vscode.window.activeTerminal;
       if (terminal) {
+        // Clear previous selection message if exists using ANSI escape codes
+        if (this.lastSelectionLineCount > 0) {
+          // \x1b[A = move cursor up one line, \x1b[2K = clear entire line
+          const clearSequence = Array(this.lastSelectionLineCount)
+            .fill('\x1b[A\x1b[2K')
+            .join('');
+          terminal.sendText(clearSequence, false); // false = don't add newline
+        }
+
         terminal.sendText(terminalLines);
+        this.lastSelectionLineCount = terminalLines.split('\n').length;
       }
 
       console.log(`[Claude VS] Element selected: ${selectorStr}`);
