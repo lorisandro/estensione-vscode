@@ -11,45 +11,45 @@ export interface UseVSCodeApiReturn {
   setState: <T = unknown>(state: T) => void;
 }
 
-// Global singleton for VS Code API - must only be acquired once
+// Global singleton for VS Code API
 let globalVscodeApi: VSCodeApi | null = null;
-let apiAcquisitionFailed = false;
 
-function getVSCodeApi(): VSCodeApi | null {
+// State storage for fallback mode
+let fallbackState: unknown = undefined;
+
+// Create a fallback API that uses postMessage directly
+function createFallbackApi(): VSCodeApi {
+  return {
+    postMessage: (message: unknown) => {
+      window.parent.postMessage(message, '*');
+    },
+    getState: <T>() => fallbackState as T | undefined,
+    setState: <T>(state: T) => {
+      fallbackState = state;
+      return state;
+    }
+  };
+}
+
+function getVSCodeApi(): VSCodeApi {
   // Return cached
   if (globalVscodeApi) {
     return globalVscodeApi;
   }
 
-  // Don't retry if already failed
-  if (apiAcquisitionFailed) {
-    return null;
-  }
-
   if (typeof window === 'undefined') {
-    return null;
+    return createFallbackApi();
   }
 
-  // Check if already stored on window
+  // Check if already stored on window (VS Code sets this after first acquisition)
   if ((window as any).vscode) {
     globalVscodeApi = (window as any).vscode;
     return globalVscodeApi;
   }
 
-  // Try to acquire, wrapping the call to handle errors gracefully
-  if (window.acquireVsCodeApi) {
-    try {
-      globalVscodeApi = window.acquireVsCodeApi();
-      (window as any).vscode = globalVscodeApi;
-    } catch {
-      // If acquisition fails, mark it and return null
-      // The webview can still function with postMessage
-      apiAcquisitionFailed = true;
-      console.log('VS Code API not available - using fallback communication');
-      return null;
-    }
-  }
-
+  // Use fallback API - don't call acquireVsCodeApi at all
+  // VS Code webviews can still communicate via postMessage
+  globalVscodeApi = createFallbackApi();
   return globalVscodeApi;
 }
 
