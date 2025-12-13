@@ -57,7 +57,8 @@
       "Bash(npm run typecheck:webview:*)",
       "Bash(cd /e/Progetto/Progetti/APP e ASSET/App/Test)",
       "Bash(taskkill:*)",
-      "Bash(del /f nul)"
+      "Bash(del /f nul)",
+      "Bash(npm run build:mcp:*)"
     ]
   }
 }

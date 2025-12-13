@@ -9,26 +9,39 @@ interface BrowserFrameProps {
 }
 
 /**
- * Check if URL is external (not localhost)
+ * Check if URL should be proxied (all URLs except extension server itself)
+ * This ensures MCP bridge scripts are injected into all pages including localhost
  */
-function isExternalUrl(url: string): boolean {
+function shouldProxyUrl(url: string, serverBaseUrl: string): boolean {
   try {
     const parsed = new URL(url);
-    const hostname = parsed.hostname.toLowerCase();
-    return hostname !== 'localhost' && hostname !== '127.0.0.1';
+    const serverParsed = new URL(serverBaseUrl);
+
+    // Don't proxy URLs that are already on the extension server
+    if (parsed.hostname === serverParsed.hostname && parsed.port === serverParsed.port) {
+      return false;
+    }
+
+    // Don't proxy URLs that are already proxy URLs
+    if (parsed.pathname.includes('/__claude-vs__/')) {
+      return false;
+    }
+
+    // Proxy everything else (including localhost on different ports)
+    return true;
   } catch {
     return false;
   }
 }
 
 /**
- * Convert external URL to proxy URL
+ * Convert URL to proxy URL if needed
  */
 function getProxiedUrl(url: string, serverBaseUrl: string): string {
-  if (!isExternalUrl(url)) {
+  if (!shouldProxyUrl(url, serverBaseUrl)) {
     return url;
   }
-  // Route external URLs through the proxy
+  // Route URLs through the proxy to inject MCP bridge scripts
   const proxyUrl = `${serverBaseUrl}/__claude-vs__/proxy?url=${encodeURIComponent(url)}`;
   return proxyUrl;
 }
