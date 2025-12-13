@@ -445,6 +445,144 @@ function getOpacityFromColor(color: string): number {
   return match ? parseFloat(match[1]) * 100 : 100;
 }
 
+// Parse transform CSS value to extract individual transform functions
+interface TransformValues {
+  rotate: number;
+  scaleX: number;
+  scaleY: number;
+  translateX: number;
+  translateY: number;
+  skewX: number;
+  skewY: number;
+}
+
+function parseTransform(transform: string): TransformValues {
+  const defaults: TransformValues = {
+    rotate: 0,
+    scaleX: 1,
+    scaleY: 1,
+    translateX: 0,
+    translateY: 0,
+    skewX: 0,
+    skewY: 0,
+  };
+
+  if (!transform || transform === 'none') {
+    return defaults;
+  }
+
+  // Parse rotate
+  const rotateMatch = transform.match(/rotate\((-?[\d.]+)deg\)/);
+  if (rotateMatch) {
+    defaults.rotate = parseFloat(rotateMatch[1]);
+  }
+
+  // Parse scale
+  const scaleMatch = transform.match(/scale\((-?[\d.]+)(?:,\s*(-?[\d.]+))?\)/);
+  if (scaleMatch) {
+    defaults.scaleX = parseFloat(scaleMatch[1]);
+    defaults.scaleY = scaleMatch[2] ? parseFloat(scaleMatch[2]) : defaults.scaleX;
+  }
+
+  // Parse scaleX
+  const scaleXMatch = transform.match(/scaleX\((-?[\d.]+)\)/);
+  if (scaleXMatch) {
+    defaults.scaleX = parseFloat(scaleXMatch[1]);
+  }
+
+  // Parse scaleY
+  const scaleYMatch = transform.match(/scaleY\((-?[\d.]+)\)/);
+  if (scaleYMatch) {
+    defaults.scaleY = parseFloat(scaleYMatch[1]);
+  }
+
+  // Parse translate
+  const translateMatch = transform.match(/translate\((-?[\d.]+)px(?:,\s*(-?[\d.]+)px)?\)/);
+  if (translateMatch) {
+    defaults.translateX = parseFloat(translateMatch[1]);
+    defaults.translateY = translateMatch[2] ? parseFloat(translateMatch[2]) : 0;
+  }
+
+  // Parse translateX
+  const translateXMatch = transform.match(/translateX\((-?[\d.]+)px\)/);
+  if (translateXMatch) {
+    defaults.translateX = parseFloat(translateXMatch[1]);
+  }
+
+  // Parse translateY
+  const translateYMatch = transform.match(/translateY\((-?[\d.]+)px\)/);
+  if (translateYMatch) {
+    defaults.translateY = parseFloat(translateYMatch[1]);
+  }
+
+  // Parse skewX
+  const skewXMatch = transform.match(/skewX\((-?[\d.]+)deg\)/);
+  if (skewXMatch) {
+    defaults.skewX = parseFloat(skewXMatch[1]);
+  }
+
+  // Parse skewY
+  const skewYMatch = transform.match(/skewY\((-?[\d.]+)deg\)/);
+  if (skewYMatch) {
+    defaults.skewY = parseFloat(skewYMatch[1]);
+  }
+
+  // Parse matrix - extract rotation and scale from matrix
+  const matrixMatch = transform.match(/matrix\((-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\)/);
+  if (matrixMatch) {
+    const a = parseFloat(matrixMatch[1]);
+    const b = parseFloat(matrixMatch[2]);
+    const c = parseFloat(matrixMatch[3]);
+    const d = parseFloat(matrixMatch[4]);
+    const tx = parseFloat(matrixMatch[5]);
+    const ty = parseFloat(matrixMatch[6]);
+
+    // Extract rotation (in degrees)
+    defaults.rotate = Math.round(Math.atan2(b, a) * (180 / Math.PI));
+
+    // Extract scale
+    defaults.scaleX = Math.round(Math.sqrt(a * a + b * b) * 100) / 100;
+    defaults.scaleY = Math.round(Math.sqrt(c * c + d * d) * 100) / 100;
+
+    // Extract translation
+    defaults.translateX = Math.round(tx);
+    defaults.translateY = Math.round(ty);
+  }
+
+  return defaults;
+}
+
+// Build transform CSS string from individual values
+function buildTransformString(values: TransformValues): string {
+  const parts: string[] = [];
+
+  if (values.translateX !== 0 || values.translateY !== 0) {
+    parts.push(`translate(${values.translateX}px, ${values.translateY}px)`);
+  }
+
+  if (values.rotate !== 0) {
+    parts.push(`rotate(${values.rotate}deg)`);
+  }
+
+  if (values.scaleX !== 1 || values.scaleY !== 1) {
+    if (values.scaleX === values.scaleY) {
+      parts.push(`scale(${values.scaleX})`);
+    } else {
+      parts.push(`scale(${values.scaleX}, ${values.scaleY})`);
+    }
+  }
+
+  if (values.skewX !== 0) {
+    parts.push(`skewX(${values.skewX}deg)`);
+  }
+
+  if (values.skewY !== 0) {
+    parts.push(`skewY(${values.skewY}deg)`);
+  }
+
+  return parts.length > 0 ? parts.join(' ') : 'none';
+}
+
 // ============================================================================
 // Sub-Components
 // ============================================================================
@@ -994,6 +1132,28 @@ const RotateIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M21 12a9 9 0 11-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
     <path d="M21 3v5h-5" />
+  </svg>
+);
+
+const TransformRotateIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M3 12a9 9 0 109-9" />
+    <polyline points="21 12 21 3 12 3" />
+  </svg>
+);
+
+const ScaleIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="15 3 21 3 21 9" />
+    <polyline points="9 21 3 21 3 15" />
+    <line x1="21" y1="3" x2="14" y2="10" />
+    <line x1="3" y1="21" x2="10" y2="14" />
+  </svg>
+);
+
+const SkewIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polygon points="6 3 18 3 20 21 8 21" />
   </svg>
 );
 
@@ -1895,6 +2055,137 @@ export const CssInspectorPanel: React.FC = () => {
               setIsScrubbing={setIsScrubbing}
             />
           </div>
+        </CollapsibleSection>
+
+        {/* Transform Section */}
+        <CollapsibleSection title="Transform" defaultOpen={false}>
+          {(() => {
+            const transformValue = getStyle('transform');
+            const transform = parseTransform(transformValue);
+
+            const updateTransform = (key: keyof TransformValues, value: number) => {
+              const newTransform = { ...transform, [key]: value };
+              applyCssChange('transform', buildTransformString(newTransform));
+            };
+
+            return (
+              <>
+                {/* Rotate */}
+                <div style={styles.row}>
+                  <ScrubLabel
+                    label="Rotate"
+                    value={transform.rotate}
+                    onChange={(v) => updateTransform('rotate', v)}
+                    min={-360}
+                    max={360}
+                    step={1}
+                    setIsScrubbing={setIsScrubbing}
+                  />
+                  <div style={styles.sliderContainer}>
+                    <input
+                      type="range"
+                      min="-180"
+                      max="180"
+                      value={transform.rotate}
+                      onChange={(e) => updateTransform('rotate', parseFloat(e.target.value))}
+                      style={styles.slider}
+                    />
+                    <input
+                      type="number"
+                      value={Math.round(transform.rotate)}
+                      min={-360}
+                      max={360}
+                      onChange={(e) => updateTransform('rotate', parseFloat(e.target.value) || 0)}
+                      style={{ ...styles.smallInput, width: '55px' }}
+                    />
+                    <span style={{ color: '#9d9d9d', fontSize: '11px' }}>°</span>
+                  </div>
+                </div>
+
+                {/* Scale */}
+                <div style={{ ...styles.row, marginTop: '8px' }}>
+                  <span style={styles.label}>Scale</span>
+                </div>
+                <div style={styles.gridRow}>
+                  <NumberInput
+                    label="X"
+                    value={transform.scaleX}
+                    step={0.1}
+                    min={0}
+                    max={10}
+                    onChange={(v) => updateTransform('scaleX', v)}
+                    showUnit={false}
+                    setIsScrubbing={setIsScrubbing}
+                    scrubSensitivity={10}
+                  />
+                  <NumberInput
+                    label="Y"
+                    value={transform.scaleY}
+                    step={0.1}
+                    min={0}
+                    max={10}
+                    onChange={(v) => updateTransform('scaleY', v)}
+                    showUnit={false}
+                    setIsScrubbing={setIsScrubbing}
+                    scrubSensitivity={10}
+                  />
+                </div>
+
+                {/* Translate */}
+                <div style={{ ...styles.row, marginTop: '8px' }}>
+                  <span style={styles.label}>Translate</span>
+                </div>
+                <div style={styles.gridRow}>
+                  <NumberInput
+                    label="X"
+                    value={transform.translateX}
+                    onChange={(v) => updateTransform('translateX', v)}
+                    showUnit={false}
+                    setIsScrubbing={setIsScrubbing}
+                  />
+                  <NumberInput
+                    label="Y"
+                    value={transform.translateY}
+                    onChange={(v) => updateTransform('translateY', v)}
+                    showUnit={false}
+                    setIsScrubbing={setIsScrubbing}
+                  />
+                </div>
+
+                {/* Skew */}
+                <div style={{ ...styles.row, marginTop: '8px' }}>
+                  <span style={styles.label}>Skew</span>
+                </div>
+                <div style={styles.gridRow}>
+                  <NumberInput
+                    label="X"
+                    value={transform.skewX}
+                    onChange={(v) => updateTransform('skewX', v)}
+                    showUnit={false}
+                    setIsScrubbing={setIsScrubbing}
+                  />
+                  <NumberInput
+                    label="Y"
+                    value={transform.skewY}
+                    onChange={(v) => updateTransform('skewY', v)}
+                    showUnit={false}
+                    setIsScrubbing={setIsScrubbing}
+                  />
+                </div>
+
+                {/* Reset Transform */}
+                <div style={{ marginTop: '12px' }}>
+                  <button
+                    style={{ ...styles.button, width: '100%' }}
+                    onClick={() => applyCssChange('transform', 'none')}
+                    title="Reset all transform values"
+                  >
+                    Reset Transform
+                  </button>
+                </div>
+              </>
+            );
+          })()}
         </CollapsibleSection>
 
         {/* Text Section */}
