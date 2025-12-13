@@ -48,14 +48,23 @@ export function useMCPCommands(
   // Listen for responses from iframe (injected MCP bridge script)
   useEffect(() => {
     const handleIframeResponse = (event: MessageEvent) => {
+      // Log all messages for debugging
+      if (event.data?.type?.startsWith('__claude')) {
+        console.log('[MCP] Received iframe message:', event.data.type, event.data);
+      }
       if (event.data?.type === '__claude_mcp_response__') {
         const { id, result } = event.data;
+        console.log('[MCP] Got response from iframe:', id, result);
         const pending = pendingIframeRequests.get(id);
         if (pending) {
           clearTimeout(pending.timeout);
           pendingIframeRequests.delete(id);
           pending.resolve(result);
+        } else {
+          console.warn('[MCP] No pending request found for:', id);
         }
+      } else if (event.data?.type === '__claude_mcp_bridge_ready__') {
+        console.log('[MCP] MCP bridge ready in iframe!');
       }
     };
 
@@ -67,13 +76,17 @@ export function useMCPCommands(
   const sendToIframe = useCallback((command: string, params: Record<string, any> = {}): Promise<any> => {
     return new Promise((resolve, reject) => {
       const iframe = iframeRef.current;
+      console.log('[MCP] sendToIframe called:', command, 'iframe:', !!iframe, 'contentWindow:', !!iframe?.contentWindow);
       if (!iframe?.contentWindow) {
+        console.error('[MCP] Iframe not available for command:', command);
         reject(new Error('Iframe not available'));
         return;
       }
 
       const id = `iframe_${++iframeRequestId}`;
+      console.log('[MCP] Sending to iframe:', id, command, params);
       const timeout = setTimeout(() => {
+        console.error('[MCP] Iframe request timeout for:', id, command);
         pendingIframeRequests.delete(id);
         reject(new Error('Iframe request timeout'));
       }, 10000);
@@ -86,16 +99,17 @@ export function useMCPCommands(
         command,
         params,
       }, '*');
+      console.log('[MCP] Message posted to iframe:', id);
     });
   }, [iframeRef]);
 
   useEffect(() => {
-    console.log('[MCP] useMCPCommands hook initialized');
+    console.log('[MCP] useMCPCommands hook initialized, iframeRef:', !!iframeRef.current);
     const cleanup = onMessage((message) => {
-      console.log('[MCP] Received message:', message.type);
+      console.log('[MCP] Received message:', message.type, message);
       if (message.type === 'mcpRequest') {
         const request = message.payload as MCPRequest;
-        console.log('[MCP] Processing mcpRequest:', request.command);
+        console.log('[MCP] Processing mcpRequest:', request.command, 'iframe available:', !!iframeRef.current);
         handleMCPCommand(request, sendToIframe);
       } else if (message.type === 'navigate') {
         const payload = message.payload as { url?: string; action?: string };

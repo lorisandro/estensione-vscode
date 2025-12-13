@@ -146,7 +146,12 @@ function createWebviewRequest<T>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     if (!webviewProvider) {
-      reject(new Error('Webview not initialized'));
+      reject(new Error('Webview not initialized. Open Visual Preview first (Ctrl+Alt+B).'));
+      return;
+    }
+
+    if (!webviewProvider.isVisible()) {
+      reject(new Error('Visual Preview panel is not visible. Please open it first (Ctrl+Alt+B or click the Claude Visual Studio icon in the sidebar).'));
       return;
     }
 
@@ -154,7 +159,7 @@ function createWebviewRequest<T>(
     const timeoutId = setTimeout(() => {
       if (!isSettled) {
         isSettled = true;
-        reject(new Error(`MCP request '${command}' timed out after ${timeoutMs}ms`));
+        reject(new Error(`MCP request '${command}' timed out after ${timeoutMs}ms. Make sure the page is loaded in Visual Preview.`));
       }
     }, timeoutMs);
 
