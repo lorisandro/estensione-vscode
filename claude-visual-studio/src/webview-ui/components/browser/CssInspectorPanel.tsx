@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useEditorStore, useSelectionStore, VIEWPORT_PRESETS, type ElementInfo } from '../../state/stores';
+import { useEditorStore, useSelectionStore, useCssChangesStore, VIEWPORT_PRESETS, type ElementInfo, type CssChange } from '../../state/stores';
 import { ElementInspector } from '../ElementInspector';
+import { useVSCodeApi } from '../../hooks/useVSCodeApi';
 
 // ============================================================================
 // Types
@@ -13,11 +14,6 @@ type JustifyContent = 'flex-start' | 'flex-end' | 'center' | 'space-between' | '
 type AlignItems = 'flex-start' | 'flex-end' | 'center' | 'stretch' | 'baseline';
 type TextAlign = 'left' | 'center' | 'right' | 'justify';
 type VerticalAlign = 'top' | 'middle' | 'bottom';
-
-interface CssChange {
-  property: string;
-  value: string;
-}
 
 // ============================================================================
 // Styles
@@ -334,6 +330,70 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
   } as React.CSSProperties,
+
+  // Apply/Undo Toolbar styles
+  applyUndoToolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 12px',
+    backgroundColor: '#2d2d30',
+    borderBottom: '1px solid #3c3c3c',
+    gap: '8px',
+    flexShrink: 0,
+  } as React.CSSProperties,
+
+  applyUndoInfo: {
+    fontSize: '11px',
+    color: '#9d9d9d',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  } as React.CSSProperties,
+
+  applyUndoButtons: {
+    display: 'flex',
+    gap: '6px',
+  } as React.CSSProperties,
+
+  applyButton: {
+    padding: '5px 12px',
+    fontSize: '11px',
+    fontWeight: 500,
+    backgroundColor: '#0e639c',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    transition: 'background-color 0.15s',
+  } as React.CSSProperties,
+
+  undoButton: {
+    padding: '5px 12px',
+    fontSize: '11px',
+    fontWeight: 500,
+    backgroundColor: '#3c3c3c',
+    color: '#cccccc',
+    border: '1px solid #5a5a5a',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    transition: 'background-color 0.15s',
+  } as React.CSSProperties,
+
+  changesCount: {
+    backgroundColor: '#0e639c',
+    color: '#ffffff',
+    padding: '1px 6px',
+    borderRadius: '10px',
+    fontSize: '10px',
+    fontWeight: 600,
+  } as React.CSSProperties,
 };
 
 // ============================================================================
@@ -431,6 +491,7 @@ interface ScrubLabelProps {
   sensitivity?: number;
   disabled?: boolean;
   style?: React.CSSProperties;
+  setIsScrubbing?: (scrubbing: boolean) => void;
 }
 
 const ScrubLabel: React.FC<ScrubLabelProps> = ({
@@ -443,6 +504,7 @@ const ScrubLabel: React.FC<ScrubLabelProps> = ({
   sensitivity = 2,
   disabled = false,
   style,
+  setIsScrubbing,
 }) => {
   const scrubRef = useRef<{
     isDragging: boolean;
@@ -482,6 +544,8 @@ const ScrubLabel: React.FC<ScrubLabelProps> = ({
 
     document.body.style.cursor = 'ew-resize';
     document.body.style.userSelect = 'none';
+    // Notify that scrubbing started (to disable iframe pointer-events)
+    setIsScrubbing?.(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!scrubRef.current.isDragging) return;
@@ -504,6 +568,8 @@ const ScrubLabel: React.FC<ScrubLabelProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('mouseleave', handleMouseUp);
+      // Notify that scrubbing ended
+      setIsScrubbing?.(false);
     };
 
     const handleMouseUp = () => {
@@ -515,7 +581,7 @@ const ScrubLabel: React.FC<ScrubLabelProps> = ({
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('mouseleave', handleMouseUp);
-  }, [disabled, value, step, min, max, onChange, sensitivity]);
+  }, [disabled, value, step, min, max, onChange, sensitivity, setIsScrubbing]);
 
   return (
     <span
@@ -558,6 +624,7 @@ interface NumberInputProps {
   disabled?: boolean;
   label?: string;
   scrubSensitivity?: number; // pixels per step change
+  setIsScrubbing?: (scrubbing: boolean) => void;
 }
 
 const NumberInput: React.FC<NumberInputProps> = ({
@@ -574,6 +641,7 @@ const NumberInput: React.FC<NumberInputProps> = ({
   disabled = false,
   label,
   scrubSensitivity = 2, // default: 2 pixels = 1 step
+  setIsScrubbing,
 }) => {
   const scrubRef = useRef<{
     isDragging: boolean;
@@ -616,6 +684,8 @@ const NumberInput: React.FC<NumberInputProps> = ({
     // Change cursor globally during drag
     document.body.style.cursor = 'ew-resize';
     document.body.style.userSelect = 'none';
+    // Notify that scrubbing started (to disable iframe pointer-events)
+    setIsScrubbing?.(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!scrubRef.current.isDragging) return;
@@ -639,6 +709,8 @@ const NumberInput: React.FC<NumberInputProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('mouseleave', handleMouseUp);
+      // Notify that scrubbing ended
+      setIsScrubbing?.(false);
       // Call onScrubEnd callback if provided
       onScrubEnd?.();
     };
@@ -653,7 +725,7 @@ const NumberInput: React.FC<NumberInputProps> = ({
     document.addEventListener('mouseup', handleMouseUp);
     // Also listen for mouse leaving the window
     document.addEventListener('mouseleave', handleMouseUp);
-  }, [disabled, value, step, min, max, onChange, scrubSensitivity, onScrubEnd]);
+  }, [disabled, value, step, min, max, onChange, scrubSensitivity, onScrubEnd, setIsScrubbing]);
 
   const scrubLabelStyle: React.CSSProperties = {
     ...styles.label,
@@ -938,6 +1010,49 @@ const ElementTabIcon = () => (
 
 type TabType = 'styles' | 'element';
 
+// Icons for Apply/Undo toolbar
+const ApplyIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/>
+  </svg>
+);
+
+const UndoIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M5.5 3.5L1 8l4.5 4.5v-3h6.5a2 2 0 100-4H5.5v-2z"/>
+  </svg>
+);
+
+// Helper function to generate Claude Code prompt
+function generateClaudeCodePrompt(changes: CssChange[]): string {
+  // Group changes by element
+  const changesByElement = changes.reduce((acc, change) => {
+    const key = `${change.elementTagName} (${change.elementSelector})`;
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(change);
+    return acc;
+  }, {} as Record<string, CssChange[]>);
+
+  let prompt = `Apply the following CSS style changes to the HTML/CSS file:\n\n`;
+
+  for (const [elementKey, elementChanges] of Object.entries(changesByElement)) {
+    prompt += `**Element: ${elementKey}**\n`;
+    for (const change of elementChanges) {
+      prompt += `- Change \`${change.property}\` from \`${change.originalValue || 'unset'}\` to \`${change.newValue}\`\n`;
+    }
+    prompt += `\n`;
+  }
+
+  prompt += `\n**Instructions:**\n`;
+  prompt += `1. Find the element(s) matching the selector(s) above\n`;
+  prompt += `2. Update the CSS styles accordingly (inline styles or stylesheet)\n`;
+  prompt += `3. Preserve existing styles that are not being changed\n`;
+
+  return prompt;
+}
+
 export const CssInspectorPanel: React.FC = () => {
   const {
     cssInspectorWidth,
@@ -951,8 +1066,18 @@ export const CssInspectorPanel: React.FC = () => {
     setViewportPreset,
     toggleViewportRotation,
     resetViewport,
+    setIsScrubbing,
   } = useEditorStore();
   const { selectedElement, hoveredElement, setSelectedElement } = useSelectionStore();
+  const {
+    cssChanges,
+    addCssChange,
+    undoLastCssChange,
+    undoAllCssChanges,
+    applyCssChanges,
+    getOriginalValue,
+  } = useCssChangesStore();
+  const { postMessage } = useVSCodeApi();
   const [activeTab, setActiveTab] = useState<TabType>('styles');
   const [isResizing, setIsResizing] = useState(false);
   const [resizerHover, setResizerHover] = useState(false);
@@ -964,6 +1089,7 @@ export const CssInspectorPanel: React.FC = () => {
   const positionAppliedRef = useRef(false);
 
   const element = selectedElement || hoveredElement;
+  const hasPendingChanges = cssChanges.length > 0;
 
   // Reset position applied flag when element changes
   useEffect(() => {
@@ -975,9 +1101,23 @@ export const CssInspectorPanel: React.FC = () => {
     return element?.styles?.computed?.[property] || '';
   }, [element]);
 
-  // Send CSS change to iframe
+  // Send CSS change to iframe and track it
   const applyCssChange = useCallback((property: string, value: string) => {
     if (!element?.selector) return;
+
+    // Store original value if not already stored
+    const currentValue = getStyle(property);
+    const storedOriginal = getOriginalValue(element.selector, property);
+    const originalValue = storedOriginal !== undefined ? storedOriginal : currentValue;
+
+    // Track the change
+    addCssChange({
+      elementSelector: element.selector,
+      elementTagName: element.tagName || 'unknown',
+      property,
+      originalValue,
+      newValue: value,
+    });
 
     // Find iframe and send message
     const iframe = document.querySelector('iframe[title="Browser Preview"]') as HTMLIFrameElement;
@@ -991,7 +1131,67 @@ export const CssInspectorPanel: React.FC = () => {
         },
       }, '*');
     }
-  }, [element]);
+  }, [element, getStyle, getOriginalValue, addCssChange]);
+
+  // Handle Apply button - send changes to Claude Code
+  const handleApplyChanges = useCallback(() => {
+    if (cssChanges.length === 0) return;
+
+    // Generate prompt for Claude Code
+    const prompt = generateClaudeCodePrompt(cssChanges);
+
+    // Send to VS Code extension which will forward to Claude Code terminal
+    postMessage({
+      type: 'apply-css-to-claude',
+      payload: {
+        changes: cssChanges,
+        prompt,
+      },
+    });
+
+    // Clear changes after applying
+    applyCssChanges();
+  }, [cssChanges, postMessage, applyCssChanges]);
+
+  // Handle Undo button - revert last change in preview
+  const handleUndoLastChange = useCallback(() => {
+    const lastChange = undoLastCssChange();
+    if (!lastChange) return;
+
+    // Revert the change in the iframe
+    const iframe = document.querySelector('iframe[title="Browser Preview"]') as HTMLIFrameElement;
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({
+        type: 'apply-css-style',
+        payload: {
+          selector: lastChange.elementSelector,
+          property: lastChange.property,
+          value: lastChange.originalValue,
+        },
+      }, '*');
+    }
+  }, [undoLastCssChange]);
+
+  // Handle Undo All - revert all changes in preview
+  const handleUndoAllChanges = useCallback(() => {
+    const allChanges = undoAllCssChanges();
+    if (allChanges.length === 0) return;
+
+    const iframe = document.querySelector('iframe[title="Browser Preview"]') as HTMLIFrameElement;
+    if (iframe?.contentWindow) {
+      // Revert all changes in reverse order
+      for (const change of allChanges.reverse()) {
+        iframe.contentWindow.postMessage({
+          type: 'apply-css-style',
+          payload: {
+            selector: change.elementSelector,
+            property: change.property,
+            value: change.originalValue,
+          },
+        }, '*');
+      }
+    }
+  }, [undoAllCssChanges]);
 
   // Handle resizer drag
   const handleResizerMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1187,6 +1387,44 @@ export const CssInspectorPanel: React.FC = () => {
         </button>
       </div>
 
+      {/* Apply/Undo Toolbar - shown when there are pending changes */}
+      {hasPendingChanges && (
+        <div style={styles.applyUndoToolbar}>
+          <div style={styles.applyUndoInfo}>
+            <span style={styles.changesCount}>{cssChanges.length}</span>
+            <span>change{cssChanges.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div style={styles.applyUndoButtons}>
+            <button
+              style={styles.undoButton}
+              onClick={handleUndoLastChange}
+              title="Undo last change"
+            >
+              <UndoIcon />
+              Undo
+            </button>
+            <button
+              style={{
+                ...styles.undoButton,
+                marginLeft: '2px',
+              }}
+              onClick={handleUndoAllChanges}
+              title="Undo all changes"
+            >
+              Undo All
+            </button>
+            <button
+              style={styles.applyButton}
+              onClick={handleApplyChanges}
+              title="Apply changes to code via Claude"
+            >
+              <ApplyIcon />
+              Apply
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tab Content */}
       {activeTab === 'element' ? (
         <ElementInspector />
@@ -1345,6 +1583,7 @@ export const CssInspectorPanel: React.FC = () => {
                 applyCssChange('left', `${Math.round(v)}px`);
               }}
               onScrubEnd={() => { positionAppliedRef.current = false; }}
+              setIsScrubbing={setIsScrubbing}
             />
             <NumberInput
               label="Y"
@@ -1358,6 +1597,7 @@ export const CssInspectorPanel: React.FC = () => {
                 applyCssChange('top', `${Math.round(v)}px`);
               }}
               onScrubEnd={() => { positionAppliedRef.current = false; }}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
           <div style={styles.row}>
@@ -1380,6 +1620,7 @@ export const CssInspectorPanel: React.FC = () => {
               value={parseInt(getStyle('zIndex')) || 0}
               onChange={(v) => applyCssChange('zIndex', String(v))}
               step={1}
+              setIsScrubbing={setIsScrubbing}
             />
             <input
               type="number"
@@ -1418,6 +1659,7 @@ export const CssInspectorPanel: React.FC = () => {
               unit={widthUnit}
               onChange={(v) => applyCssChange('width', `${v}${widthUnit}`)}
               onUnitChange={(u) => applyCssChange('width', `${width}${u}`)}
+              setIsScrubbing={setIsScrubbing}
             />
             <NumberInput
               label="H"
@@ -1425,6 +1667,7 @@ export const CssInspectorPanel: React.FC = () => {
               unit={heightUnit}
               onChange={(v) => applyCssChange('height', `${v}${heightUnit}`)}
               onUnitChange={(u) => applyCssChange('height', `${height}${u}`)}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
 
@@ -1450,12 +1693,14 @@ export const CssInspectorPanel: React.FC = () => {
                   applyCssChange('paddingTop', `${v}px`);
                 }
               }}
+              setIsScrubbing={setIsScrubbing}
             />
             <NumberInput
               label="→"
               value={linkedPadding ? paddingTop : paddingRight}
               onChange={(v) => applyCssChange('paddingRight', `${v}px`)}
               disabled={linkedPadding}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
           <div style={styles.gridRow}>
@@ -1464,12 +1709,14 @@ export const CssInspectorPanel: React.FC = () => {
               value={linkedPadding ? paddingTop : paddingBottom}
               onChange={(v) => applyCssChange('paddingBottom', `${v}px`)}
               disabled={linkedPadding}
+              setIsScrubbing={setIsScrubbing}
             />
             <NumberInput
               label="←"
               value={linkedPadding ? paddingTop : paddingLeft}
               onChange={(v) => applyCssChange('paddingLeft', `${v}px`)}
               disabled={linkedPadding}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
 
@@ -1495,12 +1742,14 @@ export const CssInspectorPanel: React.FC = () => {
                   applyCssChange('marginTop', `${v}px`);
                 }
               }}
+              setIsScrubbing={setIsScrubbing}
             />
             <NumberInput
               label="→"
               value={linkedMargin ? marginTop : marginRight}
               onChange={(v) => applyCssChange('marginRight', `${v}px`)}
               disabled={linkedMargin}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
           <div style={styles.gridRow}>
@@ -1509,12 +1758,14 @@ export const CssInspectorPanel: React.FC = () => {
               value={linkedMargin ? marginTop : marginBottom}
               onChange={(v) => applyCssChange('marginBottom', `${v}px`)}
               disabled={linkedMargin}
+              setIsScrubbing={setIsScrubbing}
             />
             <NumberInput
               label="←"
               value={linkedMargin ? marginTop : marginLeft}
               onChange={(v) => applyCssChange('marginLeft', `${v}px`)}
               disabled={linkedMargin}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
 
@@ -1558,6 +1809,7 @@ export const CssInspectorPanel: React.FC = () => {
               min={0}
               max={100}
               step={1}
+              setIsScrubbing={setIsScrubbing}
             />
             <div style={styles.sliderContainer}>
               <input
@@ -1602,12 +1854,14 @@ export const CssInspectorPanel: React.FC = () => {
                   applyCssChange('borderTopLeftRadius', `${v}px`);
                 }
               }}
+              setIsScrubbing={setIsScrubbing}
             />
             <NumberInput
               label="↗"
               value={linkedRadius ? borderRadius : parseNumericValue(getStyle('borderTopRightRadius')).num}
               onChange={(v) => applyCssChange('borderTopRightRadius', `${v}px`)}
               disabled={linkedRadius}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
           <div style={styles.gridRow}>
@@ -1616,12 +1870,14 @@ export const CssInspectorPanel: React.FC = () => {
               value={linkedRadius ? borderRadius : parseNumericValue(getStyle('borderBottomLeftRadius')).num}
               onChange={(v) => applyCssChange('borderBottomLeftRadius', `${v}px`)}
               disabled={linkedRadius}
+              setIsScrubbing={setIsScrubbing}
             />
             <NumberInput
               label="↘"
               value={linkedRadius ? borderRadius : parseNumericValue(getStyle('borderBottomRightRadius')).num}
               onChange={(v) => applyCssChange('borderBottomRightRadius', `${v}px`)}
               disabled={linkedRadius}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
         </CollapsibleSection>
@@ -1674,6 +1930,7 @@ export const CssInspectorPanel: React.FC = () => {
                 label="Size"
                 value={fontSize}
                 onChange={(v) => applyCssChange('fontSize', `${v}px`)}
+                setIsScrubbing={setIsScrubbing}
               />
             </div>
 
@@ -1762,6 +2019,7 @@ export const CssInspectorPanel: React.FC = () => {
               value={parseNumericValue(getStyle('borderWidth')).num}
               onChange={(v) => applyCssChange('borderWidth', `${v}px`)}
               min={0}
+              setIsScrubbing={setIsScrubbing}
             />
           </div>
           <div style={styles.row}>

@@ -41,8 +41,8 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const internalRef = useRef<HTMLIFrameElement>(null);
   const iframeRef = externalRef || internalRef;
   const { url, serverBaseUrl, refreshKey } = useNavigationStore();
-  const { selectionMode, screenshotMode, addDragChange, setSelectedElement } = useSelectionStore();
-  const { setLoading, setError, addConsoleLog, viewportWidth, viewportHeight } = useEditorStore();
+  const { selectionMode, screenshotMode, addDragChange, setSelectedElement, clearSelection } = useSelectionStore();
+  const { setLoading, setError, addConsoleLog, viewportWidth, viewportHeight, isScrubbing } = useEditorStore();
   const { postMessage } = useVSCodeApi();
 
   // Drag mode is active when no other mode is enabled
@@ -184,21 +184,24 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     console.log('[BrowserFrame] Sent drag mode to iframe:', isDragMode);
   }, [isDragMode]);
 
-  // Set loading when URL changes or on refresh
+  // Set loading and clear selection when URL changes or on refresh
   useEffect(() => {
     setLoading(true);
-  }, [url, refreshKey, setLoading]);
+    // Clear any selected/hovered elements when navigating or refreshing
+    clearSelection();
+  }, [url, refreshKey, setLoading, clearSelection]);
 
   // Determine if we're in responsive mode (fixed viewport)
   const isResponsiveMode = viewportWidth > 0 && viewportHeight > 0;
 
   // Calculate iframe dimensions and container styles
+  // Disable pointer-events on iframe during scrubbing to allow mouse events to reach the sidebar
   const iframeStyles: React.CSSProperties = {
     width: isResponsiveMode ? `${viewportWidth}px` : '100%',
     height: isResponsiveMode ? `${viewportHeight}px` : '100%',
     border: 'none',
     backgroundColor: '#fff',
-    pointerEvents: 'auto',
+    pointerEvents: isScrubbing ? 'none' : 'auto',
     ...(isResponsiveMode && {
       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
       borderRadius: '4px',

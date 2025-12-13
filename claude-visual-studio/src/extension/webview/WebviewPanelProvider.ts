@@ -431,6 +431,11 @@ export class WebviewPanelProvider {
         await this.handleApplyDragChanges(message as any);
         break;
 
+      // Handle apply-css-to-claude from Elementor sidebar
+      case 'apply-css-to-claude':
+        await this.handleApplyCssToClaudeCode(message as any);
+        break;
+
       default:
         console.warn('Unknown message type:', (message as any).type);
     }
@@ -959,6 +964,124 @@ export class WebviewPanelProvider {
       console.log(`[Claude VS] Drag changes applied: ${changes.length}`);
     } catch (err) {
       console.error('[Claude VS] Failed to write drag changes:', err);
+    }
+  }
+
+  /**
+   * Handle CSS changes from Elementor sidebar
+   * Sends formatted instructions to Claude Code terminal
+   */
+  private async handleApplyCssToClaudeCode(message: {
+    type: 'apply-css-to-claude';
+    payload: {
+      changes: Array<{
+        elementSelector: string;
+        elementTagName: string;
+        property: string;
+        originalValue: string;
+        newValue: string;
+      }>;
+      prompt: string;
+    };
+  }): Promise<void> {
+    const { changes, prompt } = message.payload;
+
+    if (!changes || changes.length === 0) {
+      return;
+    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      vscode.window.showWarningMessage('No workspace folder open.');
+      return;
+    }
+
+    // Write changes to file for reference
+    const outputPath = path.join(workspaceFolders[0].uri.fsPath, '.claude-css-changes.json');
+    const changeData = {
+      timestamp: new Date().toISOString(),
+      changesCount: changes.length,
+      changes: changes.map((change, index) => ({
+        index: index + 1,
+        selector: change.elementSelector,
+        tag: change.elementTagName,
+        property: change.property,
+        from: change.originalValue || 'unset',
+        to: change.newValue,
+      })),
+    };
+
+    try {
+      fs.writeFileSync(outputPath, JSON.stringify(changeData, null, 2), 'utf-8');
+
+      // Group changes by element for cleaner CSS output
+      const changesBySelector: Record<string, Array<{ property: string; value: string }>> = {};
+      for (const change of changes) {
+        if (!changesBySelector[change.elementSelector]) {
+          changesBySelector[change.elementSelector] = [];
+        }
+        changesBySelector[change.elementSelector].push({
+          property: change.property,
+          value: change.newValue,
+        });
+      }
+
+      // Create CSS-formatted output
+      const cssOutput = Object.entries(changesBySelector).map(([selector, props]) => {
+        const cssProps = props.map(p => `  ${p.property}: ${p.value};`).join('\n');
+        return `${selector} {\n${cssProps}\n}`;
+      }).join('\n\n');
+
+      // Create formatted terminal output
+      const terminalOutput = [
+        ``,
+        `=== CSS STYLE CHANGES FROM VISUAL EDITOR ===`,
+        ``,
+        `The user has visually edited ${changes.length} CSS propert${changes.length === 1 ? 'y' : 'ies'} using the Elementor panel.`,
+        `Please apply these changes to the appropriate CSS/HTML file:`,
+        ``,
+        `--- CSS TO APPLY ---`,
+        ``,
+        cssOutput,
+        ``,
+        `--- CHANGE DETAILS ---`,
+        ...changes.map((change, i) =>
+          `${i + 1}. ${change.elementTagName} (${change.elementSelector}): ${change.property}: ${change.originalValue || 'unset'} -> ${change.newValue}`
+        ),
+        ``,
+        `Full details saved to: .claude-css-changes.json`,
+        ``,
+        `Please find the element(s) in the source files and update the styles accordingly.`,
+        ``,
+      ].join('\n');
+
+      // Send to active terminal (Claude Code)
+      const terminal = vscode.window.activeTerminal;
+      if (terminal) {
+        terminal.sendText(terminalOutput);
+        console.log('[Claude VS] CSS changes sent to Claude Code terminal');
+      } else {
+        // No active terminal - show message to user
+        vscode.window.showWarningMessage(
+          'No active terminal found. Please open Claude Code and try again.',
+          'Copy to Clipboard'
+        ).then(action => {
+          if (action === 'Copy to Clipboard') {
+            vscode.env.clipboard.writeText(terminalOutput);
+            vscode.window.showInformationMessage('CSS changes copied to clipboard');
+          }
+        });
+      }
+
+      // Show success notification
+      vscode.window.showInformationMessage(
+        `${changes.length} CSS change(s) sent to Claude Code.`
+      );
+
+      console.log(`[Claude VS] CSS changes applied: ${changes.length}`);
+    } catch (err) {
+      console.error('[Claude VS] Failed to send CSS changes:', err);
+      vscode.window.showErrorMessage('Failed to send CSS changes to Claude Code.');
     }
   }
 

@@ -284,6 +284,159 @@ export interface ConsoleLogEntry {
   timestamp: number;
 }
 
+// CSS Change represents a single style modification for undo/apply
+export interface CssChange {
+  id: string;
+  elementSelector: string;
+  elementTagName: string;
+  property: string;
+  originalValue: string;
+  newValue: string;
+  timestamp: number;
+}
+
+// CSS Changes state
+interface CssChangesState {
+  cssChanges: CssChange[];
+  hasPendingCssChanges: boolean;
+  originalStyles: Record<string, Record<string, string>>; // selector -> property -> original value
+  addCssChange: (change: Omit<CssChange, 'id' | 'timestamp'>) => void;
+  undoLastCssChange: () => CssChange | null;
+  undoAllCssChanges: () => CssChange[];
+  applyCssChanges: () => CssChange[];
+  clearCssChanges: () => void;
+  getOriginalValue: (selector: string, property: string) => string | undefined;
+  setOriginalValue: (selector: string, property: string, value: string) => void;
+}
+
+// Generate unique IDs for CSS changes
+const generateCssChangeId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `css-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+};
+
+export const useCssChangesStore = create<CssChangesState>()(
+  devtools(
+    (set, get) => ({
+      cssChanges: [],
+      hasPendingCssChanges: false,
+      originalStyles: {},
+
+      addCssChange: (change: Omit<CssChange, 'id' | 'timestamp'>) => {
+        const { cssChanges, originalStyles } = get();
+
+        // Check if we already have a change for this property on this element
+        const existingIndex = cssChanges.findIndex(
+          c => c.elementSelector === change.elementSelector && c.property === change.property
+        );
+
+        const newChange: CssChange = {
+          ...change,
+          id: generateCssChangeId(),
+          timestamp: Date.now(),
+        };
+
+        if (existingIndex >= 0) {
+          // Update existing change with new value, keep original
+          const updatedChanges = [...cssChanges];
+          updatedChanges[existingIndex] = {
+            ...updatedChanges[existingIndex],
+            newValue: change.newValue,
+            timestamp: Date.now(),
+          };
+          set({
+            cssChanges: updatedChanges,
+          }, undefined, 'cssChanges/updateCssChange');
+        } else {
+          // Store original value if not already stored
+          const selectorStyles = originalStyles[change.elementSelector] || {};
+          if (!(change.property in selectorStyles)) {
+            set({
+              originalStyles: {
+                ...originalStyles,
+                [change.elementSelector]: {
+                  ...selectorStyles,
+                  [change.property]: change.originalValue,
+                },
+              },
+            }, undefined, 'cssChanges/storeOriginalValue');
+          }
+
+          set((state) => ({
+            cssChanges: [...state.cssChanges, newChange],
+            hasPendingCssChanges: true,
+          }), undefined, 'cssChanges/addCssChange');
+        }
+      },
+
+      undoLastCssChange: () => {
+        const { cssChanges } = get();
+        if (cssChanges.length === 0) return null;
+
+        const lastChange = cssChanges[cssChanges.length - 1];
+        set((state) => ({
+          cssChanges: state.cssChanges.slice(0, -1),
+          hasPendingCssChanges: state.cssChanges.length > 1,
+        }), undefined, 'cssChanges/undoLastCssChange');
+
+        return lastChange;
+      },
+
+      undoAllCssChanges: () => {
+        const { cssChanges } = get();
+        set({
+          cssChanges: [],
+          hasPendingCssChanges: false,
+          originalStyles: {},
+        }, undefined, 'cssChanges/undoAllCssChanges');
+        return cssChanges;
+      },
+
+      applyCssChanges: () => {
+        const { cssChanges } = get();
+        set({
+          cssChanges: [],
+          hasPendingCssChanges: false,
+          originalStyles: {},
+        }, undefined, 'cssChanges/applyCssChanges');
+        return cssChanges;
+      },
+
+      clearCssChanges: () => {
+        set({
+          cssChanges: [],
+          hasPendingCssChanges: false,
+          originalStyles: {},
+        }, undefined, 'cssChanges/clearCssChanges');
+      },
+
+      getOriginalValue: (selector: string, property: string) => {
+        const { originalStyles } = get();
+        return originalStyles[selector]?.[property];
+      },
+
+      setOriginalValue: (selector: string, property: string, value: string) => {
+        const { originalStyles } = get();
+        const selectorStyles = originalStyles[selector] || {};
+        if (!(property in selectorStyles)) {
+          set({
+            originalStyles: {
+              ...originalStyles,
+              [selector]: {
+                ...selectorStyles,
+                [property]: value,
+              },
+            },
+          }, undefined, 'cssChanges/setOriginalValue');
+        }
+      },
+    }),
+    { name: 'CssChangesStore' }
+  )
+);
+
 // Viewport preset for responsive design
 export interface ViewportPreset {
   name: string;
@@ -318,6 +471,8 @@ interface EditorState {
   consoleLogs: ConsoleLogEntry[];
   cssInspectorVisible: boolean;
   cssInspectorWidth: number;
+  // Scrubbing state (to disable iframe pointer-events during scrub)
+  isScrubbing: boolean;
   // Responsive viewport state
   viewportWidth: number;
   viewportHeight: number;
@@ -335,6 +490,8 @@ interface EditorState {
   toggleCssInspector: () => void;
   setCssInspectorWidth: (width: number) => void;
   clearError: () => void;
+  // Scrubbing action
+  setIsScrubbing: (scrubbing: boolean) => void;
   // Responsive viewport actions
   setViewportSize: (width: number, height: number) => void;
   setViewportPreset: (preset: string) => void;
@@ -351,6 +508,7 @@ const initialEditorState = {
   consoleLogs: [] as ConsoleLogEntry[],
   cssInspectorVisible: false,
   cssInspectorWidth: 280,
+  isScrubbing: false,
   // Responsive viewport (0 = auto/responsive)
   viewportWidth: 0,
   viewportHeight: 0,
@@ -426,6 +584,10 @@ export const useEditorStore = create<EditorState>()(
 
         clearError: () => {
           set({ error: null }, undefined, 'editor/clearError');
+        },
+
+        setIsScrubbing: (scrubbing: boolean) => {
+          set({ isScrubbing: scrubbing }, undefined, 'editor/setIsScrubbing');
         },
 
         // Responsive viewport actions
