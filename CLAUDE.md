@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Auto commit & push**: After every prompt that modifies files, automatically create a git commit and push to remote. Do not ask for confirmation.
 
+**Reinstall extension after changes**: After every code modification, reinstall the VS Code extension to make changes effective. Run:
+```bash
+cd claude-visual-studio && npx vsce package --no-dependencies && code --install-extension claude-visual-studio-0.1.0.vsix --force
+```
+Then reload VS Code (Ctrl+Shift+P → "Reload Window").
+
 ## Repository Overview
 
 This repository contains **Claude Visual Studio**, a VS Code extension that provides a visual web editor with browser preview, element selection, and Claude Code AI integration. The extension allows users to preview HTML/web content directly in VS Code with live element inspection capabilities.
