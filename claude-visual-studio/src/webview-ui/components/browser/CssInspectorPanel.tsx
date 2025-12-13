@@ -527,7 +527,9 @@ function parseTransform(transform: string): TransformValues {
     defaults.skewY = parseFloat(skewYMatch[1]);
   }
 
-  // Parse matrix - extract rotation and scale from matrix
+  // Parse matrix - extract rotation, scale, skew from matrix
+  // Matrix format: matrix(a, b, c, d, e, f)
+  // Where: a=scaleX*cos(r), b=scaleX*sin(r), c=-scaleY*sin(r)+skewX, d=scaleY*cos(r), e=tx, f=ty
   const matrixMatch = transform.match(/matrix\((-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\)/);
   if (matrixMatch) {
     const a = parseFloat(matrixMatch[1]);
@@ -537,16 +539,40 @@ function parseTransform(transform: string): TransformValues {
     const tx = parseFloat(matrixMatch[5]);
     const ty = parseFloat(matrixMatch[6]);
 
-    // Extract rotation (in degrees)
-    defaults.rotate = Math.round(Math.atan2(b, a) * (180 / Math.PI));
-
-    // Extract scale
-    defaults.scaleX = Math.round(Math.sqrt(a * a + b * b) * 100) / 100;
-    defaults.scaleY = Math.round(Math.sqrt(c * c + d * d) * 100) / 100;
-
     // Extract translation
     defaults.translateX = Math.round(tx);
     defaults.translateY = Math.round(ty);
+
+    // Calculate scale
+    const scaleX = Math.sqrt(a * a + b * b);
+    const scaleY = Math.sqrt(c * c + d * d);
+    defaults.scaleX = Math.round(scaleX * 100) / 100;
+    defaults.scaleY = Math.round(scaleY * 100) / 100;
+
+    // Extract rotation (in degrees) from the first column
+    const rotation = Math.atan2(b, a);
+    defaults.rotate = Math.round(rotation * (180 / Math.PI));
+
+    // Extract skewX: angle between the two column vectors
+    // skewX = atan2(a*c + b*d, a*d - b*c) - but simplified when no rotation
+    if (scaleX !== 0 && scaleY !== 0) {
+      // Compute skew from the matrix
+      // For skewX: tan(skewX) = (a*c + b*d) / (a*d - b*c)
+      const dot = a * c + b * d;
+      const cross = a * d - b * c;
+      if (Math.abs(cross) > 0.0001) {
+        const skewXRad = Math.atan(dot / cross);
+        defaults.skewX = Math.round(skewXRad * (180 / Math.PI));
+      }
+
+      // For skewY when there's no rotation: tan(skewY) ≈ b/a
+      if (Math.abs(defaults.rotate) < 1 && Math.abs(a) > 0.0001) {
+        const skewYRad = Math.atan(b / a);
+        if (Math.abs(skewYRad) > 0.01) {
+          defaults.skewY = Math.round(skewYRad * (180 / Math.PI));
+        }
+      }
+    }
   }
 
   return defaults;
