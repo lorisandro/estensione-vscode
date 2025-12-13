@@ -237,6 +237,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
         },
       },
+      {
+        name: 'browser_open',
+        description: 'Open the Visual Preview panel in VS Code. Use this if the browser is not visible.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -332,6 +340,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return { content: [{ type: 'text', text: 'No element currently selected. Use selection mode to select an element first.' }] };
         }
         return { content: [{ type: 'text', text: JSON.stringify(result.element, null, 2) }] };
+
+      case 'browser_open':
+        result = await sendCommand('openBrowser');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: 'Visual Preview panel opened. You can now navigate to a URL.' }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

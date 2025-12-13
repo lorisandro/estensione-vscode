@@ -260,6 +260,14 @@ async function initializeMCPBridge(): Promise<void> {
     return { element };
   });
 
+  mcpBridge.registerHandler('openBrowser', async () => {
+    // Execute the VS Code command to open the preview panel
+    await vscode.commands.executeCommand('claudeVisualStudio.openPreview');
+    // Wait a bit for the panel to initialize
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return { success: true };
+  });
+
   // Start the bridge
   try {
     await mcpBridge.start();
