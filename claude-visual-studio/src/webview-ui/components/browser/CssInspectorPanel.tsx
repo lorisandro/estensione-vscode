@@ -1269,7 +1269,14 @@ export const CssInspectorPanel: React.FC = () => {
 
   // Send CSS change to iframe and track it
   const applyCssChange = useCallback((property: string, value: string) => {
-    if (!element?.selector) return;
+    console.log('[CssInspectorPanel] applyCssChange called:', property, value);
+
+    if (!element?.selector) {
+      console.warn('[CssInspectorPanel] No element selector available');
+      return;
+    }
+
+    console.log('[CssInspectorPanel] Element selector:', element.selector);
 
     // Store original value if not already stored
     const currentValue = getStyle(property);
@@ -1287,7 +1294,10 @@ export const CssInspectorPanel: React.FC = () => {
 
     // Find iframe and send message
     const iframe = document.querySelector('iframe[title="Browser Preview"]') as HTMLIFrameElement;
+    console.log('[CssInspectorPanel] Found iframe:', !!iframe, iframe?.title);
+
     if (iframe?.contentWindow) {
+      console.log('[CssInspectorPanel] Sending apply-css-style message to iframe');
       iframe.contentWindow.postMessage({
         type: 'apply-css-style',
         payload: {
@@ -1296,6 +1306,9 @@ export const CssInspectorPanel: React.FC = () => {
           value,
         },
       }, '*');
+      console.log('[CssInspectorPanel] Message sent');
+    } else {
+      console.warn('[CssInspectorPanel] Could not find iframe contentWindow');
     }
   }, [element, getStyle, getOriginalValue, addCssChange]);
 
@@ -1693,7 +1706,7 @@ export const CssInspectorPanel: React.FC = () => {
             />
           </div>
 
-          {/* Rotation & Reset */}
+          {/* Orientation & Reset */}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               style={{
@@ -1712,10 +1725,10 @@ export const CssInspectorPanel: React.FC = () => {
                   toggleViewportRotation();
                 }
               }}
-              title={viewportWidth === 0 && viewportHeight === 0 ? "Select a device preset first to enable rotation" : "Rotate viewport (swap width and height)"}
+              title={viewportWidth === 0 && viewportHeight === 0 ? "Select a device preset first" : "Switch between Portrait and Landscape orientation"}
             >
               <RotateIcon />
-              <span style={{ marginLeft: '4px' }}>Rotate</span>
+              <span style={{ marginLeft: '4px' }}>{viewportRotated ? 'Landscape' : 'Portrait'}</span>
             </button>
             <button
               style={{

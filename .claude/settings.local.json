@@ -46,7 +46,18 @@
       "mcp__claude-browser__browser_get_url",
       "mcp__claude-browser__browser_screenshot",
       "mcp__claude-browser__browser_navigate",
-      "mcp__claude-browser__browser_get_text"
+      "mcp__claude-browser__browser_get_text",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(npx esbuild:*)",
+      "Bash(curl:*)",
+      "mcp__claude-browser__browser_get_html",
+      "mcp__claude-browser__browser_get_elements",
+      "Bash(npm run build:webview:*)",
+      "Bash(tree:*)",
+      "Bash(npm run typecheck:webview:*)",
+      "Bash(cd /e/Progetto/Progetti/APP e ASSET/App/Test)",
+      "Bash(taskkill:*)",
+      "Bash(del /f nul)"
     ]
   }
 }
