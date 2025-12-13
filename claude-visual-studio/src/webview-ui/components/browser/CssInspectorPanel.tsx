@@ -216,6 +216,12 @@ const styles = {
     color: '#ffffff',
   } as React.CSSProperties,
 
+  buttonDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+    pointerEvents: 'none' as const,
+  } as React.CSSProperties,
+
   iconButton: {
     padding: '4px',
     backgroundColor: 'transparent',
@@ -1534,10 +1540,19 @@ export const CssInspectorPanel: React.FC = () => {
                 ...styles.button,
                 flex: 1,
                 ...(viewportRotated ? styles.buttonActive : {}),
+                ...(viewportWidth === 0 && viewportHeight === 0 ? styles.buttonDisabled : {}),
               }}
-              onClick={toggleViewportRotation}
-              disabled={viewportWidth === 0 && viewportHeight === 0}
-              title="Rotate viewport"
+              onClick={() => {
+                if (viewportWidth === 0 && viewportHeight === 0) {
+                  // If in responsive mode, first set a default device and then rotate
+                  setViewportPreset('iPhone 14');
+                  // Toggle rotation after a small delay to ensure preset is applied
+                  setTimeout(() => toggleViewportRotation(), 10);
+                } else {
+                  toggleViewportRotation();
+                }
+              }}
+              title={viewportWidth === 0 && viewportHeight === 0 ? "Select a device preset first to enable rotation" : "Rotate viewport (swap width and height)"}
             >
               <RotateIcon />
               <span style={{ marginLeft: '4px' }}>Rotate</span>

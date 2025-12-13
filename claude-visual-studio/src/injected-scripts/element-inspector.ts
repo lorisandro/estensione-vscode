@@ -149,6 +149,7 @@ class ElementInspector {
   // Guide properties (for visual feedback)
   private readonly GUIDE_COLOR = '#ff00ff';
   private readonly GUIDE_CENTER_COLOR = '#00d4ff';
+  private readonly SNAP_THRESHOLD = 8; // pixels - snap distance for alignment guides
   private guidesContainer: SVGSVGElement | null = null;
   private distanceContainer: HTMLDivElement | null = null;
 
