@@ -529,7 +529,14 @@ function parseTransform(transform: string): TransformValues {
 
   // Parse matrix - extract rotation, scale, skew from matrix
   // Matrix format: matrix(a, b, c, d, e, f)
-  // Where: a=scaleX*cos(r), b=scaleX*sin(r), c=-scaleY*sin(r)+skewX, d=scaleY*cos(r), e=tx, f=ty
+  //
+  // Different transforms produce different matrices:
+  // - rotate(r): matrix(cos(r), sin(r), -sin(r), cos(r), 0, 0)
+  // - scale(sx, sy): matrix(sx, 0, 0, sy, 0, 0)
+  // - skewX(x): matrix(1, 0, tan(x), 1, 0, 0)
+  // - skewY(y): matrix(1, tan(y), 0, 1, 0, 0)
+  //
+  // Combined: matrix(a, b, c, d, tx, ty)
   const matrixMatch = transform.match(/matrix\((-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(-?[\d.]+)\)/);
   if (matrixMatch) {
     const a = parseFloat(matrixMatch[1]);
@@ -543,33 +550,62 @@ function parseTransform(transform: string): TransformValues {
     defaults.translateX = Math.round(tx);
     defaults.translateY = Math.round(ty);
 
-    // Calculate scale
-    const scaleX = Math.sqrt(a * a + b * b);
-    const scaleY = Math.sqrt(c * c + d * d);
-    defaults.scaleX = Math.round(scaleX * 100) / 100;
-    defaults.scaleY = Math.round(scaleY * 100) / 100;
+    // Check for pure skewY: matrix(1, tan(skewY), 0, 1, 0, 0)
+    // In this case: a ≈ 1, c ≈ 0, d ≈ 1, and b = tan(skewY)
+    const isPureSkewY = Math.abs(a - 1) < 0.01 && Math.abs(c) < 0.01 && Math.abs(d - 1) < 0.01 && Math.abs(b) > 0.001;
 
-    // Extract rotation (in degrees) from the first column
-    const rotation = Math.atan2(b, a);
-    defaults.rotate = Math.round(rotation * (180 / Math.PI));
+    // Check for pure skewX: matrix(1, 0, tan(skewX), 1, 0, 0)
+    const isPureSkewX = Math.abs(a - 1) < 0.01 && Math.abs(b) < 0.01 && Math.abs(d - 1) < 0.01 && Math.abs(c) > 0.001;
 
-    // Extract skewX: angle between the two column vectors
-    // skewX = atan2(a*c + b*d, a*d - b*c) - but simplified when no rotation
-    if (scaleX !== 0 && scaleY !== 0) {
-      // Compute skew from the matrix
-      // For skewX: tan(skewX) = (a*c + b*d) / (a*d - b*c)
-      const dot = a * c + b * d;
-      const cross = a * d - b * c;
-      if (Math.abs(cross) > 0.0001) {
-        const skewXRad = Math.atan(dot / cross);
-        defaults.skewX = Math.round(skewXRad * (180 / Math.PI));
-      }
+    if (isPureSkewY) {
+      // Pure skewY transform
+      defaults.skewY = Math.round(Math.atan(b) * (180 / Math.PI));
+      defaults.scaleX = 1;
+      defaults.scaleY = 1;
+      defaults.rotate = 0;
+    } else if (isPureSkewX) {
+      // Pure skewX transform
+      defaults.skewX = Math.round(Math.atan(c) * (180 / Math.PI));
+      defaults.scaleX = 1;
+      defaults.scaleY = 1;
+      defaults.rotate = 0;
+    } else {
+      // General case: decompose matrix into scale, rotation, and skew
 
-      // For skewY when there's no rotation: tan(skewY) ≈ b/a
-      if (Math.abs(defaults.rotate) < 1 && Math.abs(a) > 0.0001) {
-        const skewYRad = Math.atan(b / a);
-        if (Math.abs(skewYRad) > 0.01) {
-          defaults.skewY = Math.round(skewYRad * (180 / Math.PI));
+      // Calculate scale from column vector lengths
+      const scaleX = Math.sqrt(a * a + b * b);
+      const scaleY = Math.sqrt(c * c + d * d);
+      defaults.scaleX = Math.round(scaleX * 100) / 100;
+      defaults.scaleY = Math.round(scaleY * 100) / 100;
+
+      // Extract rotation (in degrees) from the first column
+      const rotation = Math.atan2(b, a);
+      defaults.rotate = Math.round(rotation * (180 / Math.PI));
+
+      // Extract skew values when we have valid scales
+      if (scaleX !== 0 && scaleY !== 0) {
+        // Normalize the matrix by removing rotation
+        const cosR = Math.cos(rotation);
+        const sinR = Math.sin(rotation);
+
+        // After removing rotation: [a', b'] = [1, 0] rotated by -r
+        // c' and d' will reveal the skew
+        // skewX comes from the second column after normalization
+        const c_normalized = (c * cosR + d * sinR) / scaleY;
+        if (Math.abs(c_normalized) > 0.01) {
+          defaults.skewX = Math.round(Math.atan(c_normalized) * (180 / Math.PI));
+        }
+
+        // skewY: check if there's a skew in the first column
+        // This is tricky with rotation, but we can detect it from the determinant
+        const det = a * d - b * c;
+        if (det > 0 && scaleX > 0.01) {
+          // Check for skewY by looking at b after accounting for rotation
+          const b_expected = scaleX * sinR;
+          const b_diff = b - b_expected;
+          if (Math.abs(b_diff) > 0.01) {
+            defaults.skewY = Math.round(Math.atan(b_diff / (scaleX * cosR)) * (180 / Math.PI));
+          }
         }
       }
     }
