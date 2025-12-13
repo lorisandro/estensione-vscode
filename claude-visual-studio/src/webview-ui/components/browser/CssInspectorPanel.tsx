@@ -445,6 +445,150 @@ function getOpacityFromColor(color: string): number {
   return match ? parseFloat(match[1]) * 100 : 100;
 }
 
+// Box Shadow Types and Parsing
+interface BoxShadowValue {
+  offsetX: number;
+  offsetY: number;
+  blur: number;
+  spread: number;
+  color: string;
+  inset: boolean;
+}
+
+function parseBoxShadow(value: string): BoxShadowValue[] {
+  if (!value || value === 'none') {
+    return [{ offsetX: 0, offsetY: 4, blur: 6, spread: 0, color: '#000000', inset: false }];
+  }
+
+  const shadows: BoxShadowValue[] = [];
+  // Split by comma, but handle rgba() properly
+  const shadowStrings = value.split(/,(?![^(]*\))/);
+
+  for (const shadowStr of shadowStrings) {
+    const trimmed = shadowStr.trim();
+    const isInset = trimmed.includes('inset');
+    const withoutInset = trimmed.replace('inset', '').trim();
+
+    // Extract color (rgb, rgba, hex, or named)
+    let color = '#000000';
+    const rgbaMatch = withoutInset.match(/rgba?\([^)]+\)/);
+    const hexMatch = withoutInset.match(/#[0-9a-fA-F]{3,8}/);
+
+    if (rgbaMatch) {
+      color = rgbToHex(rgbaMatch[0]);
+    } else if (hexMatch) {
+      color = hexMatch[0];
+    }
+
+    // Extract numeric values (offsetX, offsetY, blur, spread)
+    const colorRemoved = withoutInset.replace(/rgba?\([^)]+\)|#[0-9a-fA-F]{3,8}/g, '').trim();
+    const nums = colorRemoved.match(/-?\d+(\.\d+)?/g) || [];
+    const values = nums.map(n => parseFloat(n));
+
+    shadows.push({
+      offsetX: values[0] || 0,
+      offsetY: values[1] || 0,
+      blur: values[2] || 0,
+      spread: values[3] || 0,
+      color,
+      inset: isInset,
+    });
+  }
+
+  return shadows.length > 0 ? shadows : [{ offsetX: 0, offsetY: 4, blur: 6, spread: 0, color: '#000000', inset: false }];
+}
+
+function buildBoxShadowString(shadows: BoxShadowValue[]): string {
+  if (shadows.length === 0) return 'none';
+
+  return shadows.map(s => {
+    const parts = [];
+    if (s.inset) parts.push('inset');
+    parts.push(`${s.offsetX}px`);
+    parts.push(`${s.offsetY}px`);
+    parts.push(`${s.blur}px`);
+    parts.push(`${s.spread}px`);
+    parts.push(s.color);
+    return parts.join(' ');
+  }).join(', ');
+}
+
+// Gradient Types and Parsing
+type BackgroundMode = 'color' | 'gradient' | 'image';
+type GradientType = 'linear' | 'radial';
+
+interface GradientStop {
+  color: string;
+  position: number;
+}
+
+interface GradientValue {
+  type: GradientType;
+  angle: number;
+  stops: GradientStop[];
+}
+
+function parseGradient(value: string): GradientValue {
+  const defaults: GradientValue = {
+    type: 'linear',
+    angle: 180,
+    stops: [
+      { color: '#000000', position: 0 },
+      { color: '#ffffff', position: 100 },
+    ],
+  };
+
+  if (!value || !value.includes('gradient')) {
+    return defaults;
+  }
+
+  // Detect gradient type
+  const isRadial = value.includes('radial-gradient');
+  defaults.type = isRadial ? 'radial' : 'linear';
+
+  // Extract angle for linear gradient
+  if (!isRadial) {
+    const angleMatch = value.match(/linear-gradient\((\d+)deg/);
+    if (angleMatch) {
+      defaults.angle = parseInt(angleMatch[1]);
+    }
+  }
+
+  // Extract color stops
+  const stopsMatch = value.match(/(#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))\s*(\d+)?%?/g);
+  if (stopsMatch && stopsMatch.length >= 2) {
+    defaults.stops = stopsMatch.map((stop, index) => {
+      const colorMatch = stop.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/);
+      const posMatch = stop.match(/(\d+)%?$/);
+      const color = colorMatch ? (colorMatch[0].startsWith('rgb') ? rgbToHex(colorMatch[0]) : colorMatch[0]) : '#000000';
+      const position = posMatch ? parseInt(posMatch[1]) : (index === 0 ? 0 : 100);
+      return { color, position };
+    });
+  }
+
+  return defaults;
+}
+
+function buildGradientString(gradient: GradientValue): string {
+  const sortedStops = [...gradient.stops].sort((a, b) => a.position - b.position);
+  const stopsStr = sortedStops.map(s => `${s.color} ${s.position}%`).join(', ');
+
+  if (gradient.type === 'radial') {
+    return `radial-gradient(circle, ${stopsStr})`;
+  }
+  return `linear-gradient(${gradient.angle}deg, ${stopsStr})`;
+}
+
+function detectBackgroundMode(bg: string, bgImage: string): BackgroundMode {
+  if (bgImage && bgImage !== 'none' && bgImage.includes('url(')) {
+    return 'image';
+  }
+  if (bgImage && bgImage !== 'none' && bgImage.includes('gradient')) {
+    return 'gradient';
+  }
+  return 'color';
+}
+
 // Parse transform CSS value to extract individual transform functions
 interface TransformValues {
   rotate: number;
@@ -1219,6 +1363,224 @@ const SkewIcon = () => (
   </svg>
 );
 
+// Flexbox Icons
+const FlexRowIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="6" width="5" height="12" />
+    <rect x="10" y="6" width="5" height="12" />
+    <rect x="17" y="6" width="4" height="12" />
+  </svg>
+);
+
+const FlexRowReverseIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="6" width="4" height="12" />
+    <rect x="9" y="6" width="5" height="12" />
+    <rect x="16" y="6" width="5" height="12" />
+    <path d="M12 2l-2 2 2 2" />
+  </svg>
+);
+
+const FlexColumnIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="6" y="3" width="12" height="5" />
+    <rect x="6" y="10" width="12" height="5" />
+    <rect x="6" y="17" width="12" height="4" />
+  </svg>
+);
+
+const FlexColumnReverseIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="6" y="3" width="12" height="4" />
+    <rect x="6" y="9" width="12" height="5" />
+    <rect x="6" y="16" width="12" height="5" />
+    <path d="M2 12l2-2 2 2" />
+  </svg>
+);
+
+const JustifyStartIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="3" x2="3" y2="21" strokeWidth="3" />
+    <rect x="6" y="6" width="4" height="12" />
+    <rect x="12" y="6" width="4" height="12" />
+  </svg>
+);
+
+const JustifyCenterIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="5" y="6" width="4" height="12" />
+    <rect x="11" y="6" width="4" height="12" />
+    <line x1="12" y1="2" x2="12" y2="5" strokeWidth="1" strokeDasharray="2" />
+    <line x1="12" y1="19" x2="12" y2="22" strokeWidth="1" strokeDasharray="2" />
+  </svg>
+);
+
+const JustifyEndIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="21" y1="3" x2="21" y2="21" strokeWidth="3" />
+    <rect x="8" y="6" width="4" height="12" />
+    <rect x="14" y="6" width="4" height="12" />
+  </svg>
+);
+
+const JustifyBetweenIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="6" width="4" height="12" />
+    <rect x="17" y="6" width="4" height="12" />
+  </svg>
+);
+
+const JustifyAroundIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="5" y="6" width="4" height="12" />
+    <rect x="15" y="6" width="4" height="12" />
+  </svg>
+);
+
+const JustifyEvenlyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="6" y="6" width="4" height="12" />
+    <rect x="14" y="6" width="4" height="12" />
+  </svg>
+);
+
+const AlignStartIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="3" x2="21" y2="3" strokeWidth="3" />
+    <rect x="6" y="6" width="4" height="10" />
+    <rect x="14" y="6" width="4" height="6" />
+  </svg>
+);
+
+const AlignCenterFlexIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="6" y="5" width="4" height="14" />
+    <rect x="14" y="8" width="4" height="8" />
+    <line x1="2" y1="12" x2="5" y2="12" strokeWidth="1" strokeDasharray="2" />
+    <line x1="19" y1="12" x2="22" y2="12" strokeWidth="1" strokeDasharray="2" />
+  </svg>
+);
+
+const AlignEndIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="21" x2="21" y2="21" strokeWidth="3" />
+    <rect x="6" y="8" width="4" height="10" />
+    <rect x="14" y="12" width="4" height="6" />
+  </svg>
+);
+
+const AlignStretchIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="3" x2="21" y2="3" strokeWidth="2" />
+    <line x1="3" y1="21" x2="21" y2="21" strokeWidth="2" />
+    <rect x="6" y="5" width="4" height="14" />
+    <rect x="14" y="5" width="4" height="14" />
+  </svg>
+);
+
+const AlignBaselineIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="6" y="4" width="4" height="12" />
+    <rect x="14" y="8" width="4" height="8" />
+    <line x1="3" y1="16" x2="21" y2="16" strokeWidth="2" strokeDasharray="3" />
+  </svg>
+);
+
+const WrapNowrapIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="8" width="4" height="8" />
+    <rect x="7" y="8" width="4" height="8" />
+    <rect x="12" y="8" width="4" height="8" />
+    <rect x="17" y="8" width="5" height="8" />
+  </svg>
+);
+
+const WrapIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="4" height="6" />
+    <rect x="9" y="3" width="4" height="6" />
+    <rect x="15" y="3" width="4" height="6" />
+    <rect x="3" y="12" width="4" height="6" />
+    <rect x="9" y="12" width="4" height="6" />
+    <path d="M20 6l2 2-2 2" />
+  </svg>
+);
+
+const WrapReverseIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="12" width="4" height="6" />
+    <rect x="9" y="12" width="4" height="6" />
+    <rect x="15" y="12" width="4" height="6" />
+    <rect x="3" y="3" width="4" height="6" />
+    <rect x="9" y="3" width="4" height="6" />
+    <path d="M20 15l2-2-2-2" />
+  </svg>
+);
+
+// Grid Layout Icons
+const GridJustifyStartIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="3" x2="3" y2="21" strokeWidth="2" />
+    <rect x="5" y="5" width="6" height="6" />
+    <rect x="5" y="13" width="6" height="6" />
+  </svg>
+);
+
+const GridJustifyEndIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="21" y1="3" x2="21" y2="21" strokeWidth="2" />
+    <rect x="13" y="5" width="6" height="6" />
+    <rect x="13" y="13" width="6" height="6" />
+  </svg>
+);
+
+const GridAlignStartIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="3" x2="21" y2="3" strokeWidth="2" />
+    <rect x="5" y="5" width="6" height="6" />
+    <rect x="13" y="5" width="6" height="6" />
+  </svg>
+);
+
+const GridAlignEndIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="21" x2="21" y2="21" strokeWidth="2" />
+    <rect x="5" y="13" width="6" height="6" />
+    <rect x="13" y="13" width="6" height="6" />
+  </svg>
+);
+
+const GridAutoRowIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+    <path d="M18 14l4 4-4 4" />
+  </svg>
+);
+
+const GridAutoColumnIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <path d="M14 18l4 4 4-4" />
+  </svg>
+);
+
+const GridDenseIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="5" height="5" />
+    <rect x="10" y="3" width="5" height="5" />
+    <rect x="17" y="3" width="4" height="5" />
+    <rect x="3" y="10" width="5" height="5" />
+    <rect x="10" y="10" width="5" height="5" />
+    <rect x="17" y="10" width="4" height="5" />
+    <rect x="3" y="17" width="5" height="4" />
+    <rect x="10" y="17" width="5" height="4" />
+  </svg>
+);
+
 // Tab Icons
 const StylesTabIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -1312,6 +1674,8 @@ export const CssInspectorPanel: React.FC = () => {
   const [linkedPadding, setLinkedPadding] = useState(true);
   const [linkedMargin, setLinkedMargin] = useState(true);
   const [linkedRadius, setLinkedRadius] = useState(true);
+  const [linkedBorder, setLinkedBorder] = useState(true);
+  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('color');
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Track if we've applied position: relative during current scrub session
   const positionAppliedRef = useRef(false);
@@ -2048,6 +2412,236 @@ export const CssInspectorPanel: React.FC = () => {
           </div>
         </CollapsibleSection>
 
+        {/* Flexbox Section - Only shown when display is flex */}
+        {display === 'flex' && (
+          <CollapsibleSection title="Flexbox">
+            {/* Flex Direction */}
+            <div style={styles.row}>
+              <span style={styles.label}>Direction</span>
+              <ButtonGroup
+                options={[
+                  { value: 'row' as FlexDirection, icon: <FlexRowIcon />, label: 'Row' },
+                  { value: 'row-reverse' as FlexDirection, icon: <FlexRowReverseIcon />, label: 'Row Reverse' },
+                  { value: 'column' as FlexDirection, icon: <FlexColumnIcon />, label: 'Column' },
+                  { value: 'column-reverse' as FlexDirection, icon: <FlexColumnReverseIcon />, label: 'Column Reverse' },
+                ]}
+                value={(getStyle('flexDirection') || 'row') as FlexDirection}
+                onChange={(v) => applyCssChange('flexDirection', v)}
+              />
+            </div>
+
+            {/* Justify Content */}
+            <div style={{ ...styles.row, marginTop: '8px' }}>
+              <span style={styles.label}>Justify</span>
+            </div>
+            <div style={{ display: 'flex', gap: '2px', marginBottom: '8px' }}>
+              {[
+                { value: 'flex-start', icon: <JustifyStartIcon />, label: 'Start' },
+                { value: 'center', icon: <JustifyCenterIcon />, label: 'Center' },
+                { value: 'flex-end', icon: <JustifyEndIcon />, label: 'End' },
+                { value: 'space-between', icon: <JustifyBetweenIcon />, label: 'Between' },
+                { value: 'space-around', icon: <JustifyAroundIcon />, label: 'Around' },
+                { value: 'space-evenly', icon: <JustifyEvenlyIcon />, label: 'Evenly' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  style={{
+                    ...styles.button,
+                    flex: 1,
+                    padding: '4px',
+                    ...((getStyle('justifyContent') || 'flex-start') === opt.value ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => applyCssChange('justifyContent', opt.value)}
+                  title={opt.label}
+                >
+                  {opt.icon}
+                </button>
+              ))}
+            </div>
+
+            {/* Align Items */}
+            <div style={{ ...styles.row, marginTop: '4px' }}>
+              <span style={styles.label}>Align Items</span>
+            </div>
+            <div style={{ display: 'flex', gap: '2px', marginBottom: '8px' }}>
+              {[
+                { value: 'flex-start', icon: <AlignStartIcon />, label: 'Start' },
+                { value: 'center', icon: <AlignCenterFlexIcon />, label: 'Center' },
+                { value: 'flex-end', icon: <AlignEndIcon />, label: 'End' },
+                { value: 'stretch', icon: <AlignStretchIcon />, label: 'Stretch' },
+                { value: 'baseline', icon: <AlignBaselineIcon />, label: 'Baseline' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  style={{
+                    ...styles.button,
+                    flex: 1,
+                    padding: '4px',
+                    ...((getStyle('alignItems') || 'stretch') === opt.value ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => applyCssChange('alignItems', opt.value)}
+                  title={opt.label}
+                >
+                  {opt.icon}
+                </button>
+              ))}
+            </div>
+
+            {/* Flex Wrap */}
+            <div style={{ ...styles.row, marginTop: '4px' }}>
+              <span style={styles.label}>Wrap</span>
+              <ButtonGroup
+                options={[
+                  { value: 'nowrap', icon: <WrapNowrapIcon />, label: 'No Wrap' },
+                  { value: 'wrap', icon: <WrapIcon />, label: 'Wrap' },
+                  { value: 'wrap-reverse', icon: <WrapReverseIcon />, label: 'Wrap Reverse' },
+                ]}
+                value={(getStyle('flexWrap') || 'nowrap') as 'nowrap' | 'wrap' | 'wrap-reverse'}
+                onChange={(v) => applyCssChange('flexWrap', v)}
+              />
+            </div>
+
+            {/* Gap */}
+            <div style={{ ...styles.row, marginTop: '12px' }}>
+              <span style={styles.label}>Gap</span>
+            </div>
+            <div style={styles.gridRow}>
+              <NumberInput
+                label="Row"
+                value={parseNumericValue(getStyle('rowGap')).num}
+                onChange={(v) => applyCssChange('rowGap', `${v}px`)}
+                min={0}
+                setIsScrubbing={setIsScrubbing}
+              />
+              <NumberInput
+                label="Col"
+                value={parseNumericValue(getStyle('columnGap')).num}
+                onChange={(v) => applyCssChange('columnGap', `${v}px`)}
+                min={0}
+                setIsScrubbing={setIsScrubbing}
+              />
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Grid Section - Only shown when display is grid */}
+        {display === 'grid' && (
+          <CollapsibleSection title="Grid">
+            {/* Grid Template Columns */}
+            <div style={styles.row}>
+              <span style={styles.label}>Columns</span>
+              <input
+                type="text"
+                value={getStyle('gridTemplateColumns') || 'none'}
+                onChange={(e) => applyCssChange('gridTemplateColumns', e.target.value)}
+                style={styles.input}
+                placeholder="1fr 1fr 1fr"
+              />
+            </div>
+
+            {/* Grid Template Rows */}
+            <div style={styles.row}>
+              <span style={styles.label}>Rows</span>
+              <input
+                type="text"
+                value={getStyle('gridTemplateRows') || 'none'}
+                onChange={(e) => applyCssChange('gridTemplateRows', e.target.value)}
+                style={styles.input}
+                placeholder="auto auto"
+              />
+            </div>
+
+            {/* Grid Gap */}
+            <div style={{ ...styles.row, marginTop: '8px' }}>
+              <span style={styles.label}>Gap</span>
+            </div>
+            <div style={styles.gridRow}>
+              <NumberInput
+                label="Row"
+                value={parseNumericValue(getStyle('rowGap')).num}
+                onChange={(v) => applyCssChange('rowGap', `${v}px`)}
+                min={0}
+                setIsScrubbing={setIsScrubbing}
+              />
+              <NumberInput
+                label="Col"
+                value={parseNumericValue(getStyle('columnGap')).num}
+                onChange={(v) => applyCssChange('columnGap', `${v}px`)}
+                min={0}
+                setIsScrubbing={setIsScrubbing}
+              />
+            </div>
+
+            {/* Justify Items */}
+            <div style={{ ...styles.row, marginTop: '8px' }}>
+              <span style={styles.label}>Justify</span>
+            </div>
+            <div style={{ display: 'flex', gap: '2px', marginBottom: '8px' }}>
+              {[
+                { value: 'start', icon: <GridJustifyStartIcon />, label: 'Start' },
+                { value: 'center', icon: <JustifyCenterIcon />, label: 'Center' },
+                { value: 'end', icon: <GridJustifyEndIcon />, label: 'End' },
+                { value: 'stretch', icon: <AlignStretchIcon />, label: 'Stretch' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  style={{
+                    ...styles.button,
+                    flex: 1,
+                    padding: '4px',
+                    ...((getStyle('justifyItems') || 'stretch') === opt.value ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => applyCssChange('justifyItems', opt.value)}
+                  title={opt.label}
+                >
+                  {opt.icon}
+                </button>
+              ))}
+            </div>
+
+            {/* Align Items */}
+            <div style={{ ...styles.row, marginTop: '4px' }}>
+              <span style={styles.label}>Align</span>
+            </div>
+            <div style={{ display: 'flex', gap: '2px', marginBottom: '8px' }}>
+              {[
+                { value: 'start', icon: <GridAlignStartIcon />, label: 'Start' },
+                { value: 'center', icon: <AlignCenterFlexIcon />, label: 'Center' },
+                { value: 'end', icon: <GridAlignEndIcon />, label: 'End' },
+                { value: 'stretch', icon: <AlignStretchIcon />, label: 'Stretch' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  style={{
+                    ...styles.button,
+                    flex: 1,
+                    padding: '4px',
+                    ...((getStyle('alignItems') || 'stretch') === opt.value ? styles.buttonActive : {}),
+                  }}
+                  onClick={() => applyCssChange('alignItems', opt.value)}
+                  title={opt.label}
+                >
+                  {opt.icon}
+                </button>
+              ))}
+            </div>
+
+            {/* Grid Auto Flow */}
+            <div style={{ ...styles.row, marginTop: '4px' }}>
+              <span style={styles.label}>Auto Flow</span>
+              <ButtonGroup
+                options={[
+                  { value: 'row', icon: <GridAutoRowIcon />, label: 'Row' },
+                  { value: 'column', icon: <GridAutoColumnIcon />, label: 'Column' },
+                  { value: 'dense', icon: <GridDenseIcon />, label: 'Dense' },
+                ]}
+                value={(getStyle('gridAutoFlow') || 'row') as 'row' | 'column' | 'dense'}
+                onChange={(v) => applyCssChange('gridAutoFlow', v)}
+              />
+            </div>
+          </CollapsibleSection>
+        )}
+
         {/* Appearance Section */}
         <CollapsibleSection title="Appearance">
           {/* Opacity */}
@@ -2378,72 +2972,742 @@ export const CssInspectorPanel: React.FC = () => {
           </CollapsibleSection>
         )}
 
-        {/* Background Section */}
+        {/* Background Section - Advanced */}
         <CollapsibleSection title="Background" defaultOpen={false}>
-          <div style={styles.row}>
-            <span style={styles.label}>Color</span>
-            <ColorPicker
-              value={backgroundColor}
-              onChange={(c) => applyCssChange('backgroundColor', c)}
-              showOpacity
-              opacity={getOpacityFromColor(backgroundColor)}
-              onOpacityChange={(o) => applyCssChange('backgroundColor', hexToRgba(rgbToHex(backgroundColor), o / 100))}
-            />
-          </div>
+          {(() => {
+            const bgImage = getStyle('backgroundImage') || 'none';
+            const detectedMode = detectBackgroundMode(backgroundColor, bgImage);
+            const currentMode = backgroundMode;
+            const gradient = parseGradient(bgImage);
+
+            return (
+              <>
+                {/* Mode Selector */}
+                <div style={{ ...styles.row, marginBottom: '12px' }}>
+                  <span style={styles.label}>Type</span>
+                  <div style={styles.buttonGroup}>
+                    <button
+                      style={{
+                        ...styles.button,
+                        ...(currentMode === 'color' ? styles.buttonActive : {}),
+                      }}
+                      onClick={() => {
+                        setBackgroundMode('color');
+                        applyCssChange('backgroundImage', 'none');
+                      }}
+                    >
+                      Color
+                    </button>
+                    <button
+                      style={{
+                        ...styles.button,
+                        ...(currentMode === 'gradient' ? styles.buttonActive : {}),
+                      }}
+                      onClick={() => {
+                        setBackgroundMode('gradient');
+                        applyCssChange('backgroundImage', 'linear-gradient(180deg, #000000 0%, #ffffff 100%)');
+                      }}
+                    >
+                      Gradient
+                    </button>
+                    <button
+                      style={{
+                        ...styles.button,
+                        ...(currentMode === 'image' ? styles.buttonActive : {}),
+                      }}
+                      onClick={() => {
+                        setBackgroundMode('image');
+                      }}
+                    >
+                      Image
+                    </button>
+                  </div>
+                </div>
+
+                {/* Color Mode */}
+                {currentMode === 'color' && (
+                  <div style={styles.row}>
+                    <span style={styles.label}>Color</span>
+                    <ColorPicker
+                      value={backgroundColor}
+                      onChange={(c) => applyCssChange('backgroundColor', c)}
+                      showOpacity
+                      opacity={getOpacityFromColor(backgroundColor)}
+                      onOpacityChange={(o) => applyCssChange('backgroundColor', hexToRgba(rgbToHex(backgroundColor), o / 100))}
+                    />
+                  </div>
+                )}
+
+                {/* Gradient Mode */}
+                {currentMode === 'gradient' && (
+                  <>
+                    {/* Gradient Type */}
+                    <div style={styles.row}>
+                      <span style={styles.label}>Style</span>
+                      <div style={styles.buttonGroup}>
+                        <button
+                          style={{
+                            ...styles.button,
+                            ...(gradient.type === 'linear' ? styles.buttonActive : {}),
+                          }}
+                          onClick={() => {
+                            const newGradient = { ...gradient, type: 'linear' as GradientType };
+                            applyCssChange('backgroundImage', buildGradientString(newGradient));
+                          }}
+                        >
+                          Linear
+                        </button>
+                        <button
+                          style={{
+                            ...styles.button,
+                            ...(gradient.type === 'radial' ? styles.buttonActive : {}),
+                          }}
+                          onClick={() => {
+                            const newGradient = { ...gradient, type: 'radial' as GradientType };
+                            applyCssChange('backgroundImage', buildGradientString(newGradient));
+                          }}
+                        >
+                          Radial
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Angle (Linear only) */}
+                    {gradient.type === 'linear' && (
+                      <div style={styles.row}>
+                        <ScrubLabel
+                          label="Angle"
+                          value={gradient.angle}
+                          onChange={(v) => {
+                            const newGradient = { ...gradient, angle: v };
+                            applyCssChange('backgroundImage', buildGradientString(newGradient));
+                          }}
+                          min={0}
+                          max={360}
+                          step={1}
+                          setIsScrubbing={setIsScrubbing}
+                        />
+                        <input
+                          type="range"
+                          min="0"
+                          max="360"
+                          value={gradient.angle}
+                          onChange={(e) => {
+                            const newGradient = { ...gradient, angle: parseInt(e.target.value) };
+                            applyCssChange('backgroundImage', buildGradientString(newGradient));
+                          }}
+                          style={{ ...styles.slider, flex: 1 }}
+                        />
+                        <input
+                          type="number"
+                          value={gradient.angle}
+                          min={0}
+                          max={360}
+                          onChange={(e) => {
+                            const newGradient = { ...gradient, angle: parseInt(e.target.value) || 0 };
+                            applyCssChange('backgroundImage', buildGradientString(newGradient));
+                          }}
+                          style={{ ...styles.smallInput, width: '50px' }}
+                        />
+                        <span style={{ color: '#9d9d9d', fontSize: '11px' }}>°</span>
+                      </div>
+                    )}
+
+                    {/* Color Stops */}
+                    <div style={{ marginTop: '8px' }}>
+                      <span style={{ ...styles.label, display: 'block', marginBottom: '8px' }}>Color Stops</span>
+                      {gradient.stops.map((stop, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            marginBottom: '6px',
+                            padding: '6px',
+                            backgroundColor: '#252526',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          <input
+                            type="color"
+                            value={stop.color}
+                            onChange={(e) => {
+                              const newStops = [...gradient.stops];
+                              newStops[index] = { ...newStops[index], color: e.target.value };
+                              applyCssChange('backgroundImage', buildGradientString({ ...gradient, stops: newStops }));
+                            }}
+                            style={{ ...styles.colorInput, width: '28px', height: '24px' }}
+                          />
+                          <input
+                            type="text"
+                            value={stop.color}
+                            onChange={(e) => {
+                              const newStops = [...gradient.stops];
+                              newStops[index] = { ...newStops[index], color: e.target.value };
+                              applyCssChange('backgroundImage', buildGradientString({ ...gradient, stops: newStops }));
+                            }}
+                            style={{ ...styles.input, flex: 1, fontSize: '10px' }}
+                          />
+                          <input
+                            type="number"
+                            value={stop.position}
+                            min={0}
+                            max={100}
+                            onChange={(e) => {
+                              const newStops = [...gradient.stops];
+                              newStops[index] = { ...newStops[index], position: parseInt(e.target.value) || 0 };
+                              applyCssChange('backgroundImage', buildGradientString({ ...gradient, stops: newStops }));
+                            }}
+                            style={{ ...styles.smallInput, width: '40px' }}
+                          />
+                          <span style={{ color: '#9d9d9d', fontSize: '10px' }}>%</span>
+                          {gradient.stops.length > 2 && (
+                            <button
+                              style={{ ...styles.iconButton, color: '#ff6b6b', padding: '2px' }}
+                              onClick={() => {
+                                const newStops = gradient.stops.filter((_, i) => i !== index);
+                                applyCssChange('backgroundImage', buildGradientString({ ...gradient, stops: newStops }));
+                              }}
+                              title="Remove stop"
+                            >
+                              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M7.116 8l-4.558 4.558.884.884L8 8.884l4.558 4.558.884-.884L8.884 8l4.558-4.558-.884-.884L8 7.116 3.442 2.558l-.884.884L7.116 8z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        style={{ ...styles.button, width: '100%', marginTop: '4px', backgroundColor: '#2d2d2d' }}
+                        onClick={() => {
+                          const newStops = [...gradient.stops, { color: '#888888', position: 50 }];
+                          applyCssChange('backgroundImage', buildGradientString({ ...gradient, stops: newStops }));
+                        }}
+                      >
+                        + Add Stop
+                      </button>
+                    </div>
+
+                    {/* Gradient Preview */}
+                    <div style={{ marginTop: '12px' }}>
+                      <span style={{ fontSize: '10px', color: '#9d9d9d', display: 'block', marginBottom: '6px' }}>Preview</span>
+                      <div style={{
+                        height: '40px',
+                        borderRadius: '4px',
+                        backgroundImage: buildGradientString(gradient),
+                        border: '1px solid #3c3c3c',
+                      }} />
+                    </div>
+                  </>
+                )}
+
+                {/* Image Mode */}
+                {currentMode === 'image' && (
+                  <>
+                    {/* Image URL */}
+                    <div style={styles.row}>
+                      <span style={styles.label}>URL</span>
+                      <input
+                        type="text"
+                        value={(() => {
+                          const match = bgImage.match(/url\(["']?([^"')]+)["']?\)/);
+                          return match ? match[1] : '';
+                        })()}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            applyCssChange('backgroundImage', `url("${e.target.value}")`);
+                          } else {
+                            applyCssChange('backgroundImage', 'none');
+                          }
+                        }}
+                        style={styles.input}
+                        placeholder="https://..."
+                      />
+                    </div>
+
+                    {/* Background Size */}
+                    <div style={styles.row}>
+                      <span style={styles.label}>Size</span>
+                      <div style={styles.buttonGroup}>
+                        {['cover', 'contain', 'auto'].map((size) => (
+                          <button
+                            key={size}
+                            style={{
+                              ...styles.button,
+                              ...((getStyle('backgroundSize') || 'auto') === size ? styles.buttonActive : {}),
+                            }}
+                            onClick={() => applyCssChange('backgroundSize', size)}
+                          >
+                            {size.charAt(0).toUpperCase() + size.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Background Position */}
+                    <div style={{ ...styles.row, marginTop: '8px' }}>
+                      <span style={styles.label}>Position</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2px', marginBottom: '8px' }}>
+                      {[
+                        'left top', 'center top', 'right top',
+                        'left center', 'center center', 'right center',
+                        'left bottom', 'center bottom', 'right bottom',
+                      ].map((pos) => (
+                        <button
+                          key={pos}
+                          style={{
+                            ...styles.button,
+                            padding: '6px',
+                            fontSize: '8px',
+                            ...((getStyle('backgroundPosition') || 'center center') === pos ? styles.buttonActive : {}),
+                          }}
+                          onClick={() => applyCssChange('backgroundPosition', pos)}
+                          title={pos}
+                        >
+                          <div style={{
+                            width: '6px',
+                            height: '6px',
+                            backgroundColor: 'currentColor',
+                            borderRadius: '50%',
+                          }} />
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Background Repeat */}
+                    <div style={styles.row}>
+                      <span style={styles.label}>Repeat</span>
+                      <select
+                        value={getStyle('backgroundRepeat') || 'repeat'}
+                        onChange={(e) => applyCssChange('backgroundRepeat', e.target.value)}
+                        style={styles.select}
+                      >
+                        <option value="no-repeat">No Repeat</option>
+                        <option value="repeat">Repeat</option>
+                        <option value="repeat-x">Repeat X</option>
+                        <option value="repeat-y">Repeat Y</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </CollapsibleSection>
 
         {/* Border Section */}
         <CollapsibleSection title="Border" defaultOpen={false}>
-          <div style={styles.row}>
-            <NumberInput
-              label="Width"
-              value={parseNumericValue(getStyle('borderWidth')).num}
-              onChange={(v) => applyCssChange('borderWidth', `${v}px`)}
-              min={0}
-              setIsScrubbing={setIsScrubbing}
-            />
-          </div>
-          <div style={styles.row}>
-            <span style={styles.label}>Style</span>
-            <select
-              value={getStyle('borderStyle') || 'none'}
-              onChange={(e) => applyCssChange('borderStyle', e.target.value)}
-              style={styles.select}
+          {/* Link Toggle */}
+          <div style={{ ...styles.row, marginBottom: '12px' }}>
+            <span style={styles.label}>Mode</span>
+            <button
+              style={{ ...styles.iconButton, color: linkedBorder ? '#0078d4' : '#9d9d9d' }}
+              onClick={() => setLinkedBorder(!linkedBorder)}
+              title={linkedBorder ? 'Click to edit individual borders' : 'Click to link all borders'}
             >
-              <option value="none">None</option>
-              <option value="solid">Solid</option>
-              <option value="dashed">Dashed</option>
-              <option value="dotted">Dotted</option>
-              <option value="double">Double</option>
-              <option value="groove">Groove</option>
-              <option value="ridge">Ridge</option>
-              <option value="inset">Inset</option>
-              <option value="outset">Outset</option>
-            </select>
+              <LinkIcon />
+            </button>
+            <span style={{ fontSize: '10px', color: '#9d9d9d', marginLeft: '4px' }}>
+              {linkedBorder ? 'All sides' : 'Individual'}
+            </span>
           </div>
-          <div style={styles.row}>
-            <span style={styles.label}>Color</span>
-            <ColorPicker
-              value={getStyle('borderColor') || '#000000'}
-              onChange={(c) => applyCssChange('borderColor', c)}
-            />
-          </div>
+
+          {linkedBorder ? (
+            /* All Borders - Linked Mode */
+            <>
+              <div style={styles.row}>
+                <NumberInput
+                  label="Width"
+                  value={parseNumericValue(getStyle('borderWidth')).num}
+                  onChange={(v) => applyCssChange('borderWidth', `${v}px`)}
+                  min={0}
+                  setIsScrubbing={setIsScrubbing}
+                />
+              </div>
+              <div style={styles.row}>
+                <span style={styles.label}>Style</span>
+                <select
+                  value={getStyle('borderStyle') || 'none'}
+                  onChange={(e) => applyCssChange('borderStyle', e.target.value)}
+                  style={styles.select}
+                >
+                  <option value="none">None</option>
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                  <option value="double">Double</option>
+                  <option value="groove">Groove</option>
+                  <option value="ridge">Ridge</option>
+                  <option value="inset">Inset</option>
+                  <option value="outset">Outset</option>
+                </select>
+              </div>
+              <div style={styles.row}>
+                <span style={styles.label}>Color</span>
+                <ColorPicker
+                  value={getStyle('borderColor') || '#000000'}
+                  onChange={(c) => applyCssChange('borderColor', c)}
+                />
+              </div>
+            </>
+          ) : (
+            /* Individual Borders Mode */
+            <>
+              {/* Border Top */}
+              <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#252526', borderRadius: '4px' }}>
+                <div style={{ fontSize: '10px', color: '#9d9d9d', marginBottom: '6px', textTransform: 'uppercase' }}>Top</div>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    value={parseNumericValue(getStyle('borderTopWidth')).num}
+                    onChange={(e) => applyCssChange('borderTopWidth', `${e.target.value}px`)}
+                    style={{ ...styles.smallInput, width: '45px' }}
+                    min={0}
+                    placeholder="0"
+                  />
+                  <select
+                    value={getStyle('borderTopStyle') || 'none'}
+                    onChange={(e) => applyCssChange('borderTopStyle', e.target.value)}
+                    style={{ ...styles.select, flex: 1, fontSize: '10px' }}
+                  >
+                    <option value="none">None</option>
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                    <option value="double">Double</option>
+                  </select>
+                  <input
+                    type="color"
+                    value={rgbToHex(getStyle('borderTopColor') || '#000000')}
+                    onChange={(e) => applyCssChange('borderTopColor', e.target.value)}
+                    style={{ ...styles.colorInput, width: '28px', height: '24px' }}
+                  />
+                </div>
+              </div>
+
+              {/* Border Right */}
+              <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#252526', borderRadius: '4px' }}>
+                <div style={{ fontSize: '10px', color: '#9d9d9d', marginBottom: '6px', textTransform: 'uppercase' }}>Right</div>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    value={parseNumericValue(getStyle('borderRightWidth')).num}
+                    onChange={(e) => applyCssChange('borderRightWidth', `${e.target.value}px`)}
+                    style={{ ...styles.smallInput, width: '45px' }}
+                    min={0}
+                    placeholder="0"
+                  />
+                  <select
+                    value={getStyle('borderRightStyle') || 'none'}
+                    onChange={(e) => applyCssChange('borderRightStyle', e.target.value)}
+                    style={{ ...styles.select, flex: 1, fontSize: '10px' }}
+                  >
+                    <option value="none">None</option>
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                    <option value="double">Double</option>
+                  </select>
+                  <input
+                    type="color"
+                    value={rgbToHex(getStyle('borderRightColor') || '#000000')}
+                    onChange={(e) => applyCssChange('borderRightColor', e.target.value)}
+                    style={{ ...styles.colorInput, width: '28px', height: '24px' }}
+                  />
+                </div>
+              </div>
+
+              {/* Border Bottom */}
+              <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#252526', borderRadius: '4px' }}>
+                <div style={{ fontSize: '10px', color: '#9d9d9d', marginBottom: '6px', textTransform: 'uppercase' }}>Bottom</div>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    value={parseNumericValue(getStyle('borderBottomWidth')).num}
+                    onChange={(e) => applyCssChange('borderBottomWidth', `${e.target.value}px`)}
+                    style={{ ...styles.smallInput, width: '45px' }}
+                    min={0}
+                    placeholder="0"
+                  />
+                  <select
+                    value={getStyle('borderBottomStyle') || 'none'}
+                    onChange={(e) => applyCssChange('borderBottomStyle', e.target.value)}
+                    style={{ ...styles.select, flex: 1, fontSize: '10px' }}
+                  >
+                    <option value="none">None</option>
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                    <option value="double">Double</option>
+                  </select>
+                  <input
+                    type="color"
+                    value={rgbToHex(getStyle('borderBottomColor') || '#000000')}
+                    onChange={(e) => applyCssChange('borderBottomColor', e.target.value)}
+                    style={{ ...styles.colorInput, width: '28px', height: '24px' }}
+                  />
+                </div>
+              </div>
+
+              {/* Border Left */}
+              <div style={{ padding: '8px', backgroundColor: '#252526', borderRadius: '4px' }}>
+                <div style={{ fontSize: '10px', color: '#9d9d9d', marginBottom: '6px', textTransform: 'uppercase' }}>Left</div>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    value={parseNumericValue(getStyle('borderLeftWidth')).num}
+                    onChange={(e) => applyCssChange('borderLeftWidth', `${e.target.value}px`)}
+                    style={{ ...styles.smallInput, width: '45px' }}
+                    min={0}
+                    placeholder="0"
+                  />
+                  <select
+                    value={getStyle('borderLeftStyle') || 'none'}
+                    onChange={(e) => applyCssChange('borderLeftStyle', e.target.value)}
+                    style={{ ...styles.select, flex: 1, fontSize: '10px' }}
+                  >
+                    <option value="none">None</option>
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                    <option value="double">Double</option>
+                  </select>
+                  <input
+                    type="color"
+                    value={rgbToHex(getStyle('borderLeftColor') || '#000000')}
+                    onChange={(e) => applyCssChange('borderLeftColor', e.target.value)}
+                    style={{ ...styles.colorInput, width: '28px', height: '24px' }}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </CollapsibleSection>
 
-        {/* Shadow & Blur Section */}
-        <CollapsibleSection title="Shadow & Blur" defaultOpen={false}>
-          <div style={styles.row}>
-            <span style={styles.label}>Box Shadow</span>
-            <input
-              type="text"
-              value={getStyle('boxShadow') || 'none'}
-              onChange={(e) => applyCssChange('boxShadow', e.target.value)}
-              style={styles.input}
-              placeholder="none"
-            />
-          </div>
+        {/* Shadow Section - Visual Editor */}
+        <CollapsibleSection title="Shadow" defaultOpen={false}>
+          {(() => {
+            const boxShadowValue = getStyle('boxShadow');
+            const shadows = parseBoxShadow(boxShadowValue);
+            const hasShadow = boxShadowValue && boxShadowValue !== 'none';
+
+            const updateShadow = (index: number, key: keyof BoxShadowValue, value: number | string | boolean) => {
+              const newShadows = [...shadows];
+              newShadows[index] = { ...newShadows[index], [key]: value };
+              applyCssChange('boxShadow', buildBoxShadowString(newShadows));
+            };
+
+            const addShadow = () => {
+              const newShadows = [...shadows, { offsetX: 0, offsetY: 4, blur: 6, spread: 0, color: '#000000', inset: false }];
+              applyCssChange('boxShadow', buildBoxShadowString(newShadows));
+            };
+
+            const removeShadow = (index: number) => {
+              if (shadows.length === 1) {
+                applyCssChange('boxShadow', 'none');
+              } else {
+                const newShadows = shadows.filter((_, i) => i !== index);
+                applyCssChange('boxShadow', buildBoxShadowString(newShadows));
+              }
+            };
+
+            return (
+              <>
+                {/* Enable/Disable Shadow Toggle */}
+                <div style={{ ...styles.row, marginBottom: '12px' }}>
+                  <input
+                    type="checkbox"
+                    id="enableShadow"
+                    checked={hasShadow}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        applyCssChange('boxShadow', '0px 4px 6px 0px #000000');
+                      } else {
+                        applyCssChange('boxShadow', 'none');
+                      }
+                    }}
+                    style={styles.checkbox}
+                  />
+                  <label htmlFor="enableShadow" style={{ fontSize: '11px', color: '#9d9d9d', cursor: 'pointer' }}>
+                    Enable box shadow
+                  </label>
+                </div>
+
+                {hasShadow && shadows.map((shadow, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '10px',
+                      backgroundColor: '#252526',
+                      borderRadius: '4px',
+                      marginBottom: '10px',
+                      border: '1px solid #3c3c3c',
+                    }}
+                  >
+                    {/* Shadow Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '10px', color: '#9d9d9d', textTransform: 'uppercase' }}>
+                        Shadow {shadows.length > 1 ? index + 1 : ''}
+                      </span>
+                      <button
+                        style={{
+                          ...styles.iconButton,
+                          color: '#ff6b6b',
+                          padding: '2px',
+                        }}
+                        onClick={() => removeShadow(index)}
+                        title="Remove shadow"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                          <path d="M7.116 8l-4.558 4.558.884.884L8 8.884l4.558 4.558.884-.884L8.884 8l4.558-4.558-.884-.884L8 7.116 3.442 2.558l-.884.884L7.116 8z" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Offset X/Y */}
+                    <div style={styles.gridRow}>
+                      <NumberInput
+                        label="X"
+                        value={shadow.offsetX}
+                        onChange={(v) => updateShadow(index, 'offsetX', v)}
+                        setIsScrubbing={setIsScrubbing}
+                      />
+                      <NumberInput
+                        label="Y"
+                        value={shadow.offsetY}
+                        onChange={(v) => updateShadow(index, 'offsetY', v)}
+                        setIsScrubbing={setIsScrubbing}
+                      />
+                    </div>
+
+                    {/* Blur & Spread */}
+                    <div style={styles.gridRow}>
+                      <NumberInput
+                        label="Blur"
+                        value={shadow.blur}
+                        onChange={(v) => updateShadow(index, 'blur', v)}
+                        min={0}
+                        setIsScrubbing={setIsScrubbing}
+                      />
+                      <NumberInput
+                        label="Spread"
+                        value={shadow.spread}
+                        onChange={(v) => updateShadow(index, 'spread', v)}
+                        setIsScrubbing={setIsScrubbing}
+                      />
+                    </div>
+
+                    {/* Color */}
+                    <div style={{ ...styles.row, marginBottom: '8px' }}>
+                      <span style={styles.label}>Color</span>
+                      <input
+                        type="color"
+                        value={shadow.color}
+                        onChange={(e) => updateShadow(index, 'color', e.target.value)}
+                        style={styles.colorInput}
+                      />
+                      <input
+                        type="text"
+                        value={shadow.color}
+                        onChange={(e) => updateShadow(index, 'color', e.target.value)}
+                        style={{ ...styles.input, flex: 1 }}
+                      />
+                    </div>
+
+                    {/* Inset Toggle */}
+                    <div style={styles.row}>
+                      <input
+                        type="checkbox"
+                        id={`inset-${index}`}
+                        checked={shadow.inset}
+                        onChange={(e) => updateShadow(index, 'inset', e.target.checked)}
+                        style={styles.checkbox}
+                      />
+                      <label htmlFor={`inset-${index}`} style={{ fontSize: '11px', color: '#9d9d9d', cursor: 'pointer' }}>
+                        Inset (inner shadow)
+                      </label>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add Shadow Button */}
+                {hasShadow && (
+                  <button
+                    style={{
+                      ...styles.button,
+                      width: '100%',
+                      marginTop: '4px',
+                      backgroundColor: '#2d2d2d',
+                    }}
+                    onClick={addShadow}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: '4px' }}>
+                      <path d="M8 4v8M4 8h8" stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                    Add Shadow
+                  </button>
+                )}
+
+                {/* Preview Box */}
+                {hasShadow && (
+                  <div style={{ marginTop: '12px' }}>
+                    <span style={{ fontSize: '10px', color: '#9d9d9d', display: 'block', marginBottom: '6px' }}>Preview</span>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      padding: '20px',
+                      backgroundColor: '#1a1a1a',
+                      borderRadius: '4px',
+                    }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        backgroundColor: '#3c3c3c',
+                        borderRadius: '4px',
+                        boxShadow: buildBoxShadowString(shadows),
+                      }} />
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </CollapsibleSection>
+
+        {/* Filter Section */}
+        <CollapsibleSection title="Filter" defaultOpen={false}>
           <div style={styles.row}>
             <span style={styles.label}>Blur</span>
+            <NumberInput
+              label=""
+              value={(() => {
+                const filter = getStyle('filter') || '';
+                const match = filter.match(/blur\((\d+)px\)/);
+                return match ? parseInt(match[1]) : 0;
+              })()}
+              onChange={(v) => {
+                const currentFilter = getStyle('filter') || '';
+                const hasBlur = currentFilter.includes('blur(');
+                if (v === 0) {
+                  const newFilter = currentFilter.replace(/blur\([^)]+\)\s*/g, '').trim();
+                  applyCssChange('filter', newFilter || 'none');
+                } else if (hasBlur) {
+                  applyCssChange('filter', currentFilter.replace(/blur\([^)]+\)/, `blur(${v}px)`));
+                } else {
+                  applyCssChange('filter', currentFilter === 'none' ? `blur(${v}px)` : `${currentFilter} blur(${v}px)`);
+                }
+              }}
+              min={0}
+              max={50}
+              setIsScrubbing={setIsScrubbing}
+            />
+            <span style={{ color: '#9d9d9d', fontSize: '11px' }}>px</span>
+          </div>
+          <div style={styles.row}>
+            <span style={styles.label}>Raw</span>
             <input
               type="text"
               value={getStyle('filter') || 'none'}
