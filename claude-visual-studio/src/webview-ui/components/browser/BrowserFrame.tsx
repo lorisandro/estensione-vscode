@@ -68,14 +68,10 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
   const iframeSrc = useMemo(() => {
     const proxiedUrl = getProxiedUrl(url, effectiveServerBaseUrl);
-    // Add cache buster to force fresh content on every refresh
-    const cacheBuster = `_cb=${refreshKey || Date.now()}`;
-    const separator = proxiedUrl.includes('?') ? '&' : '?';
-    const finalUrl = `${proxiedUrl}${separator}${cacheBuster}`;
-    console.log('[BrowserFrame] URL:', url, '-> Proxied:', finalUrl);
+    console.log('[BrowserFrame] URL:', url, '-> Proxied:', proxiedUrl);
     console.log('[BrowserFrame] serverBaseUrl:', effectiveServerBaseUrl, 'shouldProxy:', shouldProxyUrl(url, effectiveServerBaseUrl));
-    return finalUrl;
-  }, [url, effectiveServerBaseUrl, refreshKey]);
+    return proxiedUrl;
+  }, [url, effectiveServerBaseUrl]);
 
   // Handle iframe load
   const handleLoad = useCallback(() => {

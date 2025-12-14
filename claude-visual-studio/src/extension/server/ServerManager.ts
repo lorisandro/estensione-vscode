@@ -554,8 +554,12 @@ export class ServerManager {
 
     const hmrPort = this.config.hmrScriptPort || this.config.port + 1;
 
-    // Create the script injection
+    // Create the script injection with cache control meta tags
     const inspectorScript = `
+    <!-- Claude Visual Studio: Cache Control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <!-- Claude Visual Studio: Element Inspector & HMR -->
     <script>
       // HMR Configuration
