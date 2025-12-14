@@ -563,9 +563,9 @@ export class ServerManager {
       }
     );
 
-    // Rewrite relative URLs (starting with /)
+    // Rewrite root-relative URLs (starting with /) but not protocol-relative (//)
     html = html.replace(
-      /(href|src|action)=["'](\/[^"']+)["']/gi,
+      /(href|src|action)=["'](\/(?!\/)[^"']+)["']/gi,
       (match, attr, url) => {
         const absoluteUrl = baseUrl + url;
         const proxiedUrl = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
@@ -583,13 +583,33 @@ export class ServerManager {
       }
     );
 
-    // Add base tag for relative URLs that don't start with /
-    if (!html.includes('<base')) {
-      html = html.replace(
-        /<head[^>]*>/i,
-        `$&<base href="${proxyBase}${encodeURIComponent(baseUrl + '/')}">`
-      );
-    }
+    // Rewrite relative URLs (not starting with /, http, or #)
+    // Match: href="script.js", src="assets/img.png", src="./style.css", src="../lib.js"
+    html = html.replace(
+      /(href|src|action)=["'](?!https?:\/\/|\/|#|data:|javascript:|mailto:)([^"']+)["']/gi,
+      (match, attr, url) => {
+        // Handle ../ and ./ by normalizing the URL
+        const absoluteUrl = new URL(url, baseUrl + '/').href;
+        const proxiedUrl = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
+        return `${attr}="${proxiedUrl}"`;
+      }
+    );
+
+    // Rewrite CSS url() references
+    html = html.replace(
+      /url\(["']?(?!https?:\/\/|\/|data:|#)([^"')]+)["']?\)/gi,
+      (match, url) => {
+        try {
+          const absoluteUrl = new URL(url, baseUrl + '/').href;
+          return `url("${proxyBase}${encodeURIComponent(absoluteUrl)}")`;
+        } catch {
+          return match; // Keep original if URL parsing fails
+        }
+      }
+    );
+
+    // DO NOT use base tag - it doesn't work correctly with query-string-based proxying
+    // The browser would resolve relative URLs against the path portion, not the query string
 
     return html;
   }
@@ -601,44 +621,78 @@ export class ServerManager {
   private injectMCPBridgeScript(html: string): string {
     const mcpBridgeScript = `
     <!-- Claude Visual Studio: MCP Bridge -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
       (function() {
-        // Screenshot function using html2canvas
+        console.log('[MCP Bridge] Initializing...');
+
+        // Load html2canvas dynamically with error handling
+        var html2canvasLoaded = false;
+        var html2canvasScript = document.createElement('script');
+        html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        html2canvasScript.onload = function() {
+          html2canvasLoaded = true;
+          console.log('[MCP Bridge] html2canvas loaded');
+        };
+        html2canvasScript.onerror = function() {
+          console.warn('[MCP Bridge] html2canvas failed to load, screenshots will use canvas fallback');
+        };
+        document.head.appendChild(html2canvasScript);
+
+        // Screenshot function with fallback
         async function captureScreenshot() {
           try {
-            // Wait for html2canvas to be available
-            if (typeof html2canvas === 'undefined') {
-              return { error: 'html2canvas not loaded' };
+            // Try html2canvas first
+            if (typeof html2canvas !== 'undefined') {
+              const canvas = await html2canvas(document.body, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                scale: 1,
+                logging: false,
+                imageTimeout: 15000,
+                onclone: function(clonedDoc) {
+                  var fixedElements = clonedDoc.querySelectorAll('[style*="position: fixed"]');
+                  fixedElements.forEach(function(el) {
+                    el.style.position = 'absolute';
+                  });
+                }
+              });
+
+              var dataUrl = canvas.toDataURL('image/png');
+              var base64 = dataUrl.split(',')[1];
+
+              return {
+                screenshot: base64,
+                width: canvas.width,
+                height: canvas.height
+              };
             }
 
-            const canvas = await html2canvas(document.body, {
-              useCORS: true,
-              allowTaint: true,
-              backgroundColor: '#ffffff',
-              scale: 1,
-              logging: false,
-              imageTimeout: 15000,
-              onclone: function(clonedDoc) {
-                // Remove any fixed positioned elements that might cause issues
-                const fixedElements = clonedDoc.querySelectorAll('[style*="position: fixed"]');
-                fixedElements.forEach(function(el) {
-                  el.style.position = 'absolute';
-                });
-              }
-            });
+            // Fallback: create a simple canvas with page info
+            console.log('[MCP Bridge] Using fallback screenshot method');
+            var canvas = document.createElement('canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#333';
+            ctx.font = '16px sans-serif';
+            ctx.fillText('Screenshot not available (html2canvas failed to load)', 20, 40);
+            ctx.fillText('Page URL: ' + window.location.href, 20, 70);
+            ctx.fillText('Page Title: ' + document.title, 20, 100);
 
-            // Convert to base64 PNG
-            const dataUrl = canvas.toDataURL('image/png');
-            // Remove the "data:image/png;base64," prefix
-            const base64 = dataUrl.split(',')[1];
+            var dataUrl = canvas.toDataURL('image/png');
+            var base64 = dataUrl.split(',')[1];
 
             return {
               screenshot: base64,
               width: canvas.width,
-              height: canvas.height
+              height: canvas.height,
+              fallback: true
             };
           } catch (error) {
+            console.error('[MCP Bridge] Screenshot error:', error);
             return { error: 'Screenshot failed: ' + (error.message || error) };
           }
         }
@@ -648,14 +702,17 @@ export class ServerManager {
           // Only handle MCP commands
           if (!event.data || event.data.type !== '__claude_mcp_command__') return;
 
-          const { id, command, params } = event.data;
-          let result;
+          console.log('[MCP Bridge] Received command:', event.data.command);
+          var id = event.data.id;
+          var command = event.data.command;
+          var params = event.data.params || {};
+          var result;
 
           try {
             switch (command) {
               case 'getText':
                 if (params.selector) {
-                  const el = document.querySelector(params.selector);
+                  var el = document.querySelector(params.selector);
                   result = { text: el ? el.textContent || '' : '' };
                 } else {
                   result = { text: document.body.innerText || '' };
@@ -664,7 +721,7 @@ export class ServerManager {
 
               case 'getHtml':
                 if (params.selector) {
-                  const el = document.querySelector(params.selector);
+                  var el = document.querySelector(params.selector);
                   result = { html: el ? el.outerHTML : '' };
                 } else {
                   result = { html: document.documentElement.outerHTML };
@@ -672,7 +729,7 @@ export class ServerManager {
                 break;
 
               case 'click':
-                const clickEl = document.querySelector(params.selector);
+                var clickEl = document.querySelector(params.selector);
                 if (clickEl) {
                   clickEl.click();
                   result = { success: true };
@@ -682,7 +739,7 @@ export class ServerManager {
                 break;
 
               case 'type':
-                const inputEl = document.querySelector(params.selector);
+                var inputEl = document.querySelector(params.selector);
                 if (inputEl && (inputEl.tagName === 'INPUT' || inputEl.tagName === 'TEXTAREA')) {
                   inputEl.value = params.text;
                   inputEl.dispatchEvent(new Event('input', { bubbles: true }));
@@ -694,7 +751,7 @@ export class ServerManager {
                 break;
 
               case 'getElements':
-                const elements = document.querySelectorAll(params.selector);
+                var elements = document.querySelectorAll(params.selector);
                 result = {
                   elements: Array.from(elements).map(function(el, i) {
                     return {
@@ -716,9 +773,11 @@ export class ServerManager {
                 result = { error: 'Unknown command: ' + command };
             }
           } catch (error) {
+            console.error('[MCP Bridge] Command error:', error);
             result = { error: error.message || 'Unknown error' };
           }
 
+          console.log('[MCP Bridge] Sending response for:', command);
           // Send response back to parent
           window.parent.postMessage({
             type: '__claude_mcp_response__',
@@ -727,8 +786,11 @@ export class ServerManager {
           }, '*');
         });
 
-        // Notify parent that bridge is ready
-        window.parent.postMessage({ type: '__claude_mcp_bridge_ready__' }, '*');
+        // Notify parent that bridge is ready (with small delay to ensure listener is set up)
+        setTimeout(function() {
+          console.log('[MCP Bridge] Sending ready message');
+          window.parent.postMessage({ type: '__claude_mcp_bridge_ready__' }, '*');
+        }, 100);
       })();
     </script>
     `;
