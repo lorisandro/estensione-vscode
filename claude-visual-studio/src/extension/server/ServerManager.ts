@@ -1124,30 +1124,59 @@ export class ServerManager {
 
         // Load html2canvas dynamically with error handling
         var html2canvasLoaded = false;
-        var html2canvasScript = document.createElement('script');
-        html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-        html2canvasScript.onload = function() {
-          html2canvasLoaded = true;
-          console.log('[MCP Bridge] html2canvas loaded');
-        };
-        html2canvasScript.onerror = function() {
-          console.warn('[MCP Bridge] html2canvas failed to load, screenshots will use canvas fallback');
-        };
-        document.head.appendChild(html2canvasScript);
+        var html2canvasLoadPromise = new Promise(function(resolve, reject) {
+          var html2canvasScript = document.createElement('script');
+          html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+          html2canvasScript.onload = function() {
+            html2canvasLoaded = true;
+            console.log('[MCP Bridge] html2canvas loaded successfully');
+            resolve(true);
+          };
+          html2canvasScript.onerror = function(e) {
+            console.error('[MCP Bridge] html2canvas failed to load from CDN');
+            reject(new Error('Failed to load html2canvas'));
+          };
+          document.head.appendChild(html2canvasScript);
 
-        // Screenshot function with fallback
+          // Timeout after 10 seconds
+          setTimeout(function() {
+            if (!html2canvasLoaded) {
+              reject(new Error('html2canvas load timeout'));
+            }
+          }, 10000);
+        });
+
+        // Screenshot function with proper wait for html2canvas
         async function captureScreenshot() {
-          // Try html2canvas first, but fall back gracefully on any error
-          if (typeof html2canvas !== 'undefined') {
+          console.log('[MCP Bridge] Starting screenshot capture...');
+
+          // Wait for html2canvas to load (with timeout)
+          try {
+            await Promise.race([
+              html2canvasLoadPromise,
+              new Promise(function(_, reject) {
+                setTimeout(function() { reject(new Error('html2canvas wait timeout')); }, 5000);
+              })
+            ]);
+          } catch (loadError) {
+            console.warn('[MCP Bridge] html2canvas not available:', loadError.message);
+          }
+
+          // Try html2canvas if available
+          if (typeof html2canvas === 'function') {
+            console.log('[MCP Bridge] Using html2canvas for screenshot');
             try {
               const canvas = await html2canvas(document.body, {
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
-                scale: 1,
-                logging: false,
+                scale: window.devicePixelRatio || 1,
+                logging: true, // Enable logging for debugging
                 imageTimeout: 15000,
+                removeContainer: true,
+                foreignObjectRendering: false,
                 onclone: function(clonedDoc) {
+                  console.log('[MCP Bridge] html2canvas cloning document...');
                   // Fix fixed positioning
                   var fixedElements = clonedDoc.querySelectorAll('[style*="position: fixed"]');
                   fixedElements.forEach(function(el) {
@@ -1156,66 +1185,104 @@ export class ServerManager {
                   // Remove problematic CSS color functions that html2canvas doesn't support
                   var allElements = clonedDoc.querySelectorAll('*');
                   allElements.forEach(function(el) {
-                    var style = el.style;
-                    var computed = window.getComputedStyle(el);
-                    // Replace unsupported color functions with fallbacks
-                    ['color', 'backgroundColor', 'borderColor', 'outlineColor'].forEach(function(prop) {
-                      var value = computed[prop];
-                      if (value && (value.includes('lab(') || value.includes('lch(') || value.includes('oklch(') || value.includes('oklab('))) {
-                        // Use a safe fallback color
-                        if (prop === 'backgroundColor') {
-                          style[prop] = '#ffffff';
-                        } else {
-                          style[prop] = '#000000';
+                    try {
+                      var computed = window.getComputedStyle(el);
+                      // Replace unsupported color functions with fallbacks
+                      ['color', 'backgroundColor', 'borderColor', 'outlineColor'].forEach(function(prop) {
+                        var value = computed[prop];
+                        if (value && (value.includes('lab(') || value.includes('lch(') || value.includes('oklch(') || value.includes('oklab('))) {
+                          if (prop === 'backgroundColor') {
+                            el.style.setProperty(prop, '#ffffff', 'important');
+                          } else {
+                            el.style.setProperty(prop, '#000000', 'important');
+                          }
                         }
-                      }
-                    });
+                      });
+                    } catch (e) {
+                      // Ignore styling errors
+                    }
                   });
+                  console.log('[MCP Bridge] html2canvas clone ready');
                 }
               });
 
+              console.log('[MCP Bridge] html2canvas render complete, canvas size:', canvas.width, 'x', canvas.height);
               var dataUrl = canvas.toDataURL('image/png');
               var base64 = dataUrl.split(',')[1];
 
-              return {
-                screenshot: base64,
-                width: canvas.width,
-                height: canvas.height
-              };
+              if (base64 && base64.length > 100) {
+                console.log('[MCP Bridge] Screenshot captured successfully, base64 length:', base64.length);
+                return {
+                  screenshot: base64,
+                  width: canvas.width,
+                  height: canvas.height
+                };
+              } else {
+                throw new Error('Canvas produced empty or invalid image');
+              }
             } catch (html2canvasError) {
-              console.warn('[MCP Bridge] html2canvas failed, using fallback:', html2canvasError.message);
-              // Fall through to fallback below
+              console.error('[MCP Bridge] html2canvas failed:', html2canvasError.message, html2canvasError.stack);
+              // Continue to native canvas fallback
             }
+          } else {
+            console.warn('[MCP Bridge] html2canvas not available (typeof:', typeof html2canvas, ')');
           }
 
-          // Fallback: create a simple canvas with page info
+          // Native Canvas API fallback - try to capture visible viewport
+          console.log('[MCP Bridge] Using native canvas fallback...');
           try {
-            console.log('[MCP Bridge] Using fallback screenshot method');
             var canvas = document.createElement('canvas');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            var width = Math.min(window.innerWidth, 1920);
+            var height = Math.min(window.innerHeight, 1080);
+            canvas.width = width;
+            canvas.height = height;
             var ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#f0f0f0';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#333';
-            ctx.font = '16px sans-serif';
-            ctx.fillText('Screenshot captured (simplified view)', 20, 40);
-            ctx.fillText('Page URL: ' + window.location.href, 20, 70);
-            ctx.fillText('Page Title: ' + (document.title || 'Untitled'), 20, 100);
-            ctx.fillText('Viewport: ' + window.innerWidth + 'x' + window.innerHeight, 20, 130);
+
+            // Draw white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw page info
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText('Screenshot Preview', 20, 40);
+
+            ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillStyle = '#666666';
+            ctx.fillText('URL: ' + window.location.href, 20, 70);
+            ctx.fillText('Title: ' + (document.title || 'Untitled'), 20, 95);
+            ctx.fillText('Size: ' + window.innerWidth + ' x ' + window.innerHeight + 'px', 20, 120);
+
+            // Draw a border
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(10, 10, width - 20, height - 20);
+
+            // Add timestamp
+            ctx.fillStyle = '#999999';
+            ctx.font = '12px monospace';
+            ctx.fillText('Captured: ' + new Date().toISOString(), 20, height - 20);
+
+            // Note about limitation
+            ctx.fillStyle = '#cc6600';
+            ctx.font = '13px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillText('Note: Full visual capture requires html2canvas', 20, 150);
+            ctx.fillText('The page content is visible in the VS Code preview panel', 20, 170);
 
             var dataUrl = canvas.toDataURL('image/png');
             var base64 = dataUrl.split(',')[1];
 
+            console.log('[MCP Bridge] Fallback screenshot created');
             return {
               screenshot: base64,
               width: canvas.width,
               height: canvas.height,
-              fallback: true
+              fallback: true,
+              note: 'Native canvas fallback - html2canvas failed or unavailable'
             };
           } catch (fallbackError) {
-            console.error('[MCP Bridge] Fallback screenshot also failed:', fallbackError);
-            return { error: 'Screenshot failed: ' + (fallbackError.message || fallbackError) };
+            console.error('[MCP Bridge] Fallback screenshot failed:', fallbackError);
+            return { error: 'Screenshot failed: ' + (fallbackError.message || String(fallbackError)) };
           }
         }
 
