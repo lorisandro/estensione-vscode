@@ -72,7 +72,10 @@
       "mcp__claude-visual-studio__extension_get_logs",
       "mcp__claude-visual-studio__browser_get_text",
       "mcp__claude-visual-studio__browser_get_elements",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(timeout /t 2 /nobreak)"
     ]
   }
 }
