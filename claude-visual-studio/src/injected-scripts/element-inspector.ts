@@ -404,6 +404,16 @@ class ElementInspector {
         outline: 2px solid #0078d4 !important;
         outline-offset: 2px !important;
       }
+      /* Floating toolbar cursor fix */
+      #__claude-vs-floating-toolbar__,
+      #__claude-vs-floating-toolbar__ * {
+        cursor: default !important;
+      }
+      #__claude-vs-floating-toolbar__ button,
+      #__claude-vs-floating-toolbar__ select,
+      #__claude-vs-floating-toolbar__ input {
+        cursor: pointer !important;
+      }
     `;
     document.head.appendChild(this.dragStyleElement);
   }
