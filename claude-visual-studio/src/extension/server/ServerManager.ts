@@ -21,6 +21,9 @@ export class ServerManager {
   private server: http.Server | null = null;
   private config: ServerConfig | null = null;
 
+  // Track the last proxied origin for relative URL resolution
+  private lastProxiedOrigin: string | null = null;
+
   private readonly MIME_TYPES: Record<string, string> = {
     '.html': 'text/html',
     '.htm': 'text/html',
@@ -229,6 +232,9 @@ export class ServerManager {
         const isHttps = parsedUrl.protocol === 'https:';
         const httpModule = isHttps ? https : http;
 
+        // Save the origin for resolving relative URLs (like /_next/...)
+        this.lastProxiedOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+
         const proxyReq = httpModule.request(
           {
             hostname: parsedUrl.hostname,
@@ -360,6 +366,66 @@ export class ServerManager {
       } catch (error) {
         console.error('[ServerManager] Error serving element inspector:', error);
         res.status(500).send(`// Error loading element inspector: ${(error as Error).message}`);
+      }
+    });
+
+    // Proxy route for /_next/ static files (Next.js resources)
+    // This intercepts relative URLs that browsers resolve against the proxy server
+    this.app.get('/_next/*', async (req, res) => {
+      if (!this.lastProxiedOrigin) {
+        res.status(404).send('No proxied origin available');
+        return;
+      }
+
+      const targetUrl = `${this.lastProxiedOrigin}${req.originalUrl}`;
+      console.log('[ServerManager] Proxying Next.js resource:', req.originalUrl, '->', targetUrl);
+
+      try {
+        const parsedUrl = new URL(targetUrl);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const httpModule = isHttps ? https : http;
+
+        const proxyReq = httpModule.request(
+          {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (isHttps ? 443 : 80),
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'GET',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Accept': '*/*',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Accept-Encoding': 'identity',
+              'Host': parsedUrl.host,
+            },
+          },
+          (proxyRes) => {
+            // Copy headers
+            const headers = { ...proxyRes.headers };
+            delete headers['transfer-encoding'];
+            delete headers['content-encoding'];
+
+            res.status(proxyRes.statusCode || 200);
+            Object.entries(headers).forEach(([key, value]) => {
+              if (value) {
+                res.setHeader(key, value as string);
+              }
+            });
+
+            // Pipe the response directly
+            proxyRes.pipe(res);
+          }
+        );
+
+        proxyReq.on('error', (error) => {
+          console.error('[ServerManager] Next.js proxy error:', error);
+          res.status(502).send(`Proxy error: ${error.message}`);
+        });
+
+        proxyReq.end();
+      } catch (error) {
+        console.error('[ServerManager] Next.js proxy error:', error);
+        res.status(500).send(`Proxy error: ${(error as Error).message}`);
       }
     });
 

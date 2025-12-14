@@ -493,10 +493,33 @@ function setupFileWatchers(context: vscode.ExtensionContext): void {
     false
   );
 
+  // Patterns to exclude from file watching (build outputs, dependencies, etc.)
+  const excludePatterns = [
+    /[/\\]\.next[/\\]/,           // Next.js build output
+    /[/\\]node_modules[/\\]/,     // Dependencies
+    /[/\\]dist[/\\]/,             // Build output
+    /[/\\]\.git[/\\]/,            // Git internals
+    /[/\\]\.turbo[/\\]/,          // Turbo cache
+    /[/\\]\.cache[/\\]/,          // Various caches
+    /[/\\]out[/\\]/,              // Common build output
+    /[/\\]build[/\\]/,            // Common build output
+    /\.d\.ts$/,                   // Type declaration files
+    /\.map$/,                     // Source maps
+  ];
+
   // Handle file changes
   fileWatcher.onDidChange(async (uri) => {
+    // Skip excluded paths
+    const filePath = uri.fsPath;
+    const shouldExclude = excludePatterns.some(pattern => pattern.test(filePath));
+
+    if (shouldExclude) {
+      // Silently ignore changes in excluded paths
+      return;
+    }
+
     if (webviewProvider?.isVisible()) {
-      console.log('File changed, refreshing preview:', uri.fsPath);
+      console.log('File changed, refreshing preview:', filePath);
       await webviewProvider.postMessage({
         type: 'refreshPreview',
         payload: { preserveScroll: true },
