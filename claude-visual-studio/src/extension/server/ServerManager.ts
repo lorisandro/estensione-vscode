@@ -792,6 +792,30 @@ export class ServerManager {
           var serverPort = window.location.port || '3333';
           var cssEndpoint = 'http://localhost:' + serverPort + '/__claude-vs__/styled-jsx-css';
 
+          // Temporarily hide page content until styled-jsx CSS is loaded
+          // This prevents animations from starting with wrong/missing styles
+          var hideStyle = document.createElement('style');
+          hideStyle.id = '__claude-vs-loading-hide__';
+          hideStyle.textContent = 'body { visibility: hidden !important; }';
+          document.documentElement.appendChild(hideStyle);
+
+          // Show page after CSS is loaded or timeout
+          var pageShown = false;
+          function showPage() {
+            if (pageShown) return;
+            pageShown = true;
+            var hideEl = document.getElementById('__claude-vs-loading-hide__');
+            if (hideEl) hideEl.remove();
+          }
+
+          // Show page after max 2 seconds even without CSS
+          setTimeout(showPage, 2000);
+
+          // Also show page after window load + small delay (for pages without styled-jsx)
+          window.addEventListener('load', function() {
+            setTimeout(showPage, 300);
+          });
+
           // Fetch and inject extracted styled-jsx CSS from server
           // The server extracts CSS from JS files as they pass through the proxy
           function fetchAndInjectStyledJsxCss() {
@@ -853,44 +877,66 @@ export class ServerManager {
           };
 
           // styled-jsx CSS is extracted from JS files as they load through the proxy
-          // We need to retry a few times since JS files load asynchronously
+          // We need to poll aggressively since CSS is extracted asynchronously
           var cssInjected = false;
           var retryCount = 0;
-          var maxRetries = 5;
+          var maxRetries = 50; // More retries with shorter intervals
+          var lastCssHash = '';
 
           function fetchWithRetry() {
-            if (cssInjected || retryCount >= maxRetries) return;
+            if (retryCount >= maxRetries) return;
             retryCount++;
 
             fetch(cssEndpoint)
               .then(function(response) { return response.text(); })
               .then(function(css) {
                 if (css && css.trim().length > 0) {
-                  cssInjected = true;
+                  // Compute a simple hash to detect changes
+                  var cssHash = css.length + '-' + css.substring(0, 100);
+
                   var existingStyle = document.getElementById('__claude-vs-styled-jsx__');
                   if (existingStyle) {
-                    existingStyle.textContent = css;
+                    // Update if CSS changed
+                    if (cssHash !== lastCssHash) {
+                      existingStyle.textContent = css;
+                      lastCssHash = cssHash;
+                      console.log('[Claude VS] Updated styled-jsx CSS from server');
+                    }
                   } else {
+                    // Create new style element
                     var style = document.createElement('style');
                     style.id = '__claude-vs-styled-jsx__';
                     style.textContent = css;
                     document.head.appendChild(style);
+                    lastCssHash = cssHash;
+                    cssInjected = true;
+                    console.log('[Claude VS] Injected styled-jsx CSS from server');
                   }
-                  console.log('[Claude VS] Injected styled-jsx CSS from server');
+
+                  // Show page now that CSS is loaded
+                  showPage();
+
+                  // Continue polling for a while to catch late CSS extractions
+                  if (retryCount < maxRetries) {
+                    setTimeout(fetchWithRetry, 500);
+                  }
                 } else if (retryCount < maxRetries) {
-                  // CSS not ready yet, retry after delay
-                  setTimeout(fetchWithRetry, 1000);
+                  // CSS not ready yet, retry quickly
+                  setTimeout(fetchWithRetry, 100);
+                } else {
+                  // Max retries reached without CSS, show page anyway
+                  showPage();
                 }
               })
               .catch(function() {
                 if (retryCount < maxRetries) {
-                  setTimeout(fetchWithRetry, 1000);
+                  setTimeout(fetchWithRetry, 200);
                 }
               });
           }
 
-          // Start fetching after a delay to let JS files load first
-          setTimeout(fetchWithRetry, 1000);
+          // Start fetching immediately - no delay!
+          fetchWithRetry();
         })();
 
         // Console log interception - capture all console output
