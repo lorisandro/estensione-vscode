@@ -260,38 +260,34 @@ export class DevServerRunner extends EventEmitter {
 
   /**
    * Stop the running server
+   * NOTE: Only stops processes that were started by this extension (via this.process.pid)
+   * Does NOT kill external processes on monitored ports to avoid interfering with user's servers
    */
   async stop(): Promise<boolean> {
-    if (!this.isRunning && this.activePorts.length === 0) {
-      console.log('[DevServerRunner] No server running');
+    // Only stop if we have a process we started
+    if (!this.process?.pid) {
+      console.log('[DevServerRunner] No process to stop (no PID tracked)');
+      this.isRunning = false;
+      this.activePorts = [];
       return false;
     }
 
-    console.log('[DevServerRunner] Stopping server...');
+    console.log(`[DevServerRunner] Stopping process PID ${this.process.pid}...`);
 
-    // First try to kill the original process if it exists
-    if (this.process?.pid) {
-      if (process.platform === 'win32') {
-        try {
-          execSync(`taskkill /F /T /PID ${this.process.pid}`, { windowsHide: true });
-        } catch {
-          // Process might already be dead
-        }
-      } else {
-        this.process.kill('SIGTERM');
+    // Kill ONLY the process that this extension started
+    if (process.platform === 'win32') {
+      try {
+        execSync(`taskkill /F /T /PID ${this.process.pid}`, { windowsHide: true });
+      } catch {
+        // Process might already be dead
       }
+    } else {
+      this.process.kill('SIGTERM');
     }
 
-    // Also kill any processes running on the monitored ports
-    // This handles orphaned child processes (pnpm → turbo → next dev)
-    const portsToKill = this.activePorts.length > 0
-      ? this.activePorts
-      : await this.findActivePorts();
-
-    if (portsToKill.length > 0) {
-      console.log(`[DevServerRunner] Killing processes on ports: ${portsToKill.join(', ')}`);
-      this.killProcessesOnPorts(portsToKill);
-    }
+    // DO NOT call killProcessesOnPorts() - this would kill user's external servers!
+    // The old code was terminating ANY process on ports 3000, 3001, etc.
+    // which could shut down the user's own Next.js/Vite servers
 
     this.isRunning = false;
     this.process = null;

@@ -1,4 +1,4 @@
-  INFO Started local extension host with pid 89512.
+  INFO Started local extension host with pid 90576.
  Unrecognized feature: 'local-network-access'.
 gb @ workbench.desktop.main.js:4149
 M$e @ workbench.desktop.main.js:4149
@@ -57,15 +57,13 @@ openPaneComposite @ workbench.desktop.main.js:822
  [Extension Host] Configuration listeners set up
  [Extension Host] Claude Visual Studio extension activated successfully
  Unrecognized feature: 'local-network-access'.
-(anonymous) @ index.html?id=990c67…1-89a3-3874e4…:1060
+(anonymous) @ index.html?id=7a223b…1-89a3-3874e4…:1060
  [Extension Host] vscode pigments is activated
   INFO MCP Registry configured: https://api.mcp.github.com
   INFO Settings Sync: Account status changed from uninitialized to unavailable
- [Extension Host] Created lock file at C:\Users\Utente\.claude\ide\21358.lock
- [Extension Host] Set CLAUDE_CODE_SSE_PORT=21358 in terminal environment (in-memory)
+ [Extension Host] Created lock file at C:\Users\Utente\.claude\ide\47658.lock
+ [Extension Host] Set CLAUDE_CODE_SSE_PORT=47658 in terminal environment (in-memory)
  [Extension Host] Set ENABLE_IDE_INTEGRATION=true in terminal environment (in-memory)
-  INFO [perf] Render performance baseline is 11ms
-marketplace.visualstudio.com/_apis/public/gallery/vscode/your-publisher-name/claude-visual-studio/latest:1  Failed to load resource: the server responded with a status of 404 ()
  An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.
 mountTo @ workbench.desktop.main.js:4149
 P @ workbench.desktop.main.js:4149
@@ -73,528 +71,275 @@ claim @ workbench.desktop.main.js:4149
 claim @ workbench.desktop.main.js:545
 hb @ workbench.desktop.main.js:545
 setInput @ workbench.desktop.main.js:545
-vscode-webview://1415512qoll3vv08mouumk4hj5t1hadp6orr5833lsdt87aa7iep/index.html?id=942c3f8e-5eb5-4e63-a371-383f051efbe2&parentId=6&origin=d92753aa-f3f9-4279-ad12-1606836641a4&swVersion=4&extensionId=your-publisher-name.claude-visual-studio&platform=electron&vscode-resource-base-authority=vscode-resource.vscode-cdn.net&parentOrigin=vscode-file%3A%2F%2Fvscode-app:1060 Unrecognized feature: 'local-network-access'.
-(anonymous) @ vscode-webview://1415512qoll3vv08mouumk4hj5t1hadp6orr5833lsdt87aa7iep/index.html?id=942c3f8e-5eb5-4e63-a371-383f051efbe2&parentId=6&origin=d92753aa-f3f9-4279-ad12-1606836641a4&swVersion=4&extensionId=your-publisher-name.claude-visual-studio&platform=electron&vscode-resource-base-authority=vscode-resource.vscode-cdn.net&parentOrigin=vscode-file%3A%2F%2Fvscode-app:1060
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [BrowserFrame] URL: http://localhost:3000 -> Proxied: http://localhost:3335/__claude-vs__/proxy?url=http%3A%2F%2Flocalhost%3A3000
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [BrowserFrame] serverBaseUrl: http://localhost:3335 shouldProxy: true
+ Unrecognized feature: 'local-network-access'.
+(anonymous) @ index.html?id=e63ef3…9-ad12-160683…:1060
+ [BrowserFrame] URL: http://localhost:3000 -> Proxied: http://localhost:3335/__claude-vs__/proxy?url=http%3A%2F%2Flocalhost%3A3000
+ [BrowserFrame] serverBaseUrl: http://localhost:3335 shouldProxy: true
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [BrowserFrame] Sent selection mode to iframe: false
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [BrowserFrame] Sent drag mode to iframe: true
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Resetting iframe bridge ready state
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [BrowserFrame] URL/refresh changed, reset bridge ready state
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] useMCPCommands hook initialized, iframeRef: true
+ [BrowserFrame] Sent selection mode to iframe: false
+ [BrowserFrame] Sent drag mode to iframe: true
+ [MCP] Resetting iframe bridge ready state
+ [BrowserFrame] URL/refresh changed, reset bridge ready state
+ [MCP] useMCPCommands hook initialized, iframeRef: true
  [Extension Host] Received message from webview: webview-ready
  [Extension Host] Webview ready (kebab-case)
  [Extension Host] [Server] Sent config to webview: port 3335
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:70 [App] Server base URL updated: http://localhost:3335
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: configUpdate Object
-   ERR [Extension Host] [ServerManager] Proxy error: Error: read ECONNRESET
-	at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
-error @ workbench.desktop.main.js:38
- [Extension Host] [ServerManager] Proxy error: Error: read ECONNRESET
-	at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
-yks @ workbench.desktop.main.js:534
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: __claude_mcp_bridge_ready__ Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received iframe message: __claude_mcp_bridge_ready__ Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] MCP bridge ready in iframe!
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Marking bridge as ready, notifying 0 waiters
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: console-log Object
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [BrowserFrame] Sent initial modes after load - selection: false drag: true
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
- [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
- [Extension Host] [ServerManager] Served styled-jsx CSS (0 rules)
+ [App] Server base URL updated: http://localhost:3335
+ [MCP] Received message: configUpdate Object
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+proxy?url=http%3A%2F%2Flocalhost%3A3000:54 [Claude VS] Visibility fix active
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+proxy?url=http%3A%2F%2Flocalhost%3A3000:449 [MCP Bridge] Initializing...
  [Extension Host] [MCPBridge] MCP client connected
- [Extension Host] [DevServerRunner] Starting: pnpm dev in E:\Progetto\Progetti\APP e ASSET\App\Web Design\saas-platform
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
- [Extension Host] [MCP] openBrowser handler called
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: requestNavigate Object
- [Extension Host] [MCP] openPreview command executed
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
- [Extension Host] [MCP] Panel visible after open: true
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: navigate Object
- [Extension Host] [MCP] Sending mcpRequest to webview: screenshot mcp_1
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: mcpRequest Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Processing mcpRequest: screenshot iframe available: true
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Bridge already ready
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] sendToIframe called: screenshot iframe: true contentWindow: true
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Sending to iframe: iframe_1 screenshot Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Message posted to iframe: iframe_1
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: __claude_mcp_response__ Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received iframe message: __claude_mcp_response__ Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Got response from iframe: iframe_1 Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Sending response for: screenshot Object
- [Extension Host] Received message from webview: mcpResponse
- [Extension Host] [MCP] Received mcpResponse: mcp_1 Object
- [Extension Host] [MCP] Found callback for: mcp_1
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: refreshPreview Object
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Resetting iframe bridge ready state
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [BrowserFrame] URL/refresh changed, reset bridge ready state
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [MCP] Received message: backendLog Object
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-localhost:3335/__claude-vs__/proxy?url=http%3A%2F%2Flocalhost%3A3000:54 [Claude VS] Visibility fix active
- [Extension Host] [MCPBridge] MCP client connected
-localhost:3335/__claude-vs__/proxy?url=http%3A%2F%2Flocalhost%3A3000:427 [MCP Bridge] Initializing...
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-localhost:3335/__claude-vs__/proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [MCP Bridge] html2canvas loaded
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-localhost:3335/__claude-vs__/proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Claude VS HMR] Connected
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Claude VS HMR] Connected
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [MCP Bridge] html2canvas loaded
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+ [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_app_d41e8b71._.css.map
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
- [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+ [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_4535dad2._.js.map
  [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /__claude-vs__/element-inspector.js
+ [Extension Host] [ServerManager] Extracted styled-jsx CSS: b07a732883bab526 (904 chars)
+ [Extension Host] [ServerManager] Extracted styled-jsx CSS: 65707cb487cbb8e3 (55 chars)
+ [Extension Host] [ServerManager] GET /__claude-vs__/proxy
  [Extension Host] [ServerManager] GET /_next/image
  [Extension Host] [ServerManager] Proxying Next.js resource: /_next/image?url=%2Fimages%2Flogo.webp&w=256&q=75 -> http://localhost:3000/_next/image?url=%2Fimages%2Flogo.webp&w=256&q=75
- [Extension Host] [ServerManager] Extracted styled-jsx CSS: b07a732883bab526 (904 chars)
+ [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_react-server-dom-turbopack_094b296d._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_react-dom_e6182150._.js.map
  [Extension Host] [ServerManager] Serving element inspector from: c:\Users\Utente\.vscode\extensions\your-publisher-name.claude-visual-studio-0.1.0\dist\injected-scripts\element-inspector.js
-localhost:3335/__claude-vs__/proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Drag mode: true
-localhost:3335/__claude-vs__/proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Initialized with drag mode enabled
-file+.vscode-resource.vscode-cdn.net/c%3A/Users/Utente/.vscode/extensions/your-publisher-name.claude-visual-studio-0.1.0/dist/webview/index.js?v=1765734482189:60 [BrowserFrame] Drag mode changed in iframe: true
-index.js?v=1765734482189:60 [MCP] Received message: drag-mode-changed Object
-index.js?v=1765734482189:60 [BrowserFrame] Inspector ready in iframe
-index.js?v=1765734482189:60 [MCP] Received message: inspector-ready Object
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Drag mode: true
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Selection mode: false
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Drag mode: true
-index.js?v=1765734482189:60 [BrowserFrame] Drag mode changed in iframe: true
-index.js?v=1765734482189:60 [MCP] Received message: drag-mode-changed Object
-index.js?v=1765734482189:60 [MCP] Received message: selection-mode-changed Object
-index.js?v=1765734482189:60 [BrowserFrame] Drag mode changed in iframe: true
-index.js?v=1765734482189:60 [MCP] Received message: drag-mode-changed Object
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [MCP Bridge] Sending ready message
+ [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_035a6e65._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_client_ff7c4fb0._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_next-devtools_index_5bb98439.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/69652_%40swc_helpers_cjs_679851cc._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_03f6cd6c._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_68520e3f._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/_0bffcded._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/0d889_framer-motion_dist_es_2a6655f9._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/a94f9_tailwind-merge_dist_bundle-mjs_mjs_f110c13e._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/3cf09_motion-dom_dist_es_bed354a0._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/node_modules__pnpm_69062eeb._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_app_components_0d389223._.js.map
+ [Extension Host] [ServerManager] GET /__claude-vs__/node_modules__pnpm_5a28cbe1._.js.map
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [MCP Bridge] Sending ready message
+ [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
+ [Extension Host] [ServerManager] Served styled-jsx CSS (2 rules)
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Initialized with drag mode enabled
+ [MCP] Received message: __claude_mcp_bridge_ready__ Object
+ [MCP] Received iframe message: __claude_mcp_bridge_ready__ Object
+ [MCP] MCP bridge ready in iframe!
+ [MCP] Marking bridge as ready, notifying 0 waiters
+ [BrowserFrame] Drag mode changed in iframe: true
+ [MCP] Received message: drag-mode-changed Object
+ [BrowserFrame] Inspector ready in iframe
+ [MCP] Received message: inspector-ready Object
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Selection mode: false
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Claude VS] Injected styled-jsx CSS from server
+ [BrowserFrame] Drag mode changed in iframe: true
+ [MCP] Received message: drag-mode-changed Object
+ [MCP] Received message: selection-mode-changed Object
+ [BrowserFrame] Drag mode changed in iframe: true
+ [MCP] Received message: drag-mode-changed Object
+ [MCP] Received message: console-log Object
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 Console connected - logs from this page will appear here
+ [MCP] Received message: console-log Object
+ [BrowserFrame] Sent initial modes after load - selection: false drag: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Selection mode: false
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: true
+index.js?v=1765735176040:60 [BrowserFrame] Drag mode changed in iframe: true
+index.js?v=1765735176040:60 [MCP] Received message: drag-mode-changed Object
+index.js?v=1765735176040:60 [MCP] Received message: selection-mode-changed Object
+index.js?v=1765735176040:60 [BrowserFrame] Drag mode changed in iframe: true
+index.js?v=1765735176040:60 [MCP] Received message: drag-mode-changed Object
 console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
-index.js?v=1765734482189:60 [MCP] Received message: __claude_mcp_bridge_ready__ Object
-console.ts:139 [Extension Host] [ServerManager] Served styled-jsx CSS (1 rules)
-index.js?v=1765734482189:60 [MCP] Received iframe message: __claude_mcp_bridge_ready__ Object
-index.js?v=1765734482189:60 [MCP] MCP bridge ready in iframe!
-index.js?v=1765734482189:60 [MCP] Marking bridge as ready, notifying 0 waiters
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Claude VS] Injected styled-jsx CSS from server
-index.js?v=1765734482189:60 [MCP] Received message: console-log Object
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 Console connected - logs from this page will appear here
-index.js?v=1765734482189:60 [MCP] Received message: console-log Object
+console.ts:139 [Extension Host] [ServerManager] Served styled-jsx CSS (2 rules)
 console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
-console.ts:139 [Extension Host] [ServerManager] Served styled-jsx CSS (1 rules)
-index.js?v=1765734482189:60 [BrowserFrame] Sent initial modes after load - selection: false drag: true
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Drag mode: true
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Selection mode: false
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Drag mode: true
-index.js?v=1765734482189:60 [BrowserFrame] Drag mode changed in iframe: true
-index.js?v=1765734482189:60 [MCP] Received message: drag-mode-changed Object
-index.js?v=1765734482189:60 [MCP] Received message: selection-mode-changed Object
-index.js?v=1765734482189:60 [BrowserFrame] Drag mode changed in iframe: true
-index.js?v=1765734482189:60 [MCP] Received message: drag-mode-changed Object
+console.ts:139 [Extension Host] [ServerManager] Served styled-jsx CSS (2 rules)
+log.ts:440  INFO [perf] Render performance baseline is 12ms
 console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
-console.ts:139 [Extension Host] [ServerManager] Served styled-jsx CSS (1 rules)
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/styled-jsx-css
-console.ts:139 [Extension Host] [ServerManager] Served styled-jsx CSS (1 rules)
-console.ts:139 [Extension Host] [MCP] Sending mcpRequest to webview: screenshot mcp_2
-index.js?v=1765734482189:60 [MCP] Received message: mcpRequest Object
-index.js?v=1765734482189:60 [MCP] Processing mcpRequest: screenshot iframe available: true
-index.js?v=1765734482189:60 [MCP] Bridge already ready
-index.js?v=1765734482189:60 [MCP] sendToIframe called: screenshot iframe: true contentWindow: true
-index.js?v=1765734482189:60 [MCP] Sending to iframe: iframe_2 screenshot Object
-index.js?v=1765734482189:60 [MCP] Message posted to iframe: iframe_2
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [MCP Bridge] Received command: screenshot
-console.ts:139 [Extension Host] [ServerManager] GET /_next/image
-console.ts:139 [Extension Host] [ServerManager] Proxying Next.js resource: /_next/image?url=%2Fimages%2Flogo.webp&w=256&q=75 -> http://localhost:3000/_next/image?url=%2Fimages%2Flogo.webp&w=256&q=75
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-console.ts:139 [Extension Host] [ServerManager] GET /_next/image
-console.ts:139 [Extension Host] [ServerManager] Proxying Next.js resource: /_next/image?url=%2Fimages%2Flogo.webp&w=256&q=75 -> http://localhost:3000/_next/image?url=%2Fimages%2Flogo.webp&w=256&q=75
-console.ts:139 [Extension Host] [ServerManager] GET /_next/image
-console.ts:139 [Extension Host] [ServerManager] Proxying Next.js resource: /_next/image?url=%2Fimages%2Flogo.webp&w=256&q=75 -> http://localhost:3000/_next/image?url=%2Fimages%2Flogo.webp&w=256&q=75
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [MCP Bridge] html2canvas failed, using fallback: Attempting to parse an unsupported color function "oklab"
-console.<computed> @ proxy?url=http%3A%2F%2Flocalhost%3A3000:327
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [MCP Bridge] Using fallback screenshot method
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [MCP Bridge] Sending response for: screenshot
-index.js?v=1765734482189:60 [MCP] Received message: console-log Object
-index.js?v=1765734482189:60 [MCP] Received message: console-log Object
-index.js?v=1765734482189:60 [MCP] Received message: __claude_mcp_response__ Object
-index.js?v=1765734482189:60 [MCP] Received iframe message: __claude_mcp_response__ Object
-index.js?v=1765734482189:60 [MCP] Got response from iframe: iframe_2 Object
-index.js?v=1765734482189:60 [MCP] Sending response for: screenshot Object
-console.ts:139 [Extension Host] Received message from webview: mcpResponse
-console.ts:139 [Extension Host] [MCP] Received mcpResponse: mcp_2 Object
-console.ts:139 [Extension Host] [MCP] Found callback for: mcp_2
+console.ts:139 [Extension Host] [ServerManager] Served styled-jsx CSS (2 rules)
+marketplace.visualstudio.com/_apis/public/gallery/vscode/your-publisher-name/claude-visual-studio/latest:1  Failed to load resource: the server responded with a status of 404 ()
 The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
 The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
 The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
 The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
 The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
 The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/proxy
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_react-server-dom-turbopack_094b296d._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_68520e3f._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_client_ff7c4fb0._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_react-dom_e6182150._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_4535dad2._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/3cf09_motion-dom_dist_es_bed354a0._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/69652_%40swc_helpers_cjs_679851cc._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_03f6cd6c._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_next-devtools_index_5bb98439.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_035a6e65._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/a94f9_tailwind-merge_dist_bundle-mjs_mjs_f110c13e._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/_0bffcded._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/0d889_framer-motion_dist_es_2a6655f9._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_app_components_HeroReveal_tsx_ae818dd3._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/node_modules__pnpm_5a28cbe1._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/node_modules__pnpm_69062eeb._.js.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_app_d41e8b71._.css.map
-console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_app_d41e8b71._.css.map
+index.js?v=1765735176040:60 [BrowserFrame] Sent selection mode to iframe: true
+index.js?v=1765735176040:60 [BrowserFrame] Sent drag mode to iframe: false
 console.ts:139 [Extension Host] Received message from webview: toggle-selection
 console.ts:139 [Extension Host] Selection mode toggled: true
-index.js?v=1765734482189:60 [BrowserFrame] Sent selection mode to iframe: true
-index.js?v=1765734482189:60 [BrowserFrame] Sent drag mode to iframe: false
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Selection mode: true
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Drag mode: false
-index.js?v=1765734482189:60 [MCP] Received message: selection-mode-changed {source: 'claude-vs-inspector', type: 'selection-mode-changed', data: true, timestamp: 1765734626736}
-index.js?v=1765734482189:60 [MCP] Received message: drag-mode-changed {source: 'claude-vs-inspector', type: 'drag-mode-changed', data: false, timestamp: 1765734626737}
-index.js?v=1765734482189:60 [BrowserFrame] Drag mode changed in iframe: false
-index.js?v=1765734482189:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765734626961}
-index.js?v=1765734482189:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765734626994}
-index.js?v=1765734482189:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765734627027}
-index.js?v=1765734482189:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765734627045}
-index.js?v=1765734482189:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765734627095}
-index.js?v=1765734482189:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765734627345}
-index.js?v=1765734482189:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765734627878}
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Selected: <span class=​"block whitespace-nowrap">​Automatizza i tuoi processi​</span>​
-index.js?v=1765734482189:60 [MCP] Received message: element-select {source: 'claude-vs-inspector', type: 'element-select', data: {…}, timestamp: 1765734628369}
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Selection mode: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: false
+index.js?v=1765735176040:60 [MCP] Received message: selection-mode-changed Object
+index.js?v=1765735176040:60 [MCP] Received message: drag-mode-changed Object
+index.js?v=1765735176040:60 [BrowserFrame] Drag mode changed in iframe: false
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Selected: <img alt=​"Systemio" loading=​"lazy" width=​"87" height=​"61" decoding=​"async" data-nimg=​"1" class=​"h-[61px]​ w-[87px]​" style=​"color:​transparent" srcset=​"/​_next/​image?url=%2Fimages%2Flogo.webp&w=96&q=75 1x, /​_next/​image?url=%2Fimages%2Flogo.webp&w=256&q=75 2x" src=​"http:​/​/​localhost:​3335/​__claude-vs__/​proxy?url=http%3A%2F%2Flocalhost%3A3000%2F_next%2Fimage%3Furl%3D%252Fimages%252Flogo.webp%26amp%3Bw%3D256%26amp%3Bq%3D75">​
+index.js?v=1765735176040:60 [MCP] Received message: element-select Object
 console.ts:139 [Extension Host] Received message from webview: element-selected
-console.ts:139 [Extension Host] [Claude VS] Element selected: span.block.whitespace-nowrap
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Selected: <span class=​"block whitespace-nowrap">​Automatizza i tuoi processi​</span>​
-index.js?v=1765734482189:60 [MCP] Received message: element-select {source: 'claude-vs-inspector', type: 'element-select', data: {…}, timestamp: 1765734629275}
+console.ts:139 [Extension Host] [Claude VS] Element selected: img.h-[61px].w-[87px]
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+index.js?v=1765735176040:60 [MCP] Received message: element-hover Object
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_react-dom_e6182150._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_react-server-dom-turbopack_094b296d._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_035a6e65._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_client_ff7c4fb0._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_next-devtools_index_5bb98439.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_compiled_4535dad2._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/69652_%40swc_helpers_cjs_679851cc._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_68520e3f._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/_0bffcded._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/e559b_next_dist_03f6cd6c._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/0d889_framer-motion_dist_es_2a6655f9._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/a94f9_tailwind-merge_dist_bundle-mjs_mjs_f110c13e._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/3cf09_motion-dom_dist_es_bed354a0._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/node_modules__pnpm_69062eeb._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_app_components_0d389223._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/node_modules__pnpm_5a28cbe1._.js.map
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/apps_main_app_d41e8b71._.css.map
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735221723}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735221856}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735221890}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735221906}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735221923}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735221940}
+console.ts:139 [Extension Host] Received message from webview: toggle-selection
+console.ts:139 [Extension Host] Selection mode toggled: false
+index.js?v=1765735176040:60 [BrowserFrame] Sent selection mode to iframe: false
+index.js?v=1765735176040:60 [BrowserFrame] Sent drag mode to iframe: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Selection mode: false
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: true
+index.js?v=1765735176040:60 [MCP] Received message: drag-mode-changed {source: 'claude-vs-inspector', type: 'drag-mode-changed', data: true, timestamp: 1765735222909}
+index.js?v=1765735176040:60 [BrowserFrame] Drag mode changed in iframe: true
+index.js?v=1765735176040:60 [MCP] Received message: selection-mode-changed {source: 'claude-vs-inspector', type: 'selection-mode-changed', data: false, timestamp: 1765735222909}
+index.js?v=1765735176040:60 [MCP] Received message: drag-mode-changed {source: 'claude-vs-inspector', type: 'drag-mode-changed', data: true, timestamp: 1765735222910}
+index.js?v=1765735176040:60 [BrowserFrame] Drag mode changed in iframe: true
+index.js?v=1765735176040:60 [BrowserFrame] Sent selection mode to iframe: true
+index.js?v=1765735176040:60 [BrowserFrame] Sent drag mode to iframe: false
+console.ts:139 [Extension Host] Received message from webview: toggle-selection
+console.ts:139 [Extension Host] Selection mode toggled: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Selection mode: true
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Drag mode: false
+index.js?v=1765735176040:60 [MCP] Received message: selection-mode-changed {source: 'claude-vs-inspector', type: 'selection-mode-changed', data: true, timestamp: 1765735224148}
+index.js?v=1765735176040:60 [MCP] Received message: drag-mode-changed {source: 'claude-vs-inspector', type: 'drag-mode-changed', data: false, timestamp: 1765735224149}
+index.js?v=1765735176040:60 [BrowserFrame] Drag mode changed in iframe: false
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735224274}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735224290}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735224307}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735224356}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735224374}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735224408}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735224956}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735224974}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735225639}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735225673}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735226506}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735226739}
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Selected: <img alt=​"Systemio" loading=​"lazy" width=​"87" height=​"61" decoding=​"async" data-nimg=​"1" class=​"h-[61px]​ w-[87px]​" style=​"color:​transparent" srcset=​"/​_next/​image?url=%2Fimages%2Flogo.webp&w=96&q=75 1x, /​_next/​image?url=%2Fimages%2Flogo.webp&w=256&q=75 2x" src=​"http:​/​/​localhost:​3335/​__claude-vs__/​proxy?url=http%3A%2F%2Flocalhost%3A3000%2F_next%2Fimage%3Furl%3D%252Fimages%252Flogo.webp%26amp%3Bw%3D256%26amp%3Bq%3D75">​
+index.js?v=1765735176040:60 [MCP] Received message: element-select {source: 'claude-vs-inspector', type: 'element-select', data: {…}, timestamp: 1765735228021}
 console.ts:139 [Extension Host] Received message from webview: element-selected
-console.ts:139 [Extension Host] [Claude VS] Element selected: span.block.whitespace-nowrap
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Selected: <span class=​"block whitespace-nowrap __claude-vs-editing__" contenteditable=​"true">​Automatizza i tuoi processi​</span>​
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Edit mode started: SPAN Automatizza i tuoi processi
-index.js?v=1765734482189:60 [MCP] Received message: element-select {source: 'claude-vs-inspector', type: 'element-select', data: {…}, timestamp: 1765734629387}
-console.ts:139 [Extension Host] Received message from webview: element-selected
-console.ts:139 [Extension Host] [Claude VS] Element selected: span.block.whitespace-nowrap
-index.js?v=1765734482189:60 [MCP] Received message: edit-mode-started {source: 'claude-vs-inspector', type: 'edit-mode-started', data: {…}, timestamp: 1765734629388}
-index.js?v=1765734482189:60 [BrowserFrame] Edit mode started: span.block.whitespace-nowrap.__claude-vs-editing__:nth-child(1)
-console.ts:139 [Extension Host] Received message from webview: edit-mode-started
-console.ts:139 [Extension Host] [PageBuilder] Edit mode started: span.block.whitespace-nowrap.__claude-vs-editing__:nth-child(1)
-proxy?url=http%3A%2F%2Flocalhost%3A3000:327 [Element Inspector] Text saved: Automatizza
-index.js?v=1765734482189:60 [MCP] Received message: text-content-changed {source: 'claude-vs-inspector', type: 'text-content-changed', data: {…}, timestamp: 1765734646457}
-index.js?v=1765734482189:60 [BrowserFrame] Text content changed: span.block.whitespace-nowrap:nth-child(1)
-console.ts:139 [Extension Host] Received message from webview: text-content-changed
-index.js?v=1765734482189:60 [MCP] Received message: edit-mode-ended {source: 'claude-vs-inspector', type: 'edit-mode-ended', data: {…}, timestamp: 1765734646457}
-console.ts:139 [Extension Host] [PageBuilder] Text content changed: span.block.whitespace-nowrap:nth-child(1)
-index.js?v=1765734482189:60 [BrowserFrame] Edit mode ended: span.block.whitespace-nowrap:nth-child(1) saved: true
-console.ts:139 [Extension Host] [PageBuilder] Old text: Automatizza i tuoi processi
-console.ts:139 [Extension Host] [PageBuilder] New text: Automatizza
-console.ts:139 [Extension Host] [PageBuilder] No source file path, searching in workspace...
-console.ts:139 [Extension Host] Received message from webview: edit-mode-ended
-console.ts:139 [Extension Host] [PageBuilder] Edit mode ended: span.block.whitespace-nowrap:nth-child(1) saved: true
-console.ts:139 [Extension Host] [PageBuilder] Found text in single file: e:\Progetto\Progetti\APP e ASSET\App\Web Design\saas-platform\apps\main\app\components\AnimatedHeadline.tsx
-console.ts:139 [Extension Host] [PageBuilder] Single occurrence found at index: 165
-console.ts:139 [Extension Host] [PageBuilder] Text updated in file: AnimatedHeadline.tsx
+console.ts:139 [Extension Host] [Claude VS] Element selected: img.h-[61px].w-[87px]
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735228156}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735228223}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735228289}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735228573}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735228606}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735228623}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735228856}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735228889}
+index.js?v=1765735176040:70 [App] Forwarded resize-element to iframe: {selector: 'img.h-\\[61px\\].w-\\[87px\\]', width: 87, height: 110}
+index.js?v=1765735176040:60 [SelectionOverlay] Resize complete: {selector: 'img.h-\\[61px\\].w-\\[87px\\]', width: 86.99652099609375, height: 109.99826049804688}
+proxy?url=http%3A%2F%2Flocalhost%3A3000:349 [Element Inspector] Element resized: img.h-\[61px\].w-\[87px\] 87x110
+index.js?v=1765735176040:60 [MCP] Received message: element-resized {source: 'claude-vs-inspector', type: 'element-resized', data: {…}, timestamp: 1765735232943}
+index.js?v=1765735176040:60 [BrowserFrame] Element resized: {selector: 'img.h-\\[61px\\].w-\\[87px\\]', width: 87, height: 110, previousWidth: 86.9965, previousHeight: 60.9983}
+index.js?v=1765735176040:60 [MCP] Received message: element-updated {source: 'claude-vs-inspector', type: 'element-updated', data: {…}, timestamp: 1765735232943}
+index.js?v=1765735176040:60 [BrowserFrame] Element rect updated: img.h-\[61px\].w-\[87px\]
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735232957}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735233639}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735234039}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735234639}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735235722}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735236607}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735236672}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735236706}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735236723}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735236739}
+index.js?v=1765735176040:70 [App] Forwarded undo-drag-change to iframe: {elementSelector: 'img.h-\\[61px\\].w-\\[87px\\]', changeType: 'resize', originalWidth: 86.9965, originalHeight: 60.9983, newWidth: 87, …}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735239172}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735239189}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735239207}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735239223}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735239289}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735239439}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735239756}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735239822}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735241873}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735241890}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735241972}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242039}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242590}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242607}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242623}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242639}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242839}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242856}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242889}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242906}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735242923}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735243056}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735244272}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735244389}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735244505}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735244606}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735244623}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735245639}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735249972}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735249990}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735250756}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735250773}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735250855}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735250906}
+index.js?v=1765735176040:60 [MCP] Received message: element-hover {source: 'claude-vs-inspector', type: 'element-hover', data: {…}, timestamp: 1765735251655}
+console.ts:139 [Extension Host] Received message from webview: refresh
+console.ts:139 [Extension Host] Refresh requested
+index.js?v=1765735176040:60 [MCP] Resetting iframe bridge ready state
+index.js?v=1765735176040:60 [BrowserFrame] URL/refresh changed, reset bridge ready state
 console.ts:139 [Extension Host] [MCPBridge] MCP client disconnected
-log.ts:460   ERR [Extension Host] Cannot post message: webview panel does not exist
-error @ log.ts:460
-error @ log.ts:565
-error @ logService.ts:51
-Sks @ remoteConsoleUtil.ts:58
-$logExtensionHostMessage @ mainThreadConsole.ts:38
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] Cannot post message: webview panel does not exist
-yks @ console.ts:139
-$logExtensionHostMessage @ mainThreadConsole.ts:39
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-log.ts:450  WARN [perf] Renderer reported VERY LONG TASK (110ms), starting profiling session 'c6a3c27f-2128-450e-b026-56d1f46c15c9'
-warn @ log.ts:450
-warn @ log.ts:559
-warn @ logService.ts:47
-(anonymous) @ rendererAutoProfiler.ts:69
-log.ts:460   ERR [Extension Host] Cannot post message: webview panel does not exist
-error @ log.ts:460
-error @ log.ts:565
-error @ logService.ts:51
-Sks @ remoteConsoleUtil.ts:58
-$logExtensionHostMessage @ mainThreadConsole.ts:38
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] Cannot post message: webview panel does not exist
-yks @ console.ts:139
-$logExtensionHostMessage @ mainThreadConsole.ts:39
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-log.ts:460   ERR [Extension Host] Cannot post message: webview panel does not exist
-error @ log.ts:460
-error @ log.ts:565
-error @ logService.ts:51
-Sks @ remoteConsoleUtil.ts:58
-$logExtensionHostMessage @ mainThreadConsole.ts:38
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] Cannot post message: webview panel does not exist
-yks @ console.ts:139
-$logExtensionHostMessage @ mainThreadConsole.ts:39
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-log.ts:460   ERR [Extension Host] Cannot post message: webview panel does not exist
-error @ log.ts:460
-error @ log.ts:565
-error @ logService.ts:51
-Sks @ remoteConsoleUtil.ts:58
-$logExtensionHostMessage @ mainThreadConsole.ts:38
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] Cannot post message: webview panel does not exist
-yks @ console.ts:139
-$logExtensionHostMessage @ mainThreadConsole.ts:39
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-log.ts:460   ERR [Extension Host] Cannot post message: webview panel does not exist
-error @ log.ts:460
-error @ log.ts:565
-error @ logService.ts:51
-Sks @ remoteConsoleUtil.ts:58
-$logExtensionHostMessage @ mainThreadConsole.ts:38
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] Cannot post message: webview panel does not exist
-yks @ console.ts:139
-$logExtensionHostMessage @ mainThreadConsole.ts:39
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] File created: e:\Progetto\Progetti\APP e ASSET\App\Web Design\saas-platform\apps\main\app\components\Hero3DButton.tsx
-log.ts:460   ERR [Extension Host] Cannot post message: webview panel does not exist
-error @ log.ts:460
-error @ log.ts:565
-error @ logService.ts:51
-Sks @ remoteConsoleUtil.ts:58
-$logExtensionHostMessage @ mainThreadConsole.ts:38
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] Cannot post message: webview panel does not exist
-yks @ console.ts:139
-$logExtensionHostMessage @ mainThreadConsole.ts:39
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] File created: e:\Progetto\Progetti\APP e ASSET\App\Web Design\saas-platform\apps\main\.next\dev\server\chunks\ssr\[root-of-the-server]__157db668._.js
-console.ts:139 [Extension Host] File created: e:\Progetto\Progetti\APP e ASSET\App\Web Design\saas-platform\apps\main\.next\dev\server\chunks\ssr\apps_main_app_components_b9644a4d._.js
-console.ts:139 [Extension Host] File created: e:\Progetto\Progetti\APP e ASSET\App\Web Design\saas-platform\apps\main\.next\dev\static\chunks\apps_main_app_components_0d389223._.js
-log.ts:460   ERR [Extension Host] Cannot post message: webview panel does not exist
-error @ log.ts:460
-error @ log.ts:565
-error @ logService.ts:51
-Sks @ remoteConsoleUtil.ts:58
-$logExtensionHostMessage @ mainThreadConsole.ts:38
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] Cannot post message: webview panel does not exist
-yks @ console.ts:139
-$logExtensionHostMessage @ mainThreadConsole.ts:39
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] [MCPBridge] MCP client connected
-log.ts:460   ERR [Extension Host] Cannot post message: webview panel does not exist
-error @ log.ts:460
-error @ log.ts:565
-error @ logService.ts:51
-Sks @ remoteConsoleUtil.ts:58
-$logExtensionHostMessage @ mainThreadConsole.ts:38
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
-console.ts:139 [Extension Host] Cannot post message: webview panel does not exist
-yks @ console.ts:139
-$logExtensionHostMessage @ mainThreadConsole.ts:39
-S @ rpcProtocol.ts:458
-Q @ rpcProtocol.ts:443
-M @ rpcProtocol.ts:373
-L @ rpcProtocol.ts:299
-(anonymous) @ rpcProtocol.ts:161
-C @ event.ts:1202
-fire @ event.ts:1233
-fire @ ipc.net.ts:652
-l.onmessage @ localProcessExtensionHost.ts:383
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/proxy
+console.ts:139 [Extension Host] [ServerManager] GET /__claude-vs__/proxy
