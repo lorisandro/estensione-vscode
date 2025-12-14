@@ -736,11 +736,17 @@ export class ServerManager {
             // Call original method
             originalConsole[method].apply(console, arguments);
 
-            // Skip our own MCP Bridge logs to reduce noise
+            // Serialize the message
             var message = serializeArgs(arguments);
-            if (message.indexOf('[MCP Bridge]') === 0) return;
+
+            // Skip only internal MCP Bridge initialization logs
+            if (message.indexOf('[MCP Bridge] Initializing') === 0) return;
+            if (message.indexOf('[MCP Bridge] html2canvas loaded') === 0) return;
+            if (message.indexOf('[MCP Bridge] Sending ready') === 0) return;
+            if (message.indexOf('[MCP Bridge] Received command') === 0) return;
+            if (message.indexOf('[MCP Bridge] Sending response') === 0) return;
             if (message.indexOf('[Element Inspector]') === 0) return;
-            if (message.indexOf('[Claude VS') === 0) return;
+            if (message.indexOf('[Claude VS HMR]') === 0) return;
 
             var logEntry = {
               type: method,
@@ -829,6 +835,11 @@ export class ServerManager {
         });
 
         originalConsole.log('[MCP Bridge] Initializing...');
+
+        // Send a welcome message to ConsolePanel to show it's working
+        setTimeout(function() {
+          console.info('Console connected - logs from this page will appear here');
+        }, 200);
 
         // Load html2canvas dynamically with error handling
         var html2canvasLoaded = false;
