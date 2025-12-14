@@ -1,6 +1,6 @@
 import { useEffect, RefObject, useRef, useCallback } from 'react';
 import { useVSCodeApi } from './useVSCodeApi';
-import { useNavigationStore } from '../state/stores';
+import { useNavigationStore, useEditorStore, type ConsoleLogEntry } from '../state/stores';
 
 interface NavigationActions {
   navigateTo: (url: string) => void;
@@ -112,6 +112,15 @@ export function useMCPCommands(
       } else if (event.data?.type === '__claude_mcp_bridge_ready__') {
         console.log('[MCP] MCP bridge ready in iframe!');
         markBridgeReady();
+      } else if (event.data?.type === 'console-log') {
+        // Handle console logs from the MCP bridge
+        const { payload } = event.data;
+        if (payload) {
+          useEditorStore.getState().addConsoleLog({
+            type: payload.logType as ConsoleLogEntry['type'],
+            message: payload.message,
+          });
+        }
       }
     };
 
