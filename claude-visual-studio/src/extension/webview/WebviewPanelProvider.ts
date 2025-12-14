@@ -886,15 +886,146 @@ export class WebviewPanelProvider {
     console.log('[PageBuilder] Old text:', oldText.substring(0, 50));
     console.log('[PageBuilder] New text:', newText.substring(0, 50));
 
-    if (!this.currentSourceFilePath) {
-      console.warn('[PageBuilder] No source file path set, cannot update file');
-      vscode.window.showWarningMessage('Cannot save text change: No source file tracked. Please reopen the preview.');
+    // If we have a direct source file path, use it
+    if (this.currentSourceFilePath) {
+      await this.updateTextInFile(this.currentSourceFilePath, selector, xpath, oldText, newText);
       return;
     }
 
+    // No direct source file - search in workspace for the text
+    console.log('[PageBuilder] No source file path, searching in workspace...');
+
+    const matchingFiles = await this.findFilesContainingText(oldText);
+
+    if (matchingFiles.length === 0) {
+      console.warn('[PageBuilder] Text not found in any source file');
+      vscode.window.showWarningMessage(
+        `Could not find "${oldText.substring(0, 30)}..." in any source file. The text might be dynamically generated.`
+      );
+      return;
+    }
+
+    let targetFile: string;
+
+    if (matchingFiles.length === 1) {
+      // Only one file contains this text - use it
+      targetFile = matchingFiles[0];
+      console.log('[PageBuilder] Found text in single file:', targetFile);
+    } else {
+      // Multiple files contain this text - let user choose
+      console.log('[PageBuilder] Found text in multiple files:', matchingFiles.length);
+      const picked = await vscode.window.showQuickPick(
+        matchingFiles.map(f => ({
+          label: path.basename(f),
+          description: vscode.workspace.asRelativePath(f),
+          filePath: f
+        })),
+        {
+          placeHolder: `Select the file to update (${matchingFiles.length} files contain this text)`,
+          title: 'Multiple files found'
+        }
+      );
+
+      if (!picked) {
+        console.log('[PageBuilder] User cancelled file selection');
+        return;
+      }
+      targetFile = picked.filePath;
+    }
+
+    await this.updateTextInSourceFile(targetFile, oldText, newText);
+  }
+
+  /**
+   * Find files in workspace containing the specified text
+   */
+  private async findFilesContainingText(text: string): Promise<string[]> {
+    const matchingFiles: string[] = [];
+
+    // Search in common source file types
+    const patterns = [
+      '**/*.tsx',
+      '**/*.jsx',
+      '**/*.ts',
+      '**/*.js',
+      '**/*.html',
+      '**/*.htm',
+      '**/*.vue',
+      '**/*.svelte'
+    ];
+
+    // Exclude common non-source directories
+    const excludePattern = '{**/node_modules/**,**/.next/**,**/dist/**,**/build/**,**/.git/**}';
+
+    for (const pattern of patterns) {
+      const files = await vscode.workspace.findFiles(pattern, excludePattern, 100);
+
+      for (const file of files) {
+        try {
+          const content = await vscode.workspace.fs.readFile(file);
+          const textContent = new TextDecoder().decode(content);
+
+          // Check if file contains the exact text
+          if (textContent.includes(text)) {
+            matchingFiles.push(file.fsPath);
+          }
+        } catch (error) {
+          // Skip files that can't be read
+        }
+      }
+    }
+
+    return matchingFiles;
+  }
+
+  /**
+   * Update text directly in a source file (for JSX/TSX/JS files)
+   */
+  private async updateTextInSourceFile(filePath: string, oldText: string, newText: string): Promise<void> {
+    try {
+      const fileUri = vscode.Uri.file(filePath);
+      const fileContent = await vscode.workspace.fs.readFile(fileUri);
+      let content = new TextDecoder().decode(fileContent);
+
+      // Simple text replacement - works for most cases
+      // The text should appear exactly as shown in the browser
+      if (content.includes(oldText)) {
+        content = content.replace(oldText, newText);
+
+        const encoder = new TextEncoder();
+        await vscode.workspace.fs.writeFile(fileUri, encoder.encode(content));
+
+        console.log('[PageBuilder] Text updated in file:', path.basename(filePath));
+        vscode.window.setStatusBarMessage(`Text updated in ${path.basename(filePath)}`, 3000);
+
+        // Show the file to the user
+        const doc = await vscode.workspace.openTextDocument(fileUri);
+        await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
+      } else {
+        console.warn('[PageBuilder] Text no longer found in file (may have changed)');
+        vscode.window.showWarningMessage('Text not found in file. It may have been modified.');
+      }
+    } catch (error) {
+      console.error('[PageBuilder] Error updating source file:', error);
+      vscode.window.showErrorMessage(
+        `Failed to update file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Update text in an HTML file using HtmlSourceMapper
+   */
+  private async updateTextInFile(
+    filePath: string,
+    selector: string,
+    xpath: string,
+    oldText: string,
+    newText: string
+  ): Promise<void> {
     try {
       // Read the current file content
-      const fileUri = vscode.Uri.file(this.currentSourceFilePath);
+      const fileUri = vscode.Uri.file(filePath);
       const fileContent = await vscode.workspace.fs.readFile(fileUri);
       const htmlContent = new TextDecoder().decode(fileContent);
 
@@ -912,8 +1043,8 @@ export class WebviewPanelProvider {
         const encoder = new TextEncoder();
         await vscode.workspace.fs.writeFile(fileUri, encoder.encode(updatedContent));
 
-        console.log('[PageBuilder] Text updated in file:', path.basename(this.currentSourceFilePath));
-        vscode.window.setStatusBarMessage(`Text updated in ${path.basename(this.currentSourceFilePath)}`, 3000);
+        console.log('[PageBuilder] Text updated in file:', path.basename(filePath));
+        vscode.window.setStatusBarMessage(`Text updated in ${path.basename(filePath)}`, 3000);
       } else {
         console.warn('[PageBuilder] Could not find element in source file');
         vscode.window.showWarningMessage('Could not find element in source file. Manual update may be required.');
