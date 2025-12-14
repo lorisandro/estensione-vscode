@@ -270,6 +270,11 @@ export class ServerManager {
             // Set CORS headers
             headers['access-control-allow-origin'] = '*';
 
+            // Disable caching to always get fresh content
+            headers['cache-control'] = 'no-cache, no-store, must-revalidate';
+            headers['pragma'] = 'no-cache';
+            headers['expires'] = '0';
+
             res.status(proxyRes.statusCode || 200);
 
             // Set headers
@@ -416,6 +421,11 @@ export class ServerManager {
             const headers = { ...proxyRes.headers };
             delete headers['transfer-encoding'];
             delete headers['content-encoding'];
+
+            // Disable caching to always get fresh content
+            headers['cache-control'] = 'no-cache, no-store, must-revalidate';
+            headers['pragma'] = 'no-cache';
+            headers['expires'] = '0';
 
             res.status(proxyRes.statusCode || 200);
             Object.entries(headers).forEach(([key, value]) => {
