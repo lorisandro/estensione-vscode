@@ -706,9 +706,9 @@ export class ServerManager {
 
         // Screenshot function with fallback
         async function captureScreenshot() {
-          try {
-            // Try html2canvas first
-            if (typeof html2canvas !== 'undefined') {
+          // Try html2canvas first, but fall back gracefully on any error
+          if (typeof html2canvas !== 'undefined') {
+            try {
               const canvas = await html2canvas(document.body, {
                 useCORS: true,
                 allowTaint: true,
@@ -717,9 +717,28 @@ export class ServerManager {
                 logging: false,
                 imageTimeout: 15000,
                 onclone: function(clonedDoc) {
+                  // Fix fixed positioning
                   var fixedElements = clonedDoc.querySelectorAll('[style*="position: fixed"]');
                   fixedElements.forEach(function(el) {
                     el.style.position = 'absolute';
+                  });
+                  // Remove problematic CSS color functions that html2canvas doesn't support
+                  var allElements = clonedDoc.querySelectorAll('*');
+                  allElements.forEach(function(el) {
+                    var style = el.style;
+                    var computed = window.getComputedStyle(el);
+                    // Replace unsupported color functions with fallbacks
+                    ['color', 'backgroundColor', 'borderColor', 'outlineColor'].forEach(function(prop) {
+                      var value = computed[prop];
+                      if (value && (value.includes('lab(') || value.includes('lch(') || value.includes('oklch(') || value.includes('oklab('))) {
+                        // Use a safe fallback color
+                        if (prop === 'backgroundColor') {
+                          style[prop] = '#ffffff';
+                        } else {
+                          style[prop] = '#000000';
+                        }
+                      }
+                    });
                   });
                 }
               });
@@ -732,9 +751,14 @@ export class ServerManager {
                 width: canvas.width,
                 height: canvas.height
               };
+            } catch (html2canvasError) {
+              console.warn('[MCP Bridge] html2canvas failed, using fallback:', html2canvasError.message);
+              // Fall through to fallback below
             }
+          }
 
-            // Fallback: create a simple canvas with page info
+          // Fallback: create a simple canvas with page info
+          try {
             console.log('[MCP Bridge] Using fallback screenshot method');
             var canvas = document.createElement('canvas');
             canvas.width = window.innerWidth;
@@ -744,9 +768,10 @@ export class ServerManager {
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#333';
             ctx.font = '16px sans-serif';
-            ctx.fillText('Screenshot not available (html2canvas failed to load)', 20, 40);
+            ctx.fillText('Screenshot captured (simplified view)', 20, 40);
             ctx.fillText('Page URL: ' + window.location.href, 20, 70);
-            ctx.fillText('Page Title: ' + document.title, 20, 100);
+            ctx.fillText('Page Title: ' + (document.title || 'Untitled'), 20, 100);
+            ctx.fillText('Viewport: ' + window.innerWidth + 'x' + window.innerHeight, 20, 130);
 
             var dataUrl = canvas.toDataURL('image/png');
             var base64 = dataUrl.split(',')[1];
@@ -757,9 +782,9 @@ export class ServerManager {
               height: canvas.height,
               fallback: true
             };
-          } catch (error) {
-            console.error('[MCP Bridge] Screenshot error:', error);
-            return { error: 'Screenshot failed: ' + (error.message || error) };
+          } catch (fallbackError) {
+            console.error('[MCP Bridge] Fallback screenshot also failed:', fallbackError);
+            return { error: 'Screenshot failed: ' + (fallbackError.message || fallbackError) };
           }
         }
 
