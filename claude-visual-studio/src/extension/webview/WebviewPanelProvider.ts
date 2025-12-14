@@ -985,32 +985,108 @@ export class WebviewPanelProvider {
     try {
       const fileUri = vscode.Uri.file(filePath);
       const fileContent = await vscode.workspace.fs.readFile(fileUri);
-      let content = new TextDecoder().decode(fileContent);
+      const content = new TextDecoder().decode(fileContent);
 
-      // Simple text replacement - works for most cases
-      // The text should appear exactly as shown in the browser
-      if (content.includes(oldText)) {
-        content = content.replace(oldText, newText);
+      // Find all occurrences of the text
+      const occurrences = this.findAllOccurrences(content, oldText);
 
-        const encoder = new TextEncoder();
-        await vscode.workspace.fs.writeFile(fileUri, encoder.encode(content));
-
-        console.log('[PageBuilder] Text updated in file:', path.basename(filePath));
-        vscode.window.setStatusBarMessage(`Text updated in ${path.basename(filePath)}`, 3000);
-
-        // Show the file to the user
-        const doc = await vscode.workspace.openTextDocument(fileUri);
-        await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
-      } else {
-        console.warn('[PageBuilder] Text no longer found in file (may have changed)');
+      if (occurrences.length === 0) {
+        console.warn('[PageBuilder] Text not found in file');
         vscode.window.showWarningMessage('Text not found in file. It may have been modified.');
+        return;
       }
+
+      let selectedIndex: number;
+
+      if (occurrences.length === 1) {
+        // Only one occurrence - use it directly
+        selectedIndex = occurrences[0].index;
+        console.log('[PageBuilder] Single occurrence found at index:', selectedIndex);
+      } else {
+        // Multiple occurrences - let user choose which one
+        console.log('[PageBuilder] Multiple occurrences found:', occurrences.length);
+
+        const lines = content.split('\n');
+        const items = occurrences.map((occ, i) => {
+          // Find line number and context
+          let charCount = 0;
+          let lineNum = 0;
+          for (let j = 0; j < lines.length; j++) {
+            if (charCount + lines[j].length >= occ.index) {
+              lineNum = j + 1;
+              break;
+            }
+            charCount += lines[j].length + 1; // +1 for newline
+          }
+
+          const contextLine = lines[lineNum - 1] || '';
+          const trimmedContext = contextLine.trim().substring(0, 80);
+
+          return {
+            label: `Line ${lineNum}: ${trimmedContext}${contextLine.length > 80 ? '...' : ''}`,
+            description: `Occurrence ${i + 1} of ${occurrences.length}`,
+            index: occ.index,
+            lineNum
+          };
+        });
+
+        const picked = await vscode.window.showQuickPick(items, {
+          placeHolder: `Select which occurrence to replace (${occurrences.length} found)`,
+          title: `Replace "${oldText.substring(0, 30)}${oldText.length > 30 ? '...' : ''}"`
+        });
+
+        if (!picked) {
+          console.log('[PageBuilder] User cancelled occurrence selection');
+          return;
+        }
+        selectedIndex = picked.index;
+      }
+
+      // Replace only the selected occurrence
+      const updatedContent =
+        content.substring(0, selectedIndex) +
+        newText +
+        content.substring(selectedIndex + oldText.length);
+
+      const encoder = new TextEncoder();
+      await vscode.workspace.fs.writeFile(fileUri, encoder.encode(updatedContent));
+
+      console.log('[PageBuilder] Text updated in file:', path.basename(filePath));
+      vscode.window.setStatusBarMessage(`Text updated in ${path.basename(filePath)}`, 3000);
+
+      // Show the file to the user and highlight the change
+      const doc = await vscode.workspace.openTextDocument(fileUri);
+      const editor = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: false });
+
+      // Calculate position and select the new text
+      const pos = doc.positionAt(selectedIndex);
+      const endPos = doc.positionAt(selectedIndex + newText.length);
+      editor.selection = new vscode.Selection(pos, endPos);
+      editor.revealRange(new vscode.Range(pos, endPos), vscode.TextEditorRevealType.InCenter);
+
     } catch (error) {
       console.error('[PageBuilder] Error updating source file:', error);
       vscode.window.showErrorMessage(
         `Failed to update file: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * Find all occurrences of a text in content
+   */
+  private findAllOccurrences(content: string, text: string): Array<{ index: number }> {
+    const occurrences: Array<{ index: number }> = [];
+    let startIndex = 0;
+
+    while (true) {
+      const index = content.indexOf(text, startIndex);
+      if (index === -1) break;
+      occurrences.push({ index });
+      startIndex = index + 1;
+    }
+
+    return occurrences;
   }
 
   /**
