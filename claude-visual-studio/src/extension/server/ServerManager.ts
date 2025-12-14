@@ -619,7 +619,19 @@ export class ServerManager {
     const hmrPort = this.config.hmrScriptPort || this.config.port + 1;
 
     // Create the script injection with cache control meta tags
+    // IMPORTANT: Hide page immediately to prevent animations starting before styled-jsx CSS loads
     const inspectorScript = `
+    <!-- Claude Visual Studio: Page Hide Until CSS Ready -->
+    <style id="__claude-vs-loading-hide__">body { visibility: hidden !important; opacity: 0 !important; }</style>
+    <script>
+      // Show page after CSS loads or timeout - this runs early in head
+      window.__claudeVsShowPage = function() {
+        var el = document.getElementById('__claude-vs-loading-hide__');
+        if (el) el.remove();
+      };
+      // Fallback: show page after 2.5 seconds max
+      setTimeout(window.__claudeVsShowPage, 2500);
+    </script>
     <!-- Claude Visual Studio: Cache Control -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -792,24 +804,12 @@ export class ServerManager {
           var serverPort = window.location.port || '3333';
           var cssEndpoint = 'http://localhost:' + serverPort + '/__claude-vs__/styled-jsx-css';
 
-          // Temporarily hide page content until styled-jsx CSS is loaded
-          // This prevents animations from starting with wrong/missing styles
-          var hideStyle = document.createElement('style');
-          hideStyle.id = '__claude-vs-loading-hide__';
-          hideStyle.textContent = 'body { visibility: hidden !important; }';
-          document.documentElement.appendChild(hideStyle);
-
-          // Show page after CSS is loaded or timeout
-          var pageShown = false;
-          function showPage() {
-            if (pageShown) return;
-            pageShown = true;
-            var hideEl = document.getElementById('__claude-vs-loading-hide__');
-            if (hideEl) hideEl.remove();
-          }
-
-          // Show page after max 2 seconds even without CSS
-          setTimeout(showPage, 2000);
+          // Use the global showPage function defined in head
+          // This ensures page stays hidden until CSS is ready
+          var showPage = window.__claudeVsShowPage || function() {
+            var el = document.getElementById('__claude-vs-loading-hide__');
+            if (el) el.remove();
+          };
 
           // Also show page after window load + small delay (for pages without styled-jsx)
           window.addEventListener('load', function() {
