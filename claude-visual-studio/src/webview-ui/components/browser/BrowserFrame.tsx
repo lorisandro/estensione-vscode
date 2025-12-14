@@ -62,11 +62,15 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const isDragMode = !selectionMode && !screenshotMode;
 
   // Convert external URLs to proxy URLs
+  // Use default server base URL if not set
+  const effectiveServerBaseUrl = serverBaseUrl || 'http://localhost:3333';
+
   const iframeSrc = useMemo(() => {
-    const proxiedUrl = getProxiedUrl(url, serverBaseUrl);
-    console.log('[BrowserFrame] URL:', url, '-> Proxied:', proxiedUrl, 'shouldProxy:', shouldProxyUrl(url, serverBaseUrl));
+    const proxiedUrl = getProxiedUrl(url, effectiveServerBaseUrl);
+    console.log('[BrowserFrame] URL:', url, '-> Proxied:', proxiedUrl);
+    console.log('[BrowserFrame] serverBaseUrl:', effectiveServerBaseUrl, 'shouldProxy:', shouldProxyUrl(url, effectiveServerBaseUrl));
     return proxiedUrl;
-  }, [url, serverBaseUrl]);
+  }, [url, effectiveServerBaseUrl]);
 
   // Handle iframe load
   const handleLoad = useCallback(() => {
