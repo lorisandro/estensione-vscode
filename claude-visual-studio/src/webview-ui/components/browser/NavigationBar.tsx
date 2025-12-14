@@ -218,18 +218,19 @@ export const NavigationBar: React.FC = () => {
     });
   }, [selectionMode, setSelectionMode, postMessage]);
 
-  const handleSendToClaude = useCallback(() => {
-    postMessage({
-      type: 'send-to-claude',
-    });
-  }, [postMessage]);
-
   const handleScreenshot = useCallback(() => {
     // Toggle screenshot mode for area capture
     setScreenshotMode(!screenshotMode);
   }, [screenshotMode, setScreenshotMode]);
 
   const handleApply = useCallback(() => {
+    // Se c'e un elemento selezionato, invia le sue info a Claude
+    if (selectedElement) {
+      postMessage({
+        type: 'send-to-claude',
+      });
+    }
+
     // Send all changes (drag + resize) to extension for Claude Code integration
     if (dragChanges.length > 0) {
       postMessage({
@@ -258,7 +259,7 @@ export const NavigationBar: React.FC = () => {
     // Dispatch custom event to be handled by App.tsx which forwards to iframe
     window.dispatchEvent(new CustomEvent('claude-vs-apply-drag-changes'));
     applyChanges();
-  }, [applyChanges, dragChanges, postMessage]);
+  }, [applyChanges, dragChanges, postMessage, selectedElement]);
 
   const handleUndo = useCallback(() => {
     const lastChange = undoLastChange();
@@ -347,8 +348,8 @@ export const NavigationBar: React.FC = () => {
         </div>
       )}
 
-      {/* Apply/Undo buttons when there are pending changes */}
-      {hasPendingChanges && (
+      {/* Apply/Undo buttons when there are pending changes or element selected */}
+      {(hasPendingChanges || selectedElement) && (
         <div style={styles.applyUndoGroup}>
           <button
             onClick={handleApply}
@@ -365,21 +366,23 @@ export const NavigationBar: React.FC = () => {
             </svg>
             Apply
           </button>
-          <button
-            onClick={handleUndo}
-            style={{
-              ...styles.undoButton,
-              ...(hoveredButton === 'undo' ? { backgroundColor: 'var(--vscode-button-secondaryHoverBackground)' } : {}),
-            }}
-            onMouseEnter={() => setHoveredButton('undo')}
-            onMouseLeave={() => setHoveredButton(null)}
-            title="Undo last change"
-          >
-            <svg style={{ width: '12px', height: '12px', fill: 'currentColor' }} viewBox="0 0 16 16">
-              <path d="M4.5 3A3.5 3.5 0 018 6.5V8h1.5a.5.5 0 01.4.8l-3 4a.5.5 0 01-.8 0l-3-4A.5.5 0 013.5 8H5V6.5A2.5 2.5 0 017.5 4H12a.5.5 0 010 1H7.5A1.5 1.5 0 006 6.5V8h-.5a.5.5 0 00-.4.8L8 12.5 10.9 8.8a.5.5 0 00-.4-.8H8V6.5A3.5 3.5 0 004.5 3z" transform="scale(-1,1) translate(-16,0)"/>
-            </svg>
-            Undo
-          </button>
+          {hasPendingChanges && (
+            <button
+              onClick={handleUndo}
+              style={{
+                ...styles.undoButton,
+                ...(hoveredButton === 'undo' ? { backgroundColor: 'var(--vscode-button-secondaryHoverBackground)' } : {}),
+              }}
+              onMouseEnter={() => setHoveredButton('undo')}
+              onMouseLeave={() => setHoveredButton(null)}
+              title="Undo last change"
+            >
+              <svg style={{ width: '12px', height: '12px', fill: 'currentColor' }} viewBox="0 0 16 16">
+                <path d="M4.5 3A3.5 3.5 0 018 6.5V8h1.5a.5.5 0 01.4.8l-3 4a.5.5 0 01-.8 0l-3-4A.5.5 0 013.5 8H5V6.5A2.5 2.5 0 017.5 4H12a.5.5 0 010 1H7.5A1.5 1.5 0 006 6.5V8h-.5a.5.5 0 00-.4.8L8 12.5 10.9 8.8a.5.5 0 00-.4-.8H8V6.5A3.5 3.5 0 004.5 3z" transform="scale(-1,1) translate(-16,0)"/>
+              </svg>
+              Undo
+            </button>
+          )}
         </div>
       )}
 
@@ -394,25 +397,6 @@ export const NavigationBar: React.FC = () => {
           <path d="M1 1l5 14 2-6 6-2L1 1zm3.5 4.5l5 1.8-2.8 1-1 2.8-1.2-5.6z" />
         </svg>
       </button>
-
-      {/* Send to Claude button - only visible when element is selected */}
-      {selectedElement && (
-        <button
-          onClick={handleSendToClaude}
-          style={{
-            ...styles.applyButton,
-            ...(hoveredButton === 'sendToClaude' ? { backgroundColor: 'var(--vscode-button-hoverBackground)' } : {}),
-          }}
-          onMouseEnter={() => setHoveredButton('sendToClaude')}
-          onMouseLeave={() => setHoveredButton(null)}
-          title="Invia elemento selezionato a Claude Code"
-        >
-          <svg style={{ width: '12px', height: '12px', fill: 'currentColor' }} viewBox="0 0 16 16">
-            <path d="M1 1v14h14V1H1zm13 13H2V2h12v12zM4 8l4 4 4-4H9V4H7v4H4z" transform="rotate(90,8,8)"/>
-          </svg>
-          Invia a Claude
-        </button>
-      )}
 
       <button
         onClick={handleScreenshot}
