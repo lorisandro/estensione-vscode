@@ -24,6 +24,9 @@ export class ServerManager {
   // Track the last proxied origin for relative URL resolution
   private lastProxiedOrigin: string | null = null;
 
+  // Store extracted styled-jsx CSS to inject into HTML
+  private extractedStyledJsxCss: Map<string, string> = new Map();
+
   private readonly MIME_TYPES: Record<string, string> = {
     '.html': 'text/html',
     '.htm': 'text/html',
@@ -235,6 +238,9 @@ export class ServerManager {
         // Save the origin for resolving relative URLs (like /_next/...)
         this.lastProxiedOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
 
+        // Clear previously extracted styled-jsx CSS for fresh page load
+        this.clearExtractedStyledJsxCss();
+
         const proxyReq = httpModule.request(
           {
             hostname: parsedUrl.hostname,
@@ -434,8 +440,25 @@ export class ServerManager {
               }
             });
 
-            // Pipe the response directly
-            proxyRes.pipe(res);
+            // For JavaScript files, collect body and extract styled-jsx CSS
+            const contentType = proxyRes.headers['content-type'] || '';
+            const isJavaScript = contentType.includes('javascript') || req.originalUrl.endsWith('.js');
+
+            if (isJavaScript) {
+              const chunks: Buffer[] = [];
+              proxyRes.on('data', (chunk) => chunks.push(chunk));
+              proxyRes.on('end', () => {
+                const body = Buffer.concat(chunks).toString('utf-8');
+
+                // Extract styled-jsx CSS from the JavaScript
+                this.extractStyledJsxCss(body);
+
+                res.send(body);
+              });
+            } else {
+              // Pipe non-JS responses directly
+              proxyRes.pipe(res);
+            }
           }
         );
 
@@ -630,13 +653,19 @@ export class ServerManager {
     </script>
     `;
 
+    // Get any extracted styled-jsx CSS to inject
+    const styledJsxStyles = this.getExtractedStyledJsxStyles();
+
+    // Combine styled-jsx CSS with inspector script
+    const allInjections = styledJsxStyles + inspectorScript;
+
     // Try to inject before </head>, fallback to before </body>, or append to end
     if (htmlContent.includes('</head>')) {
-      return htmlContent.replace('</head>', `${inspectorScript}</head>`);
+      return htmlContent.replace('</head>', `${allInjections}</head>`);
     } else if (htmlContent.includes('</body>')) {
-      return htmlContent.replace('</body>', `${inspectorScript}</body>`);
+      return htmlContent.replace('</body>', `${allInjections}</body>`);
     } else {
-      return htmlContent + inspectorScript;
+      return htmlContent + allInjections;
     }
   }
 
@@ -715,6 +744,67 @@ export class ServerManager {
     <!-- Claude Visual Studio: MCP Bridge -->
     <script>
       (function() {
+        // styled-jsx CSS injection polyfill
+        // This ensures styled-jsx CSS works even if the normal runtime fails
+        (function() {
+          var injectedStyles = {};
+
+          // Monitor for styled-jsx style elements being created
+          var originalCreateElement = document.createElement.bind(document);
+          document.createElement = function(tagName) {
+            var element = originalCreateElement(tagName);
+
+            // If it's a style element, track it
+            if (tagName.toLowerCase() === 'style') {
+              // Watch for styled-jsx id being set
+              var originalSetAttribute = element.setAttribute.bind(element);
+              element.setAttribute = function(name, value) {
+                originalSetAttribute(name, value);
+
+                // styled-jsx uses id attribute with the hash
+                if (name === 'id' && value && value.match(/^jsx-[a-f0-9]+$|^__jsx-style-[a-f0-9]+$/)) {
+                  // Ensure this style gets into the document
+                  setTimeout(function() {
+                    if (!element.parentNode && element.textContent) {
+                      document.head.appendChild(element);
+                      console.log('[Claude VS] Recovered styled-jsx CSS:', value);
+                    }
+                  }, 100);
+                }
+              };
+            }
+
+            return element;
+          };
+
+          // Also monitor for styled-jsx's flush mechanism
+          // styled-jsx uses a global registry that we can tap into
+          var checkStyledJsx = function() {
+            // Check if styled-jsx registry exists
+            if (window.__STYLED_JSX_REGISTRY__ || window._styledJsxRegistry) {
+              var registry = window.__STYLED_JSX_REGISTRY__ || window._styledJsxRegistry;
+              if (registry && typeof registry.flush === 'function') {
+                // Flush any pending styles
+                try {
+                  registry.flush();
+                } catch (e) {
+                  // Ignore errors
+                }
+              }
+            }
+          };
+
+          // Check periodically for a short time after page load
+          var checkCount = 0;
+          var checkInterval = setInterval(function() {
+            checkStyledJsx();
+            checkCount++;
+            if (checkCount > 20) {
+              clearInterval(checkInterval);
+            }
+          }, 200);
+        })();
+
         // Console log interception - capture all console output
         var consoleLogs = [];
         var maxLogs = 1000; // Limit to prevent memory issues
@@ -1082,6 +1172,57 @@ export class ServerManager {
     } else {
       return html + mcpBridgeScript;
     }
+  }
+
+  /**
+   * Extract styled-jsx CSS from JavaScript content
+   * styled-jsx embeds CSS in JavaScript with a pattern like: id: "hash", children: "css"
+   */
+  private extractStyledJsxCss(jsContent: string): void {
+    // Match styled-jsx pattern: { id: "hash", children: "css" }
+    // The pattern in Turbopack looks like: ["default"], { id: "hash", children: "CSS_STRING" }
+    const styledJsxPattern = /\["default"\]\s*,\s*\{\s*id:\s*"([a-f0-9]+)"\s*,\s*children:\s*"([^"]+)"/g;
+
+    let match;
+    while ((match = styledJsxPattern.exec(jsContent)) !== null) {
+      const cssId = match[1];
+      const cssContent = match[2];
+
+      // Unescape the CSS content (it's escaped for JavaScript string)
+      const unescapedCss = cssContent
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+
+      if (!this.extractedStyledJsxCss.has(cssId)) {
+        this.extractedStyledJsxCss.set(cssId, unescapedCss);
+        console.log(`[ServerManager] Extracted styled-jsx CSS: ${cssId} (${unescapedCss.length} chars)`);
+      }
+    }
+  }
+
+  /**
+   * Get all extracted styled-jsx CSS as a single style tag
+   */
+  private getExtractedStyledJsxStyles(): string {
+    if (this.extractedStyledJsxCss.size === 0) {
+      return '';
+    }
+
+    const allCss = Array.from(this.extractedStyledJsxCss.values()).join('\n');
+    return `
+    <!-- Claude Visual Studio: Extracted styled-jsx CSS -->
+    <style id="__claude-vs-styled-jsx__">
+${allCss}
+    </style>`;
+  }
+
+  /**
+   * Clear extracted styled-jsx CSS (called when navigating to new page)
+   */
+  private clearExtractedStyledJsxCss(): void {
+    this.extractedStyledJsxCss.clear();
   }
 
   /**
