@@ -63,7 +63,9 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
   // Convert external URLs to proxy URLs
   const iframeSrc = useMemo(() => {
-    return getProxiedUrl(url, serverBaseUrl);
+    const proxiedUrl = getProxiedUrl(url, serverBaseUrl);
+    console.log('[BrowserFrame] URL:', url, '-> Proxied:', proxiedUrl, 'shouldProxy:', shouldProxyUrl(url, serverBaseUrl));
+    return proxiedUrl;
   }, [url, serverBaseUrl]);
 
   // Handle iframe load
