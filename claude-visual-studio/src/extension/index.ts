@@ -14,6 +14,7 @@ import { SidebarViewProvider } from './webview/SidebarViewProvider';
 import { OpenPreviewCommand } from './commands/OpenPreviewCommand';
 import { MCPBridge } from './mcp/MCPBridge';
 import { ServerManager } from './server/ServerManager';
+import { devServerRunner, type ServerLogEntry } from './server/DevServerRunner';
 
 // Extension-wide state
 let webviewProvider: WebviewPanelProvider | undefined;
@@ -299,6 +300,61 @@ async function initializeMCPBridge(): Promise<void> {
     } catch (error) {
       console.error('[MCP] openBrowser error:', error);
       throw error;
+    }
+  });
+
+  // Console logs handlers (browser logs are handled via webview postMessage)
+  mcpBridge.registerHandler('getConsoleLogs', async (params) => {
+    return createWebviewRequest('getConsoleLogs', params, 10000);
+  });
+
+  mcpBridge.registerHandler('clearConsoleLogs', async () => {
+    return createWebviewRequest('clearConsoleLogs', {}, 5000);
+  });
+
+  // Backend dev server handlers
+  mcpBridge.registerHandler('startDevServer', async (params) => {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const cwd = params.cwd || workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+    const command = params.command || 'npm';
+    const args = params.args || ['run', 'dev'];
+
+    const success = devServerRunner.start({ command, args, cwd });
+    return { success, message: success ? `Started ${command} ${args.join(' ')}` : 'Failed to start server' };
+  });
+
+  mcpBridge.registerHandler('stopDevServer', async () => {
+    const success = devServerRunner.stop();
+    return { success, message: success ? 'Server stopped' : 'No server running' };
+  });
+
+  mcpBridge.registerHandler('restartDevServer', async () => {
+    const success = devServerRunner.restart();
+    return { success, message: success ? 'Server restarting...' : 'No previous server config' };
+  });
+
+  mcpBridge.registerHandler('getDevServerStatus', async () => {
+    return devServerRunner.getStatus();
+  });
+
+  mcpBridge.registerHandler('getBackendLogs', async (params) => {
+    const filter = params.filter || 'all';
+    const limit = params.limit || 100;
+    return devServerRunner.getLogs(filter, limit);
+  });
+
+  mcpBridge.registerHandler('clearBackendLogs', async () => {
+    devServerRunner.clearLogs();
+    return { success: true, message: 'Backend logs cleared' };
+  });
+
+  // Listen for backend logs and send to webview in real-time
+  devServerRunner.on('log', (logEntry: ServerLogEntry) => {
+    if (webviewProvider) {
+      webviewProvider.postMessage({
+        type: 'backendLog',
+        payload: logEntry,
+      });
     }
   });
 

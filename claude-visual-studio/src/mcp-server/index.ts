@@ -350,6 +350,78 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
         },
       },
+      {
+        name: 'backend_start_dev_server',
+        description: 'Start a development server (Next.js, Vite, etc.) and capture its logs in real-time. The server output will be available via backend_get_logs.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            command: {
+              type: 'string',
+              description: 'Command to run. Default is "npm".',
+            },
+            args: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Arguments for the command. Default is ["run", "dev"].',
+            },
+            cwd: {
+              type: 'string',
+              description: 'Working directory. Default is the workspace root.',
+            },
+          },
+        },
+      },
+      {
+        name: 'backend_stop_dev_server',
+        description: 'Stop the running development server.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'backend_restart_dev_server',
+        description: 'Restart the development server with the same configuration.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'backend_get_status',
+        description: 'Get the status of the development server (running, pid, command).',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'backend_get_logs',
+        description: 'Get logs from the development server (stdout/stderr). Use this to see Next.js, Vite, or other server output in real-time.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            filter: {
+              type: 'string',
+              description: 'Filter logs by type: "all", "stdout", "stderr", "info", "error". Default is "all".',
+              enum: ['all', 'stdout', 'stderr', 'info', 'error'],
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of logs to return. Default is 100.',
+            },
+          },
+        },
+      },
+      {
+        name: 'backend_clear_logs',
+        description: 'Clear the backend server logs buffer.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -482,6 +554,70 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
         }
         return { content: [{ type: 'text', text: 'Console logs cleared.' }] };
+
+      case 'backend_start_dev_server':
+        result = await sendCommand('startDevServer', {
+          command: args?.command,
+          args: args?.args,
+          cwd: args?.cwd,
+        });
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: result.message || 'Dev server started. Use backend_get_logs to see output.' }] };
+
+      case 'backend_stop_dev_server':
+        result = await sendCommand('stopDevServer');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: result.message || 'Dev server stopped.' }] };
+
+      case 'backend_restart_dev_server':
+        result = await sendCommand('restartDevServer');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: result.message || 'Dev server restarting...' }] };
+
+      case 'backend_get_status':
+        result = await sendCommand('getDevServerStatus');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        const statusText = result.running
+          ? `Server running (PID: ${result.pid})\nCommand: ${result.command}`
+          : 'No server running';
+        return { content: [{ type: 'text', text: statusText }] };
+
+      case 'backend_get_logs':
+        result = await sendCommand('getBackendLogs', {
+          filter: args?.filter || 'all',
+          limit: args?.limit || 100,
+        });
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        const backendLogs = result.logs || [];
+        if (backendLogs.length === 0) {
+          return { content: [{ type: 'text', text: 'No backend logs captured. Start a dev server first with backend_start_dev_server.' }] };
+        }
+        const formattedBackendLogs = backendLogs.map((log: any) => {
+          const time = new Date(log.timestamp).toISOString().split('T')[1].slice(0, 12);
+          const prefix = `[${time}] [${log.type.toUpperCase()}]`;
+          return `${prefix} ${log.message}`;
+        }).join('\n');
+        const backendSummary = result.truncated
+          ? `Showing ${backendLogs.length} of ${result.total} logs (truncated)\n\n`
+          : `${backendLogs.length} log(s)\n\n`;
+        return { content: [{ type: 'text', text: backendSummary + formattedBackendLogs }] };
+
+      case 'backend_clear_logs':
+        result = await sendCommand('clearBackendLogs');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: 'Backend logs cleared.' }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);
