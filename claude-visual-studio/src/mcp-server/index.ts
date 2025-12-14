@@ -324,6 +324,32 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
         },
       },
+      {
+        name: 'browser_get_console_logs',
+        description: 'Get console logs from the browser preview. Captures console.log, console.error, console.warn, console.info, console.debug, uncaught errors, and unhandled promise rejections from the previewed page.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            filter: {
+              type: 'string',
+              description: 'Filter logs by type: "all", "log", "error", "warn", "info", "debug". Default is "all".',
+              enum: ['all', 'log', 'error', 'warn', 'info', 'debug'],
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of logs to return. Default is 100.',
+            },
+          },
+        },
+      },
+      {
+        name: 'browser_clear_console_logs',
+        description: 'Clear the console logs buffer in the browser preview.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -426,6 +452,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
         }
         return { content: [{ type: 'text', text: 'Visual Preview panel opened. You can now navigate to a URL.' }] };
+
+      case 'browser_get_console_logs':
+        result = await sendCommand('getConsoleLogs', {
+          filter: args?.filter || 'all',
+          limit: args?.limit || 100,
+        });
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        // Format logs for readability
+        const logs = result.logs || [];
+        if (logs.length === 0) {
+          return { content: [{ type: 'text', text: 'No console logs captured.' }] };
+        }
+        const formattedLogs = logs.map((log: any) => {
+          const time = new Date(log.timestamp).toISOString().split('T')[1].slice(0, 12);
+          const prefix = `[${time}] [${log.type.toUpperCase()}]`;
+          return `${prefix} ${log.message}${log.stack ? '\n' + log.stack : ''}`;
+        }).join('\n\n');
+        const summary = result.truncated
+          ? `Showing ${logs.length} of ${result.total} logs (truncated)\n\n`
+          : `${logs.length} log(s)\n\n`;
+        return { content: [{ type: 'text', text: summary + formattedLogs }] };
+
+      case 'browser_clear_console_logs':
+        result = await sendCommand('clearConsoleLogs');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: 'Console logs cleared.' }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

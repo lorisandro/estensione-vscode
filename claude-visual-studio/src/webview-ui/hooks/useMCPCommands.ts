@@ -227,6 +227,19 @@ export function useMCPCommands(
           result = await sendToIframe('getElements', { selector: params.selector });
           break;
 
+        case 'getConsoleLogs':
+          // Get console logs from iframe
+          result = await sendToIframe('getConsoleLogs', {
+            filter: params.filter,
+            limit: params.limit
+          });
+          break;
+
+        case 'clearConsoleLogs':
+          // Clear console logs in iframe
+          result = await sendToIframe('clearConsoleLogs', {});
+          break;
+
         default:
           result = { error: `Unknown command: ${command}` };
       }

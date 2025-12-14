@@ -152,7 +152,7 @@ export const NavigationBar: React.FC = () => {
     clearDragChanges,
     selectedElement,
   } = useSelectionStore();
-  const { cssInspectorVisible, toggleCssInspector } = useEditorStore();
+  const { cssInspectorVisible, toggleCssInspector, consoleVisible, toggleConsole, consoleLogs } = useEditorStore();
   const { postMessage } = useVSCodeApi();
 
   // Drag mode is active when no other mode is enabled
@@ -453,6 +453,42 @@ export const NavigationBar: React.FC = () => {
           <path d="M2 1.5l-.5 3v9l.5.5h12l.5-.5v-9l-.5-3H2zm0 12V5h12v8.5H2zm0-9.5V2h12v2H2z" />
           <path d="M3 7h2v1H3V7zm0 2h4v1H3V9zm6-2h4v1H9V7zm0 2h2v1H9V9z" />
         </svg>
+      </button>
+
+      {/* Console toggle button */}
+      <button
+        onClick={toggleConsole}
+        style={{
+          ...getButtonStyle('console', consoleVisible),
+          position: 'relative',
+        }}
+        onMouseEnter={() => setHoveredButton('console')}
+        onMouseLeave={() => setHoveredButton(null)}
+        title={consoleVisible ? 'Hide Console' : 'Show Console'}
+      >
+        <svg style={styles.icon} viewBox="0 0 16 16">
+          <path d="M2 2h12v12H2V2zm1 1v10h10V3H3z" />
+          <path d="M4 5l2 2-2 2v1l3-3-3-3v1zm4 4h4v1H8V9z" />
+        </svg>
+        {/* Error count badge */}
+        {consoleLogs.filter(l => l.type === 'error').length > 0 && (
+          <span style={{
+            position: 'absolute',
+            top: '-2px',
+            right: '-2px',
+            backgroundColor: 'var(--vscode-errorForeground, #f14c4c)',
+            color: 'white',
+            fontSize: '9px',
+            fontWeight: 600,
+            padding: '0 4px',
+            borderRadius: '8px',
+            minWidth: '14px',
+            textAlign: 'center',
+            lineHeight: '14px',
+          }}>
+            {consoleLogs.filter(l => l.type === 'error').length}
+          </span>
+        )}
       </button>
     </div>
   );

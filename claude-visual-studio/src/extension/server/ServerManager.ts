@@ -701,7 +701,134 @@ export class ServerManager {
     <!-- Claude Visual Studio: MCP Bridge -->
     <script>
       (function() {
-        console.log('[MCP Bridge] Initializing...');
+        // Console log interception - capture all console output
+        var consoleLogs = [];
+        var maxLogs = 1000; // Limit to prevent memory issues
+
+        // Store original console methods
+        var originalConsole = {
+          log: console.log.bind(console),
+          error: console.error.bind(console),
+          warn: console.warn.bind(console),
+          info: console.info.bind(console),
+          debug: console.debug.bind(console)
+        };
+
+        // Helper to serialize arguments safely
+        function serializeArgs(args) {
+          return Array.from(args).map(function(arg) {
+            if (arg === null) return 'null';
+            if (arg === undefined) return 'undefined';
+            if (typeof arg === 'string') return arg;
+            if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg);
+            if (arg instanceof Error) return arg.name + ': ' + arg.message + (arg.stack ? '\\n' + arg.stack : '');
+            try {
+              return JSON.stringify(arg, null, 2);
+            } catch (e) {
+              return String(arg);
+            }
+          }).join(' ');
+        }
+
+        // Intercept console methods
+        ['log', 'error', 'warn', 'info', 'debug'].forEach(function(method) {
+          console[method] = function() {
+            // Call original method
+            originalConsole[method].apply(console, arguments);
+
+            // Skip our own MCP Bridge logs to reduce noise
+            var message = serializeArgs(arguments);
+            if (message.indexOf('[MCP Bridge]') === 0) return;
+            if (message.indexOf('[Element Inspector]') === 0) return;
+            if (message.indexOf('[Claude VS') === 0) return;
+
+            var logEntry = {
+              type: method,
+              message: message,
+              timestamp: Date.now(),
+              url: window.location.href
+            };
+
+            // Store the log entry
+            consoleLogs.push(logEntry);
+
+            // Trim old logs if exceeding limit
+            if (consoleLogs.length > maxLogs) {
+              consoleLogs = consoleLogs.slice(-maxLogs);
+            }
+
+            // Send log to parent in real-time for ConsolePanel display
+            window.parent.postMessage({
+              type: 'console-log',
+              payload: {
+                logType: method,
+                message: message,
+                timestamp: logEntry.timestamp
+              }
+            }, '*');
+          };
+        });
+
+        // Also capture uncaught errors
+        window.addEventListener('error', function(event) {
+          var errorMessage = 'Uncaught Error: ' + event.message + ' at ' + event.filename + ':' + event.lineno + ':' + event.colno;
+          var logEntry = {
+            type: 'error',
+            message: errorMessage,
+            timestamp: Date.now(),
+            url: window.location.href,
+            stack: event.error ? event.error.stack : null
+          };
+          consoleLogs.push(logEntry);
+
+          // Send to parent in real-time
+          window.parent.postMessage({
+            type: 'console-log',
+            payload: {
+              logType: 'error',
+              message: errorMessage + (logEntry.stack ? '\\n' + logEntry.stack : ''),
+              timestamp: logEntry.timestamp
+            }
+          }, '*');
+        });
+
+        // Capture unhandled promise rejections
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event.reason;
+          var message = 'Unhandled Promise Rejection: ';
+          if (reason instanceof Error) {
+            message += reason.message;
+          } else if (typeof reason === 'string') {
+            message += reason;
+          } else {
+            try {
+              message += JSON.stringify(reason);
+            } catch (e) {
+              message += String(reason);
+            }
+          }
+          var stack = reason instanceof Error ? reason.stack : null;
+          var logEntry = {
+            type: 'error',
+            message: message,
+            timestamp: Date.now(),
+            url: window.location.href,
+            stack: stack
+          };
+          consoleLogs.push(logEntry);
+
+          // Send to parent in real-time
+          window.parent.postMessage({
+            type: 'console-log',
+            payload: {
+              logType: 'error',
+              message: message + (stack ? '\\n' + stack : ''),
+              timestamp: logEntry.timestamp
+            }
+          }, '*');
+        });
+
+        originalConsole.log('[MCP Bridge] Initializing...');
 
         // Load html2canvas dynamically with error handling
         var html2canvasLoaded = false;
@@ -870,6 +997,30 @@ export class ServerManager {
 
               case 'screenshot':
                 result = await captureScreenshot();
+                break;
+
+              case 'getConsoleLogs':
+                // Return captured console logs
+                var filter = params.filter; // 'all', 'error', 'warn', 'log', 'info', 'debug'
+                var limit = params.limit || 100;
+                var filteredLogs = consoleLogs;
+                if (filter && filter !== 'all') {
+                  filteredLogs = consoleLogs.filter(function(log) {
+                    return log.type === filter;
+                  });
+                }
+                // Return most recent logs up to limit
+                result = {
+                  logs: filteredLogs.slice(-limit),
+                  total: filteredLogs.length,
+                  truncated: filteredLogs.length > limit
+                };
+                break;
+
+              case 'clearConsoleLogs':
+                // Clear the console logs buffer
+                consoleLogs = [];
+                result = { success: true, message: 'Console logs cleared' };
                 break;
 
               default:
