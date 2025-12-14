@@ -848,23 +848,45 @@ export class ServerManager {
             return element;
           };
 
-          // styled-jsx CSS is already injected server-side
-          // Only fetch once on load as a fallback, don't poll to avoid blocking animations
-          var cssAlreadyFetched = false;
+          // styled-jsx CSS is extracted from JS files as they load through the proxy
+          // We need to retry a few times since JS files load asynchronously
+          var cssInjected = false;
+          var retryCount = 0;
+          var maxRetries = 5;
 
-          function fetchOnce() {
-            if (cssAlreadyFetched) return;
-            cssAlreadyFetched = true;
-            fetchAndInjectStyledJsxCss();
+          function fetchWithRetry() {
+            if (cssInjected || retryCount >= maxRetries) return;
+            retryCount++;
+
+            fetch(cssEndpoint)
+              .then(function(response) { return response.text(); })
+              .then(function(css) {
+                if (css && css.trim().length > 0) {
+                  cssInjected = true;
+                  var existingStyle = document.getElementById('__claude-vs-styled-jsx__');
+                  if (existingStyle) {
+                    existingStyle.textContent = css;
+                  } else {
+                    var style = document.createElement('style');
+                    style.id = '__claude-vs-styled-jsx__';
+                    style.textContent = css;
+                    document.head.appendChild(style);
+                  }
+                  console.log('[Claude VS] Injected styled-jsx CSS from server');
+                } else if (retryCount < maxRetries) {
+                  // CSS not ready yet, retry after delay
+                  setTimeout(fetchWithRetry, 1000);
+                }
+              })
+              .catch(function() {
+                if (retryCount < maxRetries) {
+                  setTimeout(fetchWithRetry, 1000);
+                }
+              });
           }
 
-          // Fetch once when DOM is ready
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', fetchOnce);
-          } else {
-            // Small delay to let server extract CSS from JS files first
-            setTimeout(fetchOnce, 500);
-          }
+          // Start fetching after a delay to let JS files load first
+          setTimeout(fetchWithRetry, 1000);
         })();
 
         // Console log interception - capture all console output
