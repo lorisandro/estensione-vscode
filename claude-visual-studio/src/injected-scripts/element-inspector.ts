@@ -31,9 +31,35 @@ interface ElementInfo {
 }
 
 interface InspectorMessage {
-  type: 'element-hover' | 'element-select' | 'inspector-ready' | 'selection-mode-changed' | 'element-drag-start' | 'element-drag-end' | 'drag-mode-changed' | 'css-style-applied' | 'element-updated' | 'element-resized';
-  data?: ElementInfo | boolean | DragChangeData | CssStyleChange | ResizeData;
+  type: 'element-hover' | 'element-select' | 'inspector-ready' | 'selection-mode-changed' | 'element-drag-start' | 'element-drag-end' | 'drag-mode-changed' | 'css-style-applied' | 'element-updated' | 'element-resized' | 'edit-mode-started' | 'text-content-changed' | 'inline-style-changed' | 'edit-mode-ended';
+  data?: ElementInfo | boolean | DragChangeData | CssStyleChange | ResizeData | EditModeData | TextChangeData | InlineStyleChangeData | EditModeEndedData;
   timestamp: number;
+}
+
+interface EditModeData {
+  selector: string;
+  xpath: string;
+  editType: 'text' | 'style';
+  originalText: string;
+}
+
+interface TextChangeData {
+  selector: string;
+  xpath: string;
+  oldText: string;
+  newText: string;
+}
+
+interface InlineStyleChangeData {
+  selector: string;
+  xpath: string;
+  property: string;
+  value: string;
+}
+
+interface EditModeEndedData {
+  selector: string;
+  saved: boolean;
 }
 
 interface ResizeData {
@@ -157,6 +183,12 @@ class ElementInspector {
   private dragHoverOverlay: HTMLDivElement | null = null;
   private lastDragHoveredElement: HTMLElement | null = null;
 
+  // Text edit mode properties (Page Builder)
+  private isEditMode: boolean = false;
+  private editingElement: HTMLElement | null = null;
+  private originalTextContent: string = '';
+  private floatingToolbar: HTMLDivElement | null = null;
+
   private readonly IMPORTANT_STYLES = [
     // Position & Transform
     'position',
@@ -270,6 +302,9 @@ class ElementInspector {
     this.createDragHoverOverlay();
     this.createPageBuilderElements();
 
+    // Create text edit mode elements
+    this.createFloatingToolbar();
+
     // Setup event listeners
     this.setupEventListeners();
 
@@ -355,6 +390,19 @@ class ElementInspector {
         z-index: 999998 !important;
         box-shadow: 0 8px 24px rgba(0,0,0,0.3) !important;
         outline: 2px solid #007acc !important;
+      }
+      /* Text Edit Mode (Page Builder) */
+      .__claude-vs-editing__ {
+        outline: 2px solid #0078d4 !important;
+        outline-offset: 2px !important;
+        background-color: rgba(0, 120, 212, 0.05) !important;
+        min-width: 20px !important;
+        min-height: 1em !important;
+        cursor: text !important;
+      }
+      .__claude-vs-editing__:focus {
+        outline: 2px solid #0078d4 !important;
+        outline-offset: 2px !important;
       }
     `;
     document.head.appendChild(this.dragStyleElement);
@@ -657,6 +705,375 @@ class ElementInspector {
   private hideContainerHighlight(): void {
     if (!this.containerHighlight) return;
     this.containerHighlight.style.display = 'none';
+  }
+
+  // ===========================================
+  // TEXT EDIT MODE (Page Builder) Methods
+  // ===========================================
+
+  /**
+   * Create floating toolbar for text editing
+   */
+  private createFloatingToolbar(): void {
+    this.floatingToolbar = document.createElement('div');
+    this.floatingToolbar.id = '__claude-vs-floating-toolbar__';
+    this.floatingToolbar.style.cssText = `
+      position: fixed;
+      display: none;
+      z-index: 1000000;
+      background: #252526;
+      border: 1px solid #3c3c3c;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      padding: 6px 8px;
+      gap: 6px;
+      flex-direction: row;
+      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+    `;
+
+    this.floatingToolbar.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="color" id="__cvs-color__" title="Text Color"
+               style="width:24px;height:24px;border:none;cursor:pointer;background:none;padding:0;">
+        <select id="__cvs-fontsize__" title="Font Size"
+                style="background:#3c3c3c;color:#ccc;border:none;padding:4px 6px;border-radius:3px;cursor:pointer;font-size:11px;">
+          <option value="12px">12px</option>
+          <option value="14px">14px</option>
+          <option value="16px">16px</option>
+          <option value="18px">18px</option>
+          <option value="20px">20px</option>
+          <option value="24px">24px</option>
+          <option value="28px">28px</option>
+          <option value="32px">32px</option>
+          <option value="36px">36px</option>
+          <option value="48px">48px</option>
+        </select>
+        <button id="__cvs-bold__" title="Bold (Ctrl+B)"
+                style="background:#3c3c3c;color:#ccc;border:none;padding:4px 8px;cursor:pointer;border-radius:3px;font-weight:bold;font-size:12px;">B</button>
+        <span style="width:1px;height:20px;background:#3c3c3c;margin:0 2px;"></span>
+        <button id="__cvs-save__" title="Save (Enter)"
+                style="background:#0e639c;color:#fff;border:none;padding:4px 10px;cursor:pointer;border-radius:3px;font-size:11px;">Save</button>
+        <button id="__cvs-cancel__" title="Cancel (Escape)"
+                style="background:#3c3c3c;color:#ccc;border:none;padding:4px 10px;cursor:pointer;border-radius:3px;font-size:11px;">Cancel</button>
+      </div>
+    `;
+
+    document.body.appendChild(this.floatingToolbar);
+    this.setupToolbarEvents();
+  }
+
+  /**
+   * Setup toolbar event listeners
+   */
+  private setupToolbarEvents(): void {
+    if (!this.floatingToolbar) return;
+
+    // Color picker
+    const colorInput = this.floatingToolbar.querySelector('#__cvs-color__') as HTMLInputElement;
+    colorInput?.addEventListener('input', (e) => {
+      if (this.editingElement) {
+        const color = (e.target as HTMLInputElement).value;
+        this.editingElement.style.color = color;
+        this.sendStyleChange('color', color);
+      }
+    });
+
+    // Font size
+    const fontSizeSelect = this.floatingToolbar.querySelector('#__cvs-fontsize__') as HTMLSelectElement;
+    fontSizeSelect?.addEventListener('change', (e) => {
+      if (this.editingElement) {
+        const size = (e.target as HTMLSelectElement).value;
+        this.editingElement.style.fontSize = size;
+        this.sendStyleChange('font-size', size);
+      }
+    });
+
+    // Bold toggle
+    const boldBtn = this.floatingToolbar.querySelector('#__cvs-bold__') as HTMLButtonElement;
+    boldBtn?.addEventListener('click', () => {
+      if (this.editingElement) {
+        const currentWeight = window.getComputedStyle(this.editingElement).fontWeight;
+        const newWeight = currentWeight === '700' || currentWeight === 'bold' ? '400' : '700';
+        this.editingElement.style.fontWeight = newWeight;
+        boldBtn.style.background = newWeight === '700' ? '#0e639c' : '#3c3c3c';
+        this.sendStyleChange('font-weight', newWeight);
+      }
+    });
+
+    // Save button
+    this.floatingToolbar.querySelector('#__cvs-save__')?.addEventListener('click', () => {
+      this.exitEditMode(true);
+    });
+
+    // Cancel button
+    this.floatingToolbar.querySelector('#__cvs-cancel__')?.addEventListener('click', () => {
+      this.exitEditMode(false);
+    });
+
+    // Prevent clicks on toolbar from triggering other handlers
+    this.floatingToolbar.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+    });
+    this.floatingToolbar.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+
+  /**
+   * Show floating toolbar near the editing element
+   */
+  private showFloatingToolbar(element: HTMLElement): void {
+    if (!this.floatingToolbar) return;
+
+    const rect = element.getBoundingClientRect();
+    const toolbarHeight = 40;
+    const toolbarWidth = 340;
+
+    // Position above element, or below if not enough space
+    let top = rect.top - toolbarHeight - 10;
+    if (top < 10) {
+      top = rect.bottom + 10;
+    }
+
+    // Keep toolbar within viewport horizontally
+    let left = rect.left;
+    if (left + toolbarWidth > window.innerWidth - 10) {
+      left = window.innerWidth - toolbarWidth - 10;
+    }
+    if (left < 10) left = 10;
+
+    this.floatingToolbar.style.display = 'flex';
+    this.floatingToolbar.style.left = `${left}px`;
+    this.floatingToolbar.style.top = `${top}px`;
+
+    // Initialize toolbar values from current element styles
+    const computed = window.getComputedStyle(element);
+
+    const colorInput = this.floatingToolbar.querySelector('#__cvs-color__') as HTMLInputElement;
+    if (colorInput) {
+      colorInput.value = this.rgbToHex(computed.color);
+    }
+
+    const fontSizeSelect = this.floatingToolbar.querySelector('#__cvs-fontsize__') as HTMLSelectElement;
+    if (fontSizeSelect) {
+      // Find closest matching font size option
+      const currentSize = parseInt(computed.fontSize);
+      const options = Array.from(fontSizeSelect.options);
+      const closest = options.reduce((prev, curr) => {
+        const prevDiff = Math.abs(parseInt(prev.value) - currentSize);
+        const currDiff = Math.abs(parseInt(curr.value) - currentSize);
+        return currDiff < prevDiff ? curr : prev;
+      });
+      fontSizeSelect.value = closest.value;
+    }
+
+    const boldBtn = this.floatingToolbar.querySelector('#__cvs-bold__') as HTMLButtonElement;
+    if (boldBtn) {
+      const isBold = computed.fontWeight === '700' || computed.fontWeight === 'bold';
+      boldBtn.style.background = isBold ? '#0e639c' : '#3c3c3c';
+    }
+  }
+
+  /**
+   * Hide floating toolbar
+   */
+  private hideFloatingToolbar(): void {
+    if (this.floatingToolbar) {
+      this.floatingToolbar.style.display = 'none';
+    }
+  }
+
+  /**
+   * Handle double-click for text editing
+   */
+  private handleDoubleClick(event: MouseEvent): void {
+    // Only work in selection mode
+    if (!this.isSelectionMode) return;
+
+    const target = event.target as HTMLElement;
+
+    // Ignore our inspector elements
+    if (target.id?.startsWith('__claude-vs-')) return;
+
+    // Check if element is editable
+    if (!this.isEditableElement(target)) {
+      console.log('[Element Inspector] Element not editable:', target.tagName);
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.enterEditMode(target);
+  }
+
+  /**
+   * Check if an element can be text-edited
+   * Only allows leaf elements with text content
+   */
+  private isEditableElement(element: HTMLElement): boolean {
+    const tag = element.tagName.toLowerCase();
+
+    // List of tags that typically contain editable text
+    const editableTags = [
+      'p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'a', 'button', 'label', 'li', 'td', 'th', 'div',
+      'strong', 'em', 'b', 'i', 'u', 'small', 'mark',
+      'cite', 'q', 'blockquote', 'figcaption', 'legend',
+      'dt', 'dd', 'address', 'time', 'abbr'
+    ];
+
+    if (!editableTags.includes(tag)) {
+      return false;
+    }
+
+    // Check if it has only text nodes (no nested elements with significant content)
+    const hasOnlyTextOrInlineElements = Array.from(element.childNodes).every(node => {
+      if (node.nodeType === Node.TEXT_NODE) return true;
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        const inlineTags = ['strong', 'em', 'b', 'i', 'u', 'span', 'a', 'br'];
+        return inlineTags.includes(el.tagName.toLowerCase());
+      }
+      return true;
+    });
+
+    // Must have some text content
+    const hasText = (element.textContent?.trim().length || 0) > 0;
+
+    return hasOnlyTextOrInlineElements && hasText;
+  }
+
+  /**
+   * Enter text edit mode on an element
+   */
+  private enterEditMode(element: HTMLElement): void {
+    // Exit any existing edit mode
+    if (this.isEditMode) {
+      this.exitEditMode(false);
+    }
+
+    this.isEditMode = true;
+    this.editingElement = element;
+    this.originalTextContent = element.textContent || '';
+
+    // Make element editable
+    element.contentEditable = 'true';
+    element.focus();
+
+    // Select all text
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    // Add visual feedback class
+    element.classList.add('__claude-vs-editing__');
+
+    // Show floating toolbar
+    this.showFloatingToolbar(element);
+
+    // Send edit mode started message
+    this.sendMessage({
+      type: 'edit-mode-started',
+      data: {
+        selector: this.getCSSSelector(element),
+        xpath: this.getXPath(element),
+        editType: 'text',
+        originalText: this.originalTextContent,
+      } as EditModeData,
+      timestamp: Date.now(),
+    });
+
+    console.log('[Element Inspector] Edit mode started:', element.tagName, this.originalTextContent.substring(0, 50));
+  }
+
+  /**
+   * Exit text edit mode
+   */
+  private exitEditMode(save: boolean): void {
+    if (!this.isEditMode || !this.editingElement) return;
+
+    const element = this.editingElement;
+    const newText = element.textContent || '';
+
+    // Remove contentEditable
+    element.contentEditable = 'false';
+    element.classList.remove('__claude-vs-editing__');
+
+    // Hide toolbar
+    this.hideFloatingToolbar();
+
+    // Clear selection
+    window.getSelection()?.removeAllRanges();
+
+    if (save && newText !== this.originalTextContent) {
+      // Send text change message
+      this.sendMessage({
+        type: 'text-content-changed',
+        data: {
+          selector: this.getCSSSelector(element),
+          xpath: this.getXPath(element),
+          oldText: this.originalTextContent,
+          newText: newText,
+        } as TextChangeData,
+        timestamp: Date.now(),
+      });
+
+      console.log('[Element Inspector] Text saved:', newText.substring(0, 50));
+    } else if (!save) {
+      // Restore original text
+      element.textContent = this.originalTextContent;
+      console.log('[Element Inspector] Edit cancelled, text restored');
+    }
+
+    // Send edit mode ended message
+    this.sendMessage({
+      type: 'edit-mode-ended',
+      data: {
+        selector: this.getCSSSelector(element),
+        saved: save,
+      } as EditModeEndedData,
+      timestamp: Date.now(),
+    });
+
+    // Reset state
+    this.isEditMode = false;
+    this.editingElement = null;
+    this.originalTextContent = '';
+  }
+
+  /**
+   * Send inline style change message
+   */
+  private sendStyleChange(property: string, value: string): void {
+    if (!this.editingElement) return;
+
+    this.sendMessage({
+      type: 'inline-style-changed',
+      data: {
+        selector: this.getCSSSelector(this.editingElement),
+        xpath: this.getXPath(this.editingElement),
+        property,
+        value,
+      } as InlineStyleChangeData,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Convert RGB color string to hex
+   */
+  private rgbToHex(rgb: string): string {
+    const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return '#000000';
+    const r = parseInt(match[1], 10);
+    const g = parseInt(match[2], 10);
+    const b = parseInt(match[3], 10);
+    return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
   }
 
   /**
@@ -1230,6 +1647,9 @@ class ElementInspector {
     // Click for element selection
     document.addEventListener('click', this.handleClick.bind(this), true);
 
+    // Double-click for text editing (Page Builder mode)
+    document.addEventListener('dblclick', this.handleDoubleClick.bind(this), true);
+
     // Key press for toggling selection mode (Escape to exit)
     document.addEventListener('keydown', this.handleKeyDown.bind(this), true);
 
@@ -1620,6 +2040,24 @@ class ElementInspector {
    * Handle keyboard events
    */
   private handleKeyDown(event: KeyboardEvent): void {
+    // Handle edit mode keyboard shortcuts
+    if (this.isEditMode) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        this.exitEditMode(false); // Cancel without saving
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.exitEditMode(true); // Save and exit
+        return;
+      }
+      // Allow Shift+Enter for line breaks
+      return;
+    }
+
     // Escape key to exit selection mode or cancel drag
     if (event.key === 'Escape') {
       if (this.isDragging) {
@@ -2336,6 +2774,16 @@ class ElementInspector {
 
     if (this.distanceContainer && this.distanceContainer.parentElement) {
       this.distanceContainer.parentElement.removeChild(this.distanceContainer);
+    }
+
+    // Remove floating toolbar
+    if (this.floatingToolbar && this.floatingToolbar.parentElement) {
+      this.floatingToolbar.parentElement.removeChild(this.floatingToolbar);
+    }
+
+    // Exit edit mode if active
+    if (this.isEditMode) {
+      this.exitEditMode(false);
     }
 
     this.hideAllElementBoundaries();

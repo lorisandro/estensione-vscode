@@ -445,6 +445,132 @@ export const useCssChangesStore = create<CssChangesState>()(
   )
 );
 
+// Text Edit Change represents a single text modification
+export interface TextChange {
+  id: string;
+  elementSelector: string;
+  xpath: string;
+  originalText: string;
+  newText: string;
+  timestamp: number;
+}
+
+// Text Edit State (Page Builder Mode)
+interface TextEditState {
+  editMode: boolean;
+  editingElement: ElementInfo | null;
+  editType: 'text' | 'style' | null;
+  textChanges: TextChange[];
+  hasPendingTextChanges: boolean;
+  // Track current source file path
+  currentSourceFilePath: string | null;
+  setEditMode: (mode: boolean, element?: ElementInfo | null, editType?: 'text' | 'style') => void;
+  setCurrentSourceFilePath: (filePath: string | null) => void;
+  addTextChange: (change: Omit<TextChange, 'id' | 'timestamp'>) => void;
+  undoLastTextChange: () => TextChange | null;
+  applyTextChanges: () => TextChange[];
+  clearTextChanges: () => void;
+}
+
+// Generate unique IDs for text changes
+const generateTextChangeId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `text-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+};
+
+export const useTextEditStore = create<TextEditState>()(
+  devtools(
+    (set, get) => ({
+      editMode: false,
+      editingElement: null,
+      editType: null,
+      textChanges: [],
+      hasPendingTextChanges: false,
+      currentSourceFilePath: null,
+
+      setEditMode: (mode: boolean, element?: ElementInfo | null, editType?: 'text' | 'style') => {
+        set({
+          editMode: mode,
+          editingElement: element ?? null,
+          editType: editType ?? null,
+        }, undefined, 'textEdit/setEditMode');
+      },
+
+      setCurrentSourceFilePath: (filePath: string | null) => {
+        set({ currentSourceFilePath: filePath }, undefined, 'textEdit/setCurrentSourceFilePath');
+      },
+
+      addTextChange: (change: Omit<TextChange, 'id' | 'timestamp'>) => {
+        const { textChanges } = get();
+
+        // Check if we already have a change for this element
+        const existingIndex = textChanges.findIndex(
+          c => c.elementSelector === change.elementSelector
+        );
+
+        const newChange: TextChange = {
+          ...change,
+          id: generateTextChangeId(),
+          timestamp: Date.now(),
+        };
+
+        if (existingIndex >= 0) {
+          // Update existing change with new text, keep original
+          const updatedChanges = [...textChanges];
+          updatedChanges[existingIndex] = {
+            ...updatedChanges[existingIndex],
+            newText: change.newText,
+            timestamp: Date.now(),
+          };
+          set({
+            textChanges: updatedChanges,
+          }, undefined, 'textEdit/updateTextChange');
+        } else {
+          set((state) => ({
+            textChanges: [...state.textChanges, newChange],
+            hasPendingTextChanges: true,
+          }), undefined, 'textEdit/addTextChange');
+        }
+      },
+
+      undoLastTextChange: () => {
+        const { textChanges } = get();
+        if (textChanges.length === 0) return null;
+
+        const lastChange = textChanges[textChanges.length - 1];
+        set((state) => ({
+          textChanges: state.textChanges.slice(0, -1),
+          hasPendingTextChanges: state.textChanges.length > 1,
+        }), undefined, 'textEdit/undoLastTextChange');
+
+        return lastChange;
+      },
+
+      applyTextChanges: () => {
+        const { textChanges } = get();
+        set({
+          textChanges: [],
+          hasPendingTextChanges: false,
+        }, undefined, 'textEdit/applyTextChanges');
+        return textChanges;
+      },
+
+      clearTextChanges: () => {
+        set({
+          textChanges: [],
+          hasPendingTextChanges: false,
+          editMode: false,
+          editingElement: null,
+          editType: null,
+        }, undefined, 'textEdit/clearTextChanges');
+      },
+    }),
+    { name: 'TextEditStore' }
+  )
+);
+
 // Viewport preset for responsive design
 export interface ViewportPreset {
   name: string;

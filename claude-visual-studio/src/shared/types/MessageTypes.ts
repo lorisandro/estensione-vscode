@@ -305,6 +305,59 @@ export interface ApplyDragChangesMessage extends BaseMessage {
   };
 }
 
+// Text Editing Messages (Page Builder Mode)
+// ==========================================
+
+/**
+ * Edit mode started on an element
+ */
+export interface EditModeStartedMessage extends BaseMessage {
+  type: 'edit-mode-started';
+  payload: {
+    selector: string;
+    xpath: string;
+    editType: 'text' | 'style';
+    originalText: string;
+  };
+}
+
+/**
+ * Text content changed in an element
+ */
+export interface TextContentChangedMessage extends BaseMessage {
+  type: 'text-content-changed';
+  payload: {
+    selector: string;
+    xpath: string;
+    oldText: string;
+    newText: string;
+  };
+}
+
+/**
+ * Inline style changed on an element
+ */
+export interface InlineStyleChangedMessage extends BaseMessage {
+  type: 'inline-style-changed';
+  payload: {
+    selector: string;
+    xpath: string;
+    property: string;
+    value: string;
+  };
+}
+
+/**
+ * Edit mode ended
+ */
+export interface EditModeEndedMessage extends BaseMessage {
+  type: 'edit-mode-ended';
+  payload: {
+    selector: string;
+    saved: boolean;
+  };
+}
+
 // Union types for type safety
 // ============================
 
@@ -341,7 +394,11 @@ export type WebviewToExtensionMessage =
   | CaptureScreenshotAreaMessage
   | OpenDevToolsMessage
   | ElementSelectedKebabMessage
-  | ApplyDragChangesMessage;
+  | ApplyDragChangesMessage
+  | EditModeStartedMessage
+  | TextContentChangedMessage
+  | InlineStyleChangedMessage
+  | EditModeEndedMessage;
 
 /**
  * All possible messages in either direction
@@ -387,6 +444,10 @@ export function isWebviewToExtensionMessage(
     'openDevTools',
     'element-selected',
     'apply-drag-changes',
+    'edit-mode-started',
+    'text-content-changed',
+    'inline-style-changed',
+    'edit-mode-ended',
   ].includes(message.type);
 }
 

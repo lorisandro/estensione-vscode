@@ -27,6 +27,12 @@ export class ServerManager {
   // Store extracted styled-jsx CSS to inject into HTML
   private extractedStyledJsxCss: Map<string, string> = new Map();
 
+  // Track the current served HTML file for Page Builder text editing
+  private currentServedFile: string | null = null;
+
+  // Callback when an HTML file is served (for Page Builder integration)
+  public onHtmlFileServed: ((filePath: string) => void) | null = null;
+
   private readonly MIME_TYPES: Record<string, string> = {
     '.html': 'text/html',
     '.htm': 'text/html',
@@ -127,6 +133,13 @@ export class ServerManager {
         reject(error);
       }
     });
+  }
+
+  /**
+   * Get the current served HTML file path
+   */
+  getCurrentServedFile(): string | null {
+    return this.currentServedFile;
   }
 
   /**
@@ -522,6 +535,15 @@ export class ServerManager {
 
         // Inject element inspector script into HTML files
         if (ext === '.html' || ext === '.htm') {
+          // Track the served HTML file for Page Builder
+          this.currentServedFile = filePath;
+          console.log('[ServerManager] Serving HTML file:', filePath);
+
+          // Notify callback if set
+          if (this.onHtmlFileServed) {
+            this.onHtmlFileServed(filePath);
+          }
+
           const injectedContent = this.injectInspectorScript(content.toString('utf-8'));
           res.send(injectedContent);
         } else {

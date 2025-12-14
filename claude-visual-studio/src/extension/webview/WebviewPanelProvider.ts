@@ -21,7 +21,10 @@ import {
   NavigationMessage,
   ConsoleLogMessage,
   StateUpdateMessage,
+  TextContentChangedMessage,
+  InlineStyleChangedMessage,
 } from '../../shared/types/MessageTypes';
+import { HtmlSourceMapper } from '../utils/HtmlSourceMapper';
 
 export class WebviewPanelProvider {
   private panel: vscode.WebviewPanel | undefined;
@@ -31,6 +34,9 @@ export class WebviewPanelProvider {
   private pendingRequests: Map<string, (result: any) => void> = new Map();
   private requestId = 0;
   private pendingTerminalMessage: string | null = null;
+
+  // Current source file path for Page Builder text editing
+  private currentSourceFilePath: string | null = null;
 
   // Callback called when webview becomes ready
   public onWebviewReady: (() => void) | undefined;
@@ -443,6 +449,23 @@ export class WebviewPanelProvider {
         await this.handleApplyCssToClaudeCode(message as any);
         break;
 
+      // Text Edit Mode (Page Builder) messages
+      case 'edit-mode-started':
+        console.log('[PageBuilder] Edit mode started:', (message as any).payload?.selector);
+        break;
+
+      case 'edit-mode-ended':
+        console.log('[PageBuilder] Edit mode ended:', (message as any).payload?.selector, 'saved:', (message as any).payload?.saved);
+        break;
+
+      case 'text-content-changed':
+        await this.handleTextContentChanged(message as any);
+        break;
+
+      case 'inline-style-changed':
+        await this.handleInlineStyleChanged(message as any);
+        break;
+
       default:
         console.warn('Unknown message type:', (message as any).type);
     }
@@ -821,6 +844,139 @@ export class WebviewPanelProvider {
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to save file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  // ===========================================
+  // PAGE BUILDER TEXT EDITING HANDLERS
+  // ===========================================
+
+  /**
+   * Set the current source file path for text editing
+   */
+  public setCurrentSourceFilePath(filePath: string | null): void {
+    this.currentSourceFilePath = filePath;
+    console.log('[PageBuilder] Source file path set:', filePath);
+  }
+
+  /**
+   * Get the current source file path
+   */
+  public getCurrentSourceFilePath(): string | null {
+    return this.currentSourceFilePath;
+  }
+
+  /**
+   * Handle text content change from Page Builder
+   * Updates the source HTML file with the new text
+   */
+  private async handleTextContentChanged(message: {
+    type: 'text-content-changed';
+    payload: {
+      selector: string;
+      xpath: string;
+      oldText: string;
+      newText: string;
+    };
+  }): Promise<void> {
+    const { selector, xpath, oldText, newText } = message.payload;
+
+    console.log('[PageBuilder] Text content changed:', selector);
+    console.log('[PageBuilder] Old text:', oldText.substring(0, 50));
+    console.log('[PageBuilder] New text:', newText.substring(0, 50));
+
+    if (!this.currentSourceFilePath) {
+      console.warn('[PageBuilder] No source file path set, cannot update file');
+      vscode.window.showWarningMessage('Cannot save text change: No source file tracked. Please reopen the preview.');
+      return;
+    }
+
+    try {
+      // Read the current file content
+      const fileUri = vscode.Uri.file(this.currentSourceFilePath);
+      const fileContent = await vscode.workspace.fs.readFile(fileUri);
+      const htmlContent = new TextDecoder().decode(fileContent);
+
+      // Use HtmlSourceMapper to update the text content
+      const updatedContent = HtmlSourceMapper.updateTextContent(
+        htmlContent,
+        selector,
+        xpath,
+        oldText,
+        newText
+      );
+
+      if (updatedContent) {
+        // Write the updated content back to the file
+        const encoder = new TextEncoder();
+        await vscode.workspace.fs.writeFile(fileUri, encoder.encode(updatedContent));
+
+        console.log('[PageBuilder] Text updated in file:', path.basename(this.currentSourceFilePath));
+        vscode.window.setStatusBarMessage(`Text updated in ${path.basename(this.currentSourceFilePath)}`, 3000);
+      } else {
+        console.warn('[PageBuilder] Could not find element in source file');
+        vscode.window.showWarningMessage('Could not find element in source file. Manual update may be required.');
+      }
+    } catch (error) {
+      console.error('[PageBuilder] Error updating text:', error);
+      vscode.window.showErrorMessage(
+        `Failed to update text: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Handle inline style change from Page Builder
+   * Updates the source HTML file with the new style
+   */
+  private async handleInlineStyleChanged(message: {
+    type: 'inline-style-changed';
+    payload: {
+      selector: string;
+      xpath: string;
+      property: string;
+      value: string;
+    };
+  }): Promise<void> {
+    const { selector, xpath, property, value } = message.payload;
+
+    console.log('[PageBuilder] Inline style changed:', selector, property, '=', value);
+
+    if (!this.currentSourceFilePath) {
+      console.warn('[PageBuilder] No source file path set, cannot update file');
+      return;
+    }
+
+    try {
+      // Read the current file content
+      const fileUri = vscode.Uri.file(this.currentSourceFilePath);
+      const fileContent = await vscode.workspace.fs.readFile(fileUri);
+      const htmlContent = new TextDecoder().decode(fileContent);
+
+      // Use HtmlSourceMapper to update the inline style
+      const updatedContent = HtmlSourceMapper.updateInlineStyle(
+        htmlContent,
+        selector,
+        xpath,
+        property,
+        value
+      );
+
+      if (updatedContent) {
+        // Write the updated content back to the file
+        const encoder = new TextEncoder();
+        await vscode.workspace.fs.writeFile(fileUri, encoder.encode(updatedContent));
+
+        console.log('[PageBuilder] Style updated in file:', path.basename(this.currentSourceFilePath));
+        vscode.window.setStatusBarMessage(`Style updated: ${property}`, 2000);
+      } else {
+        console.warn('[PageBuilder] Could not find element for style update');
+      }
+    } catch (error) {
+      console.error('[PageBuilder] Error updating style:', error);
+      vscode.window.showErrorMessage(
+        `Failed to update style: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

@@ -222,6 +222,14 @@ async function initializeServer(extensionPath: string): Promise<void> {
 
   serverManager = new ServerManager();
 
+  // Connect callback to track served HTML files for Page Builder text editing
+  serverManager.onHtmlFileServed = (filePath: string) => {
+    if (webviewProvider) {
+      webviewProvider.setCurrentSourceFilePath(filePath);
+      console.log('[PageBuilder] Source file tracked:', filePath);
+    }
+  };
+
   try {
     // Pass extensionPath to enable finding injected scripts
     // start() now returns the actual port used (may differ if configured port was in use)
