@@ -70,26 +70,48 @@ function captureExtensionLog(type: string, args: unknown[]): void {
 
 // Install console interceptors
 function installConsoleInterceptors(): void {
-  console.log = (...args: unknown[]) => {
-    originalConsole.log(...args);
-    captureExtensionLog('log', args);
-  };
-  console.error = (...args: unknown[]) => {
-    originalConsole.error(...args);
-    captureExtensionLog('error', args);
-  };
-  console.warn = (...args: unknown[]) => {
-    originalConsole.warn(...args);
-    captureExtensionLog('warn', args);
-  };
-  console.info = (...args: unknown[]) => {
-    originalConsole.info(...args);
-    captureExtensionLog('info', args);
-  };
-  console.debug = (...args: unknown[]) => {
-    originalConsole.debug(...args);
-    captureExtensionLog('debug', args);
-  };
+  // Store a reference to check if interceptors are installed
+  const interceptorMarker = Symbol.for('claude-vs-interceptors');
+
+  // Check if already installed (to avoid double interception)
+  if ((console as any)[interceptorMarker]) {
+    originalConsole.log('[ExtensionLogs] Interceptors already installed');
+    return;
+  }
+
+  try {
+    console.log = (...args: unknown[]) => {
+      originalConsole.log(...args);
+      captureExtensionLog('log', args);
+    };
+    console.error = (...args: unknown[]) => {
+      originalConsole.error(...args);
+      captureExtensionLog('error', args);
+    };
+    console.warn = (...args: unknown[]) => {
+      originalConsole.warn(...args);
+      captureExtensionLog('warn', args);
+    };
+    console.info = (...args: unknown[]) => {
+      originalConsole.info(...args);
+      captureExtensionLog('info', args);
+    };
+    console.debug = (...args: unknown[]) => {
+      originalConsole.debug(...args);
+      captureExtensionLog('debug', args);
+    };
+
+    // Mark as installed
+    (console as any)[interceptorMarker] = true;
+
+    // Test that interception works by logging immediately
+    originalConsole.log('[ExtensionLogs] Console interceptors installed successfully');
+
+    // This log should be captured by our new interceptor
+    console.log('[ExtensionLogs] Verification: interceptors are active');
+  } catch (error) {
+    originalConsole.error('[ExtensionLogs] Failed to install interceptors:', error);
+  }
 }
 
 // Get extension logs for MCP
