@@ -2197,7 +2197,8 @@ class ElementInspector {
    */
   private getCSSSelector(element: HTMLElement): string {
     if (element.id) {
-      return `#${element.id}`;
+      // Escape special characters in IDs too
+      return `#${CSS.escape(element.id)}`;
     }
 
     const parts: string[] = [];
@@ -2206,9 +2207,14 @@ class ElementInspector {
     while (current && current !== document.body) {
       let selector = current.tagName.toLowerCase();
 
-      // Add classes
+      // Add classes with proper CSS escaping for special characters
+      // Tailwind classes like "hover:text-white", "md:text-7xl", "from-purple-900/20"
+      // contain special characters that need escaping in CSS selectors
       if (current.classList.length > 0) {
-        selector += '.' + Array.from(current.classList).join('.');
+        const escapedClasses = Array.from(current.classList)
+          .map(cls => CSS.escape(cls))
+          .join('.');
+        selector += '.' + escapedClasses;
       }
 
       // Add nth-child if needed for uniqueness
@@ -2227,8 +2233,13 @@ class ElementInspector {
       parts.unshift(selector);
 
       // Stop if we have a unique selector
-      if (document.querySelectorAll(parts.join(' > ')).length === 1) {
-        break;
+      try {
+        if (document.querySelectorAll(parts.join(' > ')).length === 1) {
+          break;
+        }
+      } catch (e) {
+        // If selector is still invalid, continue building
+        console.warn('[Element Inspector] Selector validation failed:', parts.join(' > '));
       }
 
       current = current.parentElement;
