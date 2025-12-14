@@ -848,49 +848,23 @@ export class ServerManager {
             return element;
           };
 
-          // Also monitor for styled-jsx's flush mechanism
-          // styled-jsx uses a global registry that we can tap into
-          var checkStyledJsx = function() {
-            // Check if styled-jsx registry exists
-            if (window.__STYLED_JSX_REGISTRY__ || window._styledJsxRegistry) {
-              var registry = window.__STYLED_JSX_REGISTRY__ || window._styledJsxRegistry;
-              if (registry && typeof registry.flush === 'function') {
-                // Flush any pending styles
-                try {
-                  registry.flush();
-                } catch (e) {
-                  // Ignore errors
-                }
-              }
-            }
-          };
+          // styled-jsx CSS is already injected server-side
+          // Only fetch once on load as a fallback, don't poll to avoid blocking animations
+          var cssAlreadyFetched = false;
 
-          // Check periodically for a short time after page load
-          var checkCount = 0;
-          var checkInterval = setInterval(function() {
-            checkStyledJsx();
-            // Also try to fetch CSS from server (JS files may have loaded by now)
-            fetchAndInjectStyledJsxCss();
-            checkCount++;
-            if (checkCount > 30) { // Increased to 6 seconds total
-              clearInterval(checkInterval);
-            }
-          }, 200);
-
-          // Also fetch immediately when DOM is ready
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', fetchAndInjectStyledJsxCss);
-          } else {
+          function fetchOnce() {
+            if (cssAlreadyFetched) return;
+            cssAlreadyFetched = true;
             fetchAndInjectStyledJsxCss();
           }
 
-          // And on load
-          window.addEventListener('load', function() {
-            // Give extra time for JS to fully execute
-            setTimeout(fetchAndInjectStyledJsxCss, 500);
-            setTimeout(fetchAndInjectStyledJsxCss, 1000);
-            setTimeout(fetchAndInjectStyledJsxCss, 2000);
-          });
+          // Fetch once when DOM is ready
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fetchOnce);
+          } else {
+            // Small delay to let server extract CSS from JS files first
+            setTimeout(fetchOnce, 500);
+          }
         })();
 
         // Console log interception - capture all console output
