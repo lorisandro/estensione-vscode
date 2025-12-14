@@ -275,19 +275,63 @@ async function initializeMCPBridge(): Promise<void> {
   });
 
   mcpBridge.registerHandler('openBrowser', async () => {
-    // Execute the VS Code command to open the preview panel
-    await vscode.commands.executeCommand('claudeVisualStudio.openPreview');
-    // Wait a bit for the panel to initialize
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return { success: true };
+    console.log('[MCP] openBrowser handler called');
+    try {
+      // Execute the VS Code command to open the preview panel
+      await vscode.commands.executeCommand('claudeVisualStudio.openPreview');
+      console.log('[MCP] openPreview command executed');
+      // Wait a bit for the panel to initialize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Check if panel is now visible
+      const isVisible = webviewProvider?.isVisible() ?? false;
+      console.log('[MCP] Panel visible after open:', isVisible);
+      return { success: true, panelVisible: isVisible };
+    } catch (error) {
+      console.error('[MCP] openBrowser error:', error);
+      throw error;
+    }
   });
 
   // Start the bridge
   try {
     const actualMcpPort = await mcpBridge.start();
     console.log(`[MCP] Bridge started on port ${actualMcpPort}`);
+
+    // Save port to workspace file so MCP server can find it
+    await saveMcpPortToWorkspace(actualMcpPort);
   } catch (error) {
     console.error('[MCP] Failed to start bridge:', error);
+  }
+}
+
+/**
+ * Save MCP port to a file in the workspace so the MCP server can find it
+ */
+async function saveMcpPortToWorkspace(port: number): Promise<void> {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    console.log('[MCP] No workspace folder, skipping port file save');
+    return;
+  }
+
+  const workspaceRoot = workspaceFolders[0].uri.fsPath;
+  const vscodeDir = vscode.Uri.file(`${workspaceRoot}/.vscode`);
+  const portFile = vscode.Uri.file(`${workspaceRoot}/.vscode/.claude-visual-studio-port`);
+
+  try {
+    // Create .vscode directory if it doesn't exist
+    try {
+      await vscode.workspace.fs.stat(vscodeDir);
+    } catch {
+      await vscode.workspace.fs.createDirectory(vscodeDir);
+    }
+
+    // Write port to file
+    const content = Buffer.from(JSON.stringify({ port, timestamp: Date.now() }));
+    await vscode.workspace.fs.writeFile(portFile, content);
+    console.log(`[MCP] Saved port ${port} to ${portFile.fsPath}`);
+  } catch (error) {
+    console.error('[MCP] Failed to save port file:', error);
   }
 }
 

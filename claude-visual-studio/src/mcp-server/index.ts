@@ -7,6 +7,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import WebSocket from 'ws';
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 // WebSocket connection to VS Code extension
 let wsConnection: WebSocket | null = null;
 let pendingRequests: Map<string, { resolve: (value: any) => void; reject: (error: any) => void }> = new Map();
@@ -15,6 +18,34 @@ let connectedPort: number | null = null;
 
 const WS_BASE_PORT = 3334; // Starting port for communication with VS Code extension
 const MAX_PORT_ATTEMPTS = 10; // Try up to 10 ports
+const PORT_FILE_NAME = '.vscode/.claude-visual-studio-port';
+
+/**
+ * Try to read the MCP port from the workspace file
+ */
+function readPortFromWorkspace(): number | null {
+  try {
+    const cwd = process.cwd();
+    const portFilePath = path.join(cwd, PORT_FILE_NAME);
+
+    if (fs.existsSync(portFilePath)) {
+      const content = fs.readFileSync(portFilePath, 'utf-8');
+      const data = JSON.parse(content);
+
+      // Check if port file is not too old (max 1 hour)
+      const maxAge = 60 * 60 * 1000; // 1 hour
+      if (Date.now() - data.timestamp < maxAge) {
+        console.error(`[MCP] Found port ${data.port} in workspace file`);
+        return data.port;
+      } else {
+        console.error('[MCP] Port file is too old, ignoring');
+      }
+    }
+  } catch (error) {
+    console.error('[MCP] Could not read port from workspace:', error);
+  }
+  return null;
+}
 
 // Try to connect to a specific port
 function tryConnectToPort(port: number): Promise<void> {
@@ -73,6 +104,18 @@ async function connectToExtension(): Promise<void> {
       return;
     } catch {
       // Try other ports
+    }
+  }
+
+  // Try to read port from workspace file first (most reliable)
+  const workspacePort = readPortFromWorkspace();
+  if (workspacePort) {
+    try {
+      await tryConnectToPort(workspacePort);
+      console.error(`[MCP] Connected using workspace port file`);
+      return;
+    } catch {
+      console.error(`[MCP] Workspace port ${workspacePort} failed, trying other ports...`);
     }
   }
 
