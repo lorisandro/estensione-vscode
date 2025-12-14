@@ -249,10 +249,14 @@ export class ServerManager {
         const httpModule = isHttps ? https : http;
 
         // Save the origin for resolving relative URLs (like /_next/...)
-        this.lastProxiedOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+        const newOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
 
-        // Clear previously extracted styled-jsx CSS for fresh page load
-        this.clearExtractedStyledJsxCss();
+        // Only clear CSS when navigating to a different origin (new site)
+        // Don't clear on every proxy request, as JS files extract CSS during loading
+        if (this.lastProxiedOrigin !== newOrigin) {
+          this.clearExtractedStyledJsxCss();
+          this.lastProxiedOrigin = newOrigin;
+        }
 
         const proxyReq = httpModule.request(
           {
