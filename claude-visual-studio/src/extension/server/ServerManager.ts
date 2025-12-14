@@ -619,18 +619,43 @@ export class ServerManager {
     const hmrPort = this.config.hmrScriptPort || this.config.port + 1;
 
     // Create the script injection with cache control meta tags
-    // IMPORTANT: Hide page immediately to prevent animations starting before styled-jsx CSS loads
+    // IMPORTANT: Use white overlay instead of visibility:hidden to not break Framer Motion animations
     const inspectorScript = `
-    <!-- Claude Visual Studio: Page Hide Until CSS Ready -->
-    <style id="__claude-vs-loading-hide__">body { visibility: hidden !important; opacity: 0 !important; }</style>
+    <!-- Claude Visual Studio: Page Overlay Until CSS Ready -->
+    <style id="__claude-vs-loading-style__">
+      #__claude-vs-loading-overlay__ {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: white !important;
+        z-index: 2147483647 !important;
+        pointer-events: none !important;
+        transition: opacity 0.15s ease-out !important;
+      }
+      #__claude-vs-loading-overlay__.fade-out {
+        opacity: 0 !important;
+      }
+    </style>
     <script>
+      // Create overlay element immediately
+      document.write('<div id="__claude-vs-loading-overlay__"></div>');
+
       // Show page after CSS loads or timeout - this runs early in head
       window.__claudeVsShowPage = function() {
-        var el = document.getElementById('__claude-vs-loading-hide__');
-        if (el) el.remove();
+        var overlay = document.getElementById('__claude-vs-loading-overlay__');
+        if (overlay) {
+          overlay.classList.add('fade-out');
+          setTimeout(function() {
+            overlay.remove();
+            var style = document.getElementById('__claude-vs-loading-style__');
+            if (style) style.remove();
+          }, 150);
+        }
       };
-      // Fallback: show page after 2.5 seconds max
-      setTimeout(window.__claudeVsShowPage, 2500);
+      // Fallback: show page after 2 seconds max
+      setTimeout(window.__claudeVsShowPage, 2000);
     </script>
     <!-- Claude Visual Studio: Cache Control -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -805,10 +830,10 @@ export class ServerManager {
           var cssEndpoint = 'http://localhost:' + serverPort + '/__claude-vs__/styled-jsx-css';
 
           // Use the global showPage function defined in head
-          // This ensures page stays hidden until CSS is ready
+          // This removes the white overlay when CSS is ready
           var showPage = window.__claudeVsShowPage || function() {
-            var el = document.getElementById('__claude-vs-loading-hide__');
-            if (el) el.remove();
+            var overlay = document.getElementById('__claude-vs-loading-overlay__');
+            if (overlay) overlay.remove();
           };
 
           // Also show page after window load + small delay (for pages without styled-jsx)
@@ -877,15 +902,27 @@ export class ServerManager {
           };
 
           // styled-jsx CSS is extracted from JS files as they load through the proxy
-          // We need to poll aggressively since CSS is extracted asynchronously
-          var cssInjected = false;
+          // Poll until CSS is found, then do a few more checks and stop
+          var cssFound = false;
           var retryCount = 0;
-          var maxRetries = 50; // More retries with shorter intervals
+          var maxRetries = 30; // Max retries before giving up
+          var postCssRetries = 0;
+          var maxPostCssRetries = 5; // Only 5 more checks after CSS is found
           var lastCssHash = '';
 
           function fetchWithRetry() {
-            if (retryCount >= maxRetries) return;
-            retryCount++;
+            // Stop if we've done enough post-CSS retries
+            if (cssFound && postCssRetries >= maxPostCssRetries) return;
+            if (!cssFound && retryCount >= maxRetries) {
+              showPage(); // Show page even without CSS
+              return;
+            }
+
+            if (cssFound) {
+              postCssRetries++;
+            } else {
+              retryCount++;
+            }
 
             fetch(cssEndpoint)
               .then(function(response) { return response.text(); })
@@ -909,27 +946,29 @@ export class ServerManager {
                     style.textContent = css;
                     document.head.appendChild(style);
                     lastCssHash = cssHash;
-                    cssInjected = true;
                     console.log('[Claude VS] Injected styled-jsx CSS from server');
                   }
 
-                  // Show page now that CSS is loaded
-                  showPage();
+                  // Mark CSS as found and show page
+                  if (!cssFound) {
+                    cssFound = true;
+                    showPage();
+                  }
 
-                  // Continue polling for a while to catch late CSS extractions
-                  if (retryCount < maxRetries) {
+                  // Continue polling briefly to catch late CSS extractions
+                  if (postCssRetries < maxPostCssRetries) {
                     setTimeout(fetchWithRetry, 500);
                   }
-                } else if (retryCount < maxRetries) {
+                } else if (!cssFound && retryCount < maxRetries) {
                   // CSS not ready yet, retry quickly
                   setTimeout(fetchWithRetry, 100);
-                } else {
+                } else if (!cssFound) {
                   // Max retries reached without CSS, show page anyway
                   showPage();
                 }
               })
               .catch(function() {
-                if (retryCount < maxRetries) {
+                if (!cssFound && retryCount < maxRetries) {
                   setTimeout(fetchWithRetry, 200);
                 }
               });
