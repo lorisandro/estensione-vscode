@@ -887,8 +887,17 @@ export class WebviewPanelProvider {
     payload: {
       changes: Array<{
         elementSelector: string;
-        originalPosition: { x: number; y: number };
-        newPosition: { x: number; y: number };
+        changeType?: 'move' | 'move-into' | 'resize';
+        originalPosition?: { x: number; y: number };
+        newPosition?: { x: number; y: number };
+        originalWidth?: number;
+        originalHeight?: number;
+        newWidth?: number;
+        newHeight?: number;
+        action?: 'move' | 'move-into';
+        targetSelector?: string;
+        containerSelector?: string;
+        position?: 'before' | 'after';
       }>;
     };
   }): Promise<void> {
@@ -903,59 +912,115 @@ export class WebviewPanelProvider {
       return;
     }
 
+    // Separate resize and move changes
+    const resizeChanges = changes.filter(c => c.changeType === 'resize');
+    const moveChanges = changes.filter(c => c.changeType !== 'resize');
+
     // Write changes to file
-    const outputPath = path.join(workspaceFolders[0].uri.fsPath, '.claude-drag-changes.json');
+    const outputPath = path.join(workspaceFolders[0].uri.fsPath, '.claude-visual-changes.json');
     const changeData = {
       timestamp: new Date().toISOString(),
       changesCount: changes.length,
-      changes: changes.map((change, index) => ({
+      resizeChanges: resizeChanges.map((change, index) => ({
         index: index + 1,
         selector: change.elementSelector,
-        from: `left: ${change.originalPosition.x}px, top: ${change.originalPosition.y}px`,
-        to: `left: ${change.newPosition.x}px, top: ${change.newPosition.y}px`,
-        deltaX: change.newPosition.x - change.originalPosition.x,
-        deltaY: change.newPosition.y - change.originalPosition.y,
+        type: 'resize',
+        from: `${change.originalWidth}x${change.originalHeight}`,
+        to: `${change.newWidth}x${change.newHeight}`,
+      })),
+      moveChanges: moveChanges.map((change, index) => ({
+        index: index + 1,
+        selector: change.elementSelector,
+        type: change.changeType || 'move',
+        from: change.originalPosition ? `left: ${change.originalPosition.x}px, top: ${change.originalPosition.y}px` : null,
+        to: change.newPosition ? `left: ${change.newPosition.x}px, top: ${change.newPosition.y}px` : null,
       })),
     };
 
     try {
       fs.writeFileSync(outputPath, JSON.stringify(changeData, null, 2), 'utf-8');
 
-      // Create formatted output for Claude Code terminal with clear CSS instructions
-      const cssInstructions = changes.map((change, i) => {
-        const deltaX = Math.round(change.newPosition.x - change.originalPosition.x);
-        const deltaY = Math.round(change.newPosition.y - change.originalPosition.y);
-        return [
-          `/* Modifica ${i + 1} */`,
-          `${change.elementSelector} {`,
-          `  position: relative;`,
-          `  left: ${Math.round(change.newPosition.x)}px;`,
-          `  top: ${Math.round(change.newPosition.y)}px;`,
-          `}`,
-        ].join('\n');
-      }).join('\n\n');
+      // Create formatted output for Claude Code terminal
+      const cssInstructions: string[] = [];
 
-      const terminalOutput = [
+      // Generate CSS for resize changes
+      resizeChanges.forEach((change, i) => {
+        cssInstructions.push([
+          `/* Resize ${i + 1} */`,
+          `${change.elementSelector} {`,
+          `  width: ${change.newWidth}px;`,
+          `  height: ${change.newHeight}px;`,
+          `}`,
+        ].join('\n'));
+      });
+
+      // Generate CSS for move changes
+      moveChanges.forEach((change, i) => {
+        if (change.newPosition) {
+          cssInstructions.push([
+            `/* Move ${i + 1} */`,
+            `${change.elementSelector} {`,
+            `  position: relative;`,
+            `  left: ${Math.round(change.newPosition.x)}px;`,
+            `  top: ${Math.round(change.newPosition.y)}px;`,
+            `}`,
+          ].join('\n'));
+        }
+      });
+
+      // Build terminal output
+      const outputLines: string[] = [
         ``,
-        `=== DRAG & DROP CHANGES APPLIED ===`,
+        `=== VISUAL CHANGES APPLIED ===`,
         ``,
-        `User has visually repositioned ${changes.length} element(s) in the browser preview.`,
+        `User has visually modified ${changes.length} element(s) in the browser preview.`,
+      ];
+
+      if (resizeChanges.length > 0) {
+        outputLines.push(`- ${resizeChanges.length} resize operation(s)`);
+      }
+      if (moveChanges.length > 0) {
+        outputLines.push(`- ${moveChanges.length} move operation(s)`);
+      }
+
+      outputLines.push(
+        ``,
         `Please apply the following CSS changes to the source files:`,
         ``,
         `--- CSS TO ADD/MODIFY ---`,
         ``,
-        cssInstructions,
+        cssInstructions.join('\n\n'),
         ``,
         `--- DETAILS ---`,
-        ...changes.map((change, i) => {
+      );
+
+      // Add resize details
+      resizeChanges.forEach((change, i) => {
+        const widthDiff = (change.newWidth || 0) - (change.originalWidth || 0);
+        const heightDiff = (change.newHeight || 0) - (change.originalHeight || 0);
+        outputLines.push(
+          `${i + 1}. ${change.elementSelector}: resized from ${change.originalWidth}x${change.originalHeight} to ${change.newWidth}x${change.newHeight} (${widthDiff > 0 ? '+' : ''}${widthDiff}w, ${heightDiff > 0 ? '+' : ''}${heightDiff}h)`
+        );
+      });
+
+      // Add move details
+      moveChanges.forEach((change, i) => {
+        if (change.originalPosition && change.newPosition) {
           const deltaX = Math.round(change.newPosition.x - change.originalPosition.x);
           const deltaY = Math.round(change.newPosition.y - change.originalPosition.y);
-          return `${i + 1}. ${change.elementSelector}: moved ${deltaX > 0 ? '+' : ''}${deltaX}px horizontal, ${deltaY > 0 ? '+' : ''}${deltaY}px vertical`;
-        }),
+          outputLines.push(
+            `${resizeChanges.length + i + 1}. ${change.elementSelector}: moved ${deltaX > 0 ? '+' : ''}${deltaX}px horizontal, ${deltaY > 0 ? '+' : ''}${deltaY}px vertical`
+          );
+        }
+      });
+
+      outputLines.push(
         ``,
-        `Full details saved to: .claude-drag-changes.json`,
-        ``,
-      ].join('\n');
+        `Full details saved to: .claude-visual-changes.json`,
+        ``
+      );
+
+      const terminalOutput = outputLines.join('\n');
 
       // Send directly to active terminal (Claude Code)
       const terminal = vscode.window.activeTerminal;
@@ -964,13 +1029,17 @@ export class WebviewPanelProvider {
       }
 
       // Also show VS Code notification
+      const changeTypes = [];
+      if (resizeChanges.length > 0) changeTypes.push(`${resizeChanges.length} resize`);
+      if (moveChanges.length > 0) changeTypes.push(`${moveChanges.length} move`);
+
       vscode.window.showInformationMessage(
-        `${changes.length} drag change(s) applied. CSS instructions sent to terminal.`
+        `${changeTypes.join(', ')} change(s) applied. CSS instructions sent to terminal.`
       );
 
-      console.log(`[Claude VS] Drag changes applied: ${changes.length}`);
+      console.log(`[Claude VS] Visual changes applied: ${changes.length} (${resizeChanges.length} resize, ${moveChanges.length} move)`);
     } catch (err) {
-      console.error('[Claude VS] Failed to write drag changes:', err);
+      console.error('[Claude VS] Failed to write visual changes:', err);
     }
   }
 

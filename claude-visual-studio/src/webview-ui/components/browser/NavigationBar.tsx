@@ -230,15 +230,27 @@ export const NavigationBar: React.FC = () => {
   }, [screenshotMode, setScreenshotMode]);
 
   const handleApply = useCallback(() => {
-    // Send drag changes to extension for Claude Code integration
+    // Send all changes (drag + resize) to extension for Claude Code integration
     if (dragChanges.length > 0) {
       postMessage({
         type: 'apply-drag-changes',
         payload: {
           changes: dragChanges.map(change => ({
             elementSelector: change.elementSelector,
+            changeType: change.changeType || 'move',
+            // Position changes
             originalPosition: change.originalPosition,
             newPosition: change.newPosition,
+            // Resize changes
+            originalWidth: change.originalWidth,
+            originalHeight: change.originalHeight,
+            newWidth: change.newWidth,
+            newHeight: change.newHeight,
+            // DOM reorder fields
+            action: change.action,
+            targetSelector: change.targetSelector,
+            containerSelector: change.containerSelector,
+            position: change.position,
           })),
         },
       });

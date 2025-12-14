@@ -137,10 +137,12 @@ export interface ScreenshotArea {
   height: number;
 }
 
-// Drag change represents a single drag operation for undo (DOM reordering)
+// Drag change represents a single drag operation for undo (DOM reordering, resize, etc.)
 export interface DragChange {
   id: string;
   elementSelector: string;
+  // Change type
+  changeType?: 'move' | 'move-into' | 'resize';
   // DOM reorder fields
   originalParentSelector?: string | null;
   originalNextSiblingSelector?: string | null;
@@ -151,6 +153,11 @@ export interface DragChange {
   // Legacy CSS positioning (kept for compatibility)
   originalPosition?: { x: number; y: number };
   newPosition?: { x: number; y: number };
+  // Resize fields
+  originalWidth?: number;
+  originalHeight?: number;
+  newWidth?: number;
+  newHeight?: number;
   timestamp: number;
 }
 

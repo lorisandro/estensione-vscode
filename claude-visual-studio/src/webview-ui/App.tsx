@@ -75,7 +75,7 @@ const styles = {
 
 export const App: React.FC = () => {
   const { setSelectedElement, setHoveredElement, screenshotMode } = useSelectionStore();
-  const { isLoading, error, consoleVisible, cssInspectorVisible } = useEditorStore();
+  const { isLoading, error, consoleVisible, cssInspectorVisible, setCssInspectorVisible } = useEditorStore();
   const { setUrl, navigateTo, goBack, goForward, refresh, url, setServerBaseUrl } = useNavigationStore();
   const { onMessage, postMessage } = useVSCodeApi();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -97,13 +97,15 @@ export const App: React.FC = () => {
     (element: ElementInfo | null) => {
       setSelectedElement(element);
       if (element) {
+        // Auto-open CssInspector sidebar when element is selected
+        setCssInspectorVisible(true);
         postMessage({
           type: 'element-selected',
           payload: element,
         });
       }
     },
-    [setSelectedElement, postMessage]
+    [setSelectedElement, setCssInspectorVisible, postMessage]
   );
 
   // Listen for messages from extension

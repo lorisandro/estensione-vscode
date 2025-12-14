@@ -123,6 +123,17 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           console.log('[BrowserFrame] Element rect updated:', data?.selector);
         } else if (type === 'element-resized') {
           console.log('[BrowserFrame] Element resized:', data);
+          // Track resize as a pending change for Apply/Undo
+          if (data?.selector) {
+            addDragChange({
+              elementSelector: data.selector,
+              changeType: 'resize',
+              originalWidth: data.previousWidth,
+              originalHeight: data.previousHeight,
+              newWidth: data.width,
+              newHeight: data.height,
+            });
+          }
         } else if (type === 'inspector-ready') {
           console.log('[BrowserFrame] Inspector ready in iframe');
           // Send current modes when inspector is ready
