@@ -49,17 +49,47 @@ export class ServerManager {
   };
 
   /**
-   * Start the development server
+   * Start the development server with automatic port fallback
    * @param port Port number to listen on
    * @param rootPath Root directory to serve files from
    * @param hmrScriptPort Optional WebSocket port for HMR client script
    * @param extensionPath Optional path to the extension folder (for finding injected scripts)
+   * @param maxRetries Maximum number of ports to try (default 10)
+   * @returns The actual port the server started on
    */
-  async start(port: number, rootPath: string, hmrScriptPort?: number, extensionPath?: string): Promise<void> {
+  async start(port: number, rootPath: string, hmrScriptPort?: number, extensionPath?: string, maxRetries: number = 10): Promise<number> {
     if (this.server) {
       throw new Error('Server is already running. Call stop() first.');
     }
 
+    let currentPort = port;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        await this.tryStartOnPort(currentPort, rootPath, hmrScriptPort, extensionPath);
+        if (currentPort !== port) {
+          console.log(`[ServerManager] Port ${port} was in use, started on port ${currentPort} instead`);
+        }
+        return currentPort;
+      } catch (error) {
+        lastError = error as Error;
+        if ((error as Error).message.includes('already in use')) {
+          console.log(`[ServerManager] Port ${currentPort} in use, trying ${currentPort + 1}...`);
+          currentPort++;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error(`Could not find available port after ${maxRetries} attempts. Last error: ${lastError?.message}`);
+  }
+
+  /**
+   * Try to start server on a specific port
+   */
+  private async tryStartOnPort(port: number, rootPath: string, hmrScriptPort?: number, extensionPath?: string): Promise<void> {
     this.config = { port, rootPath, hmrScriptPort, extensionPath };
     this.app = express();
 
@@ -78,6 +108,9 @@ export class ServerManager {
         });
 
         this.server.on('error', (error: NodeJS.ErrnoException) => {
+          this.server = null;
+          this.app = null;
+          this.config = null;
           if (error.code === 'EADDRINUSE') {
             reject(new Error(`Port ${port} is already in use`));
           } else {
@@ -118,6 +151,13 @@ export class ServerManager {
    */
   isRunning(): boolean {
     return this.server !== null;
+  }
+
+  /**
+   * Get the current port the server is running on
+   */
+  getPort(): number | null {
+    return this.config?.port ?? null;
   }
 
   /**

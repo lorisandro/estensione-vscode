@@ -76,7 +76,7 @@ const styles = {
 export const App: React.FC = () => {
   const { setSelectedElement, setHoveredElement, screenshotMode } = useSelectionStore();
   const { isLoading, error, consoleVisible, cssInspectorVisible } = useEditorStore();
-  const { setUrl, navigateTo, goBack, goForward, refresh, url } = useNavigationStore();
+  const { setUrl, navigateTo, goBack, goForward, refresh, url, setServerBaseUrl } = useNavigationStore();
   const { onMessage, postMessage } = useVSCodeApi();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const browserContainerRef = useRef<HTMLDivElement>(null);
@@ -121,13 +121,22 @@ export const App: React.FC = () => {
           setSelectedElement(null);
           setHoveredElement(null);
           break;
+        case 'configUpdate': {
+          // Handle server port change (auto port fallback)
+          const payload = message.payload as { serverPort?: number; serverBaseUrl?: string } | undefined;
+          if (payload?.serverBaseUrl) {
+            console.log('[App] Server base URL updated:', payload.serverBaseUrl);
+            setServerBaseUrl(payload.serverBaseUrl);
+          }
+          break;
+        }
         default:
           break;
       }
     });
 
     return cleanup;
-  }, [onMessage, setUrl, setSelectedElement, setHoveredElement]);
+  }, [onMessage, setUrl, setSelectedElement, setHoveredElement, setServerBaseUrl]);
 
   // Send ready message on mount
   useEffect(() => {

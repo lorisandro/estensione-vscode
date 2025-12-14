@@ -111,6 +111,9 @@ async function initializeServices(context: vscode.ExtensionContext): Promise<voi
   console.log('Services initialized');
 }
 
+// Store the actual server port (may differ from configured if port was in use)
+let actualServerPort: number = 3333;
+
 /**
  * Initialize the development server for serving preview content
  * @param extensionPath Path to the extension folder
@@ -127,11 +130,23 @@ async function initializeServer(extensionPath: string): Promise<void> {
 
   try {
     // Pass extensionPath to enable finding injected scripts
-    await serverManager.start(serverPort, rootPath, undefined, extensionPath);
-    console.log(`[Server] Development server started on port ${serverPort}`);
+    // start() now returns the actual port used (may differ if configured port was in use)
+    actualServerPort = await serverManager.start(serverPort, rootPath, undefined, extensionPath);
+    console.log(`[Server] Development server started on port ${actualServerPort}`);
+
+    // Notify webview of the actual server port
+    if (webviewProvider) {
+      await webviewProvider.postMessage({
+        type: 'configUpdate',
+        payload: {
+          serverPort: actualServerPort,
+          serverBaseUrl: `http://localhost:${actualServerPort}`,
+        },
+      });
+    }
   } catch (error) {
-    // Port might be in use, log but don't fail activation
-    console.warn(`[Server] Could not start server on port ${serverPort}:`, error);
+    // Log but don't fail activation
+    console.warn(`[Server] Could not start server:`, error);
   }
 }
 
@@ -183,9 +198,8 @@ function createWebviewRequest<T>(
  * Initialize MCP Bridge for browser control
  */
 async function initializeMCPBridge(): Promise<void> {
-  const config = vscode.workspace.getConfiguration('claudeVisualStudio');
-  const serverPort = config.get<number>('serverPort', 3333);
-  const mcpPort = serverPort + 1; // MCP bridge port = server port + 1
+  // MCP bridge port = actual server port + 1
+  const mcpPort = actualServerPort + 1;
 
   mcpBridge = new MCPBridge(mcpPort);
 
@@ -270,8 +284,8 @@ async function initializeMCPBridge(): Promise<void> {
 
   // Start the bridge
   try {
-    await mcpBridge.start();
-    console.log(`[MCP] Bridge started on port ${mcpPort}`);
+    const actualMcpPort = await mcpBridge.start();
+    console.log(`[MCP] Bridge started on port ${actualMcpPort}`);
   } catch (error) {
     console.error('[MCP] Failed to start bridge:', error);
   }

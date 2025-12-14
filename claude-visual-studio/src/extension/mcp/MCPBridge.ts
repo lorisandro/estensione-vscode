@@ -30,15 +30,46 @@ export class MCPBridge {
   }
 
   /**
-   * Start the WebSocket server
+   * Start the WebSocket server with automatic port fallback
+   * @param maxRetries Maximum number of ports to try (default 10)
+   * @returns The actual port the server started on
    */
-  start(): Promise<void> {
+  async start(maxRetries: number = 10): Promise<number> {
+    let currentPort = this.port;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        await this.tryStartOnPort(currentPort);
+        if (currentPort !== this.port) {
+          console.log(`[MCPBridge] Port ${this.port} was in use, started on port ${currentPort} instead`);
+        }
+        this.port = currentPort;
+        return currentPort;
+      } catch (error) {
+        lastError = error as Error;
+        if ((error as Error).message.includes('already in use')) {
+          console.log(`[MCPBridge] Port ${currentPort} in use, trying ${currentPort + 1}...`);
+          currentPort++;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error(`[MCPBridge] Could not find available port after ${maxRetries} attempts. Last error: ${lastError?.message}`);
+  }
+
+  /**
+   * Try to start on a specific port
+   */
+  private tryStartOnPort(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.wss = new WebSocketServer({ port: this.port });
+        this.wss = new WebSocketServer({ port });
 
         this.wss.on('listening', () => {
-          console.log(`[MCPBridge] WebSocket server listening on port ${this.port}`);
+          console.log(`[MCPBridge] WebSocket server listening on port ${port}`);
           resolve();
         });
 
@@ -72,9 +103,9 @@ export class MCPBridge {
         });
 
         this.wss.on('error', (error: NodeJS.ErrnoException) => {
+          this.wss = null;
           if (error.code === 'EADDRINUSE') {
-            console.log(`[MCPBridge] Port ${this.port} already in use, bridge may already be running`);
-            resolve(); // Not a fatal error, bridge might already be running
+            reject(new Error(`Port ${port} is already in use`));
           } else {
             reject(error);
           }
@@ -149,5 +180,12 @@ export class MCPBridge {
    */
   isRunning(): boolean {
     return this.wss !== null;
+  }
+
+  /**
+   * Get the current port the bridge is running on
+   */
+  getPort(): number {
+    return this.port;
   }
 }

@@ -58,7 +58,8 @@
       "Bash(cd /e/Progetto/Progetti/APP e ASSET/App/Test)",
       "Bash(taskkill:*)",
       "Bash(del /f nul)",
-      "Bash(npm run build:mcp:*)"
+      "Bash(npm run build:mcp:*)",
+      "Bash(netstat:*)"
     ]
   }
 }
