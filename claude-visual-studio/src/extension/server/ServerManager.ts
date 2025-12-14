@@ -312,6 +312,11 @@ export class ServerManager {
                 html = this.injectMCPBridgeScript(html);
 
                 res.send(html);
+              } else if (contentType.includes('javascript') || parsedUrl.pathname.endsWith('.js')) {
+                // For JavaScript content, extract styled-jsx CSS
+                const jsContent = body.toString('utf-8');
+                this.extractStyledJsxCss(jsContent);
+                res.send(body);
               } else {
                 res.send(body);
               }
@@ -341,6 +346,16 @@ export class ServerManager {
         );
         res.status(500).send(errorHtml);
       }
+    });
+
+    // Endpoint to retrieve extracted styled-jsx CSS
+    // This is called by the MCP bridge after JS files have loaded
+    this.app.get('/__claude-vs__/styled-jsx-css', (req, res) => {
+      const css = this.getExtractedStyledJsxStyles();
+      res.setHeader('Content-Type', 'text/css');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.send(css);
+      console.log(`[ServerManager] Served styled-jsx CSS (${this.extractedStyledJsxCss.size} rules)`);
     });
 
     // Special route for element inspector script
@@ -748,6 +763,40 @@ export class ServerManager {
         // This ensures styled-jsx CSS works even if the normal runtime fails
         (function() {
           var injectedStyles = {};
+          var serverPort = window.location.port || '3333';
+          var cssEndpoint = 'http://localhost:' + serverPort + '/__claude-vs__/styled-jsx-css';
+
+          // Fetch and inject extracted styled-jsx CSS from server
+          // The server extracts CSS from JS files as they pass through the proxy
+          function fetchAndInjectStyledJsxCss() {
+            fetch(cssEndpoint)
+              .then(function(response) {
+                return response.text();
+              })
+              .then(function(css) {
+                if (css && css.trim().length > 0) {
+                  // Check if we already have this CSS injected
+                  var existingStyle = document.getElementById('__claude-vs-styled-jsx__');
+                  if (existingStyle) {
+                    // Update existing style
+                    if (existingStyle.textContent !== css) {
+                      existingStyle.textContent = css;
+                      console.log('[Claude VS] Updated styled-jsx CSS from server');
+                    }
+                  } else {
+                    // Create new style element
+                    var style = document.createElement('style');
+                    style.id = '__claude-vs-styled-jsx__';
+                    style.textContent = css;
+                    document.head.appendChild(style);
+                    console.log('[Claude VS] Injected styled-jsx CSS from server');
+                  }
+                }
+              })
+              .catch(function(err) {
+                // Silently ignore errors - CSS endpoint may not be ready yet
+              });
+          }
 
           // Monitor for styled-jsx style elements being created
           var originalCreateElement = document.createElement.bind(document);
@@ -798,11 +847,28 @@ export class ServerManager {
           var checkCount = 0;
           var checkInterval = setInterval(function() {
             checkStyledJsx();
+            // Also try to fetch CSS from server (JS files may have loaded by now)
+            fetchAndInjectStyledJsxCss();
             checkCount++;
-            if (checkCount > 20) {
+            if (checkCount > 30) { // Increased to 6 seconds total
               clearInterval(checkInterval);
             }
           }, 200);
+
+          // Also fetch immediately when DOM is ready
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fetchAndInjectStyledJsxCss);
+          } else {
+            fetchAndInjectStyledJsxCss();
+          }
+
+          // And on load
+          window.addEventListener('load', function() {
+            // Give extra time for JS to fully execute
+            setTimeout(fetchAndInjectStyledJsxCss, 500);
+            setTimeout(fetchAndInjectStyledJsxCss, 1000);
+            setTimeout(fetchAndInjectStyledJsxCss, 2000);
+          });
         })();
 
         // Console log interception - capture all console output
