@@ -165,6 +165,32 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           }
         } else if (type === 'drag-mode-changed') {
           console.log('[BrowserFrame] Drag mode changed in iframe:', data);
+        } else if (type === 'text-content-changed') {
+          // Forward text content change to extension for saving to file
+          console.log('[BrowserFrame] Text content changed:', data?.selector);
+          postMessage({
+            type: 'text-content-changed',
+            payload: {
+              selector: data?.selector || '',
+              xpath: data?.xpath || '',
+              oldText: data?.oldText || '',
+              newText: data?.newText || '',
+            }
+          });
+        } else if (type === 'edit-mode-started') {
+          // Forward edit mode start to extension
+          console.log('[BrowserFrame] Edit mode started:', data?.selector);
+          postMessage({
+            type: 'edit-mode-started',
+            payload: data
+          });
+        } else if (type === 'edit-mode-ended') {
+          // Forward edit mode end to extension
+          console.log('[BrowserFrame] Edit mode ended:', data?.selector, 'saved:', data?.saved);
+          postMessage({
+            type: 'edit-mode-ended',
+            payload: data
+          });
         }
         return;
       }

@@ -59,7 +59,20 @@
       "Bash(taskkill:*)",
       "Bash(del /f nul)",
       "Bash(npm run build:mcp:*)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "mcp__claude-visual-studio__browser_get_console_logs",
+      "mcp__claude-visual-studio__backend_get_logs",
+      "mcp__claude-visual-studio__backend_get_status",
+      "mcp__claude-visual-studio__browser_get_url",
+      "mcp__claude-visual-studio__browser_open",
+      "mcp__claude-visual-studio__browser_navigate",
+      "mcp__claude-visual-studio__browser_screenshot",
+      "mcp__claude-visual-studio__browser_get_html",
+      "mcp__claude-visual-studio__browser_refresh",
+      "mcp__claude-visual-studio__extension_get_logs",
+      "mcp__claude-visual-studio__browser_get_text",
+      "mcp__claude-visual-studio__browser_get_elements",
+      "WebFetch(domain:localhost)"
     ]
   }
 }
