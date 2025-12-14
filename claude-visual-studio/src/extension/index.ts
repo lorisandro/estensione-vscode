@@ -420,16 +420,18 @@ async function initializeMCPBridge(): Promise<void> {
   });
 
   mcpBridge.registerHandler('stopDevServer', async () => {
-    const success = devServerRunner.stop();
+    const success = await devServerRunner.stop();
     return { success, message: success ? 'Server stopped' : 'No server running' };
   });
 
   mcpBridge.registerHandler('restartDevServer', async () => {
-    const success = devServerRunner.restart();
+    const success = await devServerRunner.restart();
     return { success, message: success ? 'Server restarting...' : 'No previous server config' };
   });
 
   mcpBridge.registerHandler('getDevServerStatus', async () => {
+    // Refresh status by checking ports before returning
+    await devServerRunner.refreshStatus();
     return devServerRunner.getStatus();
   });
 

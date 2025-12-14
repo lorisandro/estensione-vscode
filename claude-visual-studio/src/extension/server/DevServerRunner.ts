@@ -3,9 +3,10 @@
  * Captures stdout/stderr for real-time log display
  */
 
-import { ChildProcess, spawn } from 'child_process';
+import { ChildProcess, spawn, execSync } from 'child_process';
 import { EventEmitter } from 'events';
 import * as path from 'path';
+import * as net from 'net';
 
 export interface ServerLogEntry {
   type: 'stdout' | 'stderr' | 'info' | 'error';
@@ -27,9 +28,82 @@ export class DevServerRunner extends EventEmitter {
   private maxLogs = 1000;
   private isRunning = false;
   private config: DevServerConfig | null = null;
+  // Track ports that should be monitored (common dev server ports)
+  private monitoredPorts: number[] = [3000, 3001, 5173, 5174, 8080, 8000];
+  // Store detected active ports
+  private activePorts: number[] = [];
 
   constructor() {
     super();
+  }
+
+  /**
+   * Check if a port is in use
+   */
+  private async isPortInUse(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const server = net.createServer();
+      server.once('error', () => {
+        resolve(true); // Port is in use
+      });
+      server.once('listening', () => {
+        server.close();
+        resolve(false); // Port is free
+      });
+      server.listen(port, '127.0.0.1');
+    });
+  }
+
+  /**
+   * Find which monitored ports are currently in use
+   */
+  private async findActivePorts(): Promise<number[]> {
+    const activePorts: number[] = [];
+    for (const port of this.monitoredPorts) {
+      if (await this.isPortInUse(port)) {
+        activePorts.push(port);
+      }
+    }
+    return activePorts;
+  }
+
+  /**
+   * Kill processes on specific ports (Windows)
+   */
+  private killProcessesOnPorts(ports: number[]): void {
+    if (process.platform !== 'win32' || ports.length === 0) return;
+
+    for (const port of ports) {
+      try {
+        // Find PID using netstat
+        const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, {
+          encoding: 'utf-8',
+          windowsHide: true,
+        });
+
+        const lines = result.trim().split('\n');
+        const pids = new Set<string>();
+
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && /^\d+$/.test(pid) && pid !== '0') {
+            pids.add(pid);
+          }
+        }
+
+        for (const pid of pids) {
+          console.log(`[DevServerRunner] Killing process ${pid} on port ${port}`);
+          try {
+            execSync(`taskkill /F /PID ${pid}`, { windowsHide: true });
+          } catch {
+            // Process might already be dead
+          }
+        }
+      } catch {
+        // No process found on this port
+      }
+    }
   }
 
   /**
@@ -83,16 +157,38 @@ export class DevServerRunner extends EventEmitter {
       });
 
       // Handle process exit
-      this.process.on('exit', (code, signal) => {
-        console.log(`[DevServerRunner] Process exited with code ${code}, signal ${signal}`);
-        this.isRunning = false;
-        this.addLog({
-          type: 'info',
-          message: `Server exited with code ${code}`,
-          timestamp: Date.now(),
-          source: 'backend',
-        });
-        this.emit('exit', code, signal);
+      this.process.on('exit', async (code, signal) => {
+        console.log(`[DevServerRunner] Parent process exited with code ${code}, signal ${signal}`);
+
+        // For package managers (npm, pnpm, yarn) the parent exits but child servers keep running
+        // Wait a moment then check if dev servers are still active on monitored ports
+        setTimeout(async () => {
+          const activePorts = await this.findActivePorts();
+
+          if (activePorts.length > 0) {
+            // Server is still running (child process took over)
+            console.log(`[DevServerRunner] Dev server still active on ports: ${activePorts.join(', ')}`);
+            this.activePorts = activePorts;
+            this.isRunning = true; // Keep marked as running
+            this.addLog({
+              type: 'info',
+              message: `Dev server running on port(s): ${activePorts.join(', ')}`,
+              timestamp: Date.now(),
+              source: 'backend',
+            });
+          } else {
+            // Server actually stopped
+            this.isRunning = false;
+            this.activePorts = [];
+            this.addLog({
+              type: 'info',
+              message: `Server exited with code ${code}`,
+              timestamp: Date.now(),
+              source: 'backend',
+            });
+            this.emit('exit', code, signal);
+          }
+        }, 2000); // Wait 2s for child processes to start listening
       });
 
       // Handle process error
@@ -151,23 +247,41 @@ export class DevServerRunner extends EventEmitter {
   /**
    * Stop the running server
    */
-  stop(): boolean {
-    if (!this.process || !this.isRunning) {
+  async stop(): Promise<boolean> {
+    if (!this.isRunning && this.activePorts.length === 0) {
       console.log('[DevServerRunner] No server running');
       return false;
     }
 
     console.log('[DevServerRunner] Stopping server...');
 
-    // Kill the process tree on Windows
-    if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(this.process.pid), '/f', '/t']);
-    } else {
-      this.process.kill('SIGTERM');
+    // First try to kill the original process if it exists
+    if (this.process?.pid) {
+      if (process.platform === 'win32') {
+        try {
+          execSync(`taskkill /F /T /PID ${this.process.pid}`, { windowsHide: true });
+        } catch {
+          // Process might already be dead
+        }
+      } else {
+        this.process.kill('SIGTERM');
+      }
+    }
+
+    // Also kill any processes running on the monitored ports
+    // This handles orphaned child processes (pnpm → turbo → next dev)
+    const portsToKill = this.activePorts.length > 0
+      ? this.activePorts
+      : await this.findActivePorts();
+
+    if (portsToKill.length > 0) {
+      console.log(`[DevServerRunner] Killing processes on ports: ${portsToKill.join(', ')}`);
+      this.killProcessesOnPorts(portsToKill);
     }
 
     this.isRunning = false;
     this.process = null;
+    this.activePorts = [];
 
     this.addLog({
       type: 'info',
@@ -182,13 +296,13 @@ export class DevServerRunner extends EventEmitter {
   /**
    * Restart the server
    */
-  restart(): boolean {
+  async restart(): Promise<boolean> {
     if (!this.config) {
       console.log('[DevServerRunner] No previous config to restart');
       return false;
     }
 
-    this.stop();
+    await this.stop();
 
     // Small delay before restart
     setTimeout(() => {
@@ -265,19 +379,39 @@ export class DevServerRunner extends EventEmitter {
   /**
    * Check if server is running
    */
-  getStatus(): { running: boolean; pid?: number; command?: string } {
+  getStatus(): { running: boolean; pid?: number; command?: string; ports?: number[] } {
     return {
       running: this.isRunning,
       pid: this.process?.pid,
       command: this.config ? `${this.config.command} ${this.config.args?.join(' ') || ''}` : undefined,
+      ports: this.activePorts.length > 0 ? this.activePorts : undefined,
     };
+  }
+
+  /**
+   * Refresh the running status by checking ports
+   * Useful to call periodically to detect if servers died
+   */
+  async refreshStatus(): Promise<{ running: boolean; ports: number[] }> {
+    const activePorts = await this.findActivePorts();
+
+    if (activePorts.length > 0) {
+      this.isRunning = true;
+      this.activePorts = activePorts;
+    } else if (this.isRunning && !this.process?.pid) {
+      // Was running but no ports active anymore
+      this.isRunning = false;
+      this.activePorts = [];
+    }
+
+    return { running: this.isRunning, ports: this.activePorts };
   }
 
   /**
    * Dispose resources
    */
-  dispose(): void {
-    this.stop();
+  async dispose(): Promise<void> {
+    await this.stop();
     this.removeAllListeners();
   }
 }
