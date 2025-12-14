@@ -82,6 +82,11 @@ async function initializeServices(context: vscode.ExtensionContext): Promise<voi
   // Initialize webview provider
   webviewProvider = new WebviewPanelProvider(context);
 
+  // Set callback to send server config when webview becomes ready
+  webviewProvider.onWebviewReady = () => {
+    sendServerConfigToWebview();
+  };
+
   // Initialize sidebar provider
   sidebarProvider = new SidebarViewProvider(context);
 
@@ -133,20 +138,25 @@ async function initializeServer(extensionPath: string): Promise<void> {
     // start() now returns the actual port used (may differ if configured port was in use)
     actualServerPort = await serverManager.start(serverPort, rootPath, undefined, extensionPath);
     console.log(`[Server] Development server started on port ${actualServerPort}`);
-
-    // Notify webview of the actual server port
-    if (webviewProvider) {
-      await webviewProvider.postMessage({
-        type: 'configUpdate',
-        payload: {
-          serverPort: actualServerPort,
-          serverBaseUrl: `http://localhost:${actualServerPort}`,
-        },
-      });
-    }
   } catch (error) {
     // Log but don't fail activation
     console.warn(`[Server] Could not start server:`, error);
+  }
+}
+
+/**
+ * Send server config to webview when it becomes ready
+ */
+function sendServerConfigToWebview(): void {
+  if (webviewProvider && actualServerPort) {
+    webviewProvider.postMessage({
+      type: 'configUpdate',
+      payload: {
+        serverPort: actualServerPort,
+        serverBaseUrl: `http://localhost:${actualServerPort}`,
+      },
+    });
+    console.log(`[Server] Sent config to webview: port ${actualServerPort}`);
   }
 }
 

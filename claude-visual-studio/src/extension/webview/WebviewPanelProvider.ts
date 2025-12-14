@@ -32,6 +32,9 @@ export class WebviewPanelProvider {
   private requestId = 0;
   private pendingTerminalMessage: string | null = null;
 
+  // Callback called when webview becomes ready
+  public onWebviewReady: (() => void) | undefined;
+
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
   }
@@ -390,6 +393,10 @@ export class WebviewPanelProvider {
       // Handle webview-ready (kebab-case variant)
       case 'webview-ready':
         console.log('Webview ready (kebab-case)');
+        // Call callback to notify extension
+        if (this.onWebviewReady) {
+          this.onWebviewReady();
+        }
         break;
 
       // Handle refresh message
