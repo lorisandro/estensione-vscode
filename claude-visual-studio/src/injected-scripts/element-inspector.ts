@@ -1967,13 +1967,19 @@ class ElementInspector {
       return;
     }
 
+    // Don't update hover overlay while editing
+    if (this.isEditMode) {
+      return;
+    }
+
     const target = event.target as HTMLElement;
 
-    // Ignore our own overlay and inspector elements
+    // Ignore our own overlay and inspector elements (including floating toolbar)
     if (
       target === this.overlay ||
       target.id === '__claude-vs-inspector-overlay__' ||
-      target.id?.startsWith('__claude-vs-')
+      target.id?.startsWith('__claude-vs-') ||
+      this.isClickOnToolbar(target)
     ) {
       return;
     }
@@ -2021,19 +2027,46 @@ class ElementInspector {
       return;
     }
 
-    // Prevent default action
-    event.preventDefault();
-    event.stopPropagation();
-
     const target = event.target as HTMLElement;
+
+    // Ignore clicks on our toolbar (allow Save/Cancel buttons to work)
+    if (this.isClickOnToolbar(target)) {
+      return;
+    }
+
+    // Ignore clicks when in edit mode (let contentEditable work)
+    if (this.isEditMode) {
+      return;
+    }
 
     // Ignore our own overlay
     if (target === this.overlay || target.id === '__claude-vs-inspector-overlay__') {
       return;
     }
 
+    // Now prevent default action for selection
+    event.preventDefault();
+    event.stopPropagation();
+
     // Select element
     this.selectElement(target);
+  }
+
+  /**
+   * Check if click is on the floating toolbar or its children
+   */
+  private isClickOnToolbar(target: HTMLElement): boolean {
+    if (!this.floatingToolbar) return false;
+
+    // Check if target is the toolbar or inside it
+    let element: HTMLElement | null = target;
+    while (element) {
+      if (element === this.floatingToolbar || element.id === '__claude-vs-floating-toolbar__') {
+        return true;
+      }
+      element = element.parentElement;
+    }
+    return false;
   }
 
   /**
