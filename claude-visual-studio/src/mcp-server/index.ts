@@ -11,17 +11,26 @@ import WebSocket from 'ws';
 let wsConnection: WebSocket | null = null;
 let pendingRequests: Map<string, { resolve: (value: any) => void; reject: (error: any) => void }> = new Map();
 let requestId = 0;
+let connectedPort: number | null = null;
 
-const WS_PORT = 3334; // Port for communication with VS Code extension
+const WS_BASE_PORT = 3334; // Starting port for communication with VS Code extension
+const MAX_PORT_ATTEMPTS = 10; // Try up to 10 ports
 
-// Connect to VS Code extension
-function connectToExtension(): Promise<void> {
+// Try to connect to a specific port
+function tryConnectToPort(port: number): Promise<void> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
+    const ws = new WebSocket(`ws://localhost:${port}`);
+
+    const timeout = setTimeout(() => {
+      ws.close();
+      reject(new Error(`Connection timeout on port ${port}`));
+    }, 2000);
 
     ws.on('open', () => {
-      console.error('[MCP] Connected to VS Code extension');
+      clearTimeout(timeout);
+      console.error(`[MCP] Connected to VS Code extension on port ${port}`);
       wsConnection = ws;
+      connectedPort = port;
       resolve();
     });
 
@@ -43,15 +52,42 @@ function connectToExtension(): Promise<void> {
     });
 
     ws.on('error', (error) => {
-      console.error('[MCP] WebSocket error:', error.message);
+      clearTimeout(timeout);
       reject(error);
     });
 
     ws.on('close', () => {
       console.error('[MCP] Disconnected from VS Code extension');
       wsConnection = null;
+      connectedPort = null;
     });
   });
+}
+
+// Connect to VS Code extension, trying multiple ports
+async function connectToExtension(): Promise<void> {
+  // If we were previously connected, try that port first
+  if (connectedPort) {
+    try {
+      await tryConnectToPort(connectedPort);
+      return;
+    } catch {
+      // Try other ports
+    }
+  }
+
+  // Try ports starting from base port
+  for (let i = 0; i < MAX_PORT_ATTEMPTS; i++) {
+    const port = WS_BASE_PORT + i;
+    try {
+      await tryConnectToPort(port);
+      return;
+    } catch {
+      // Continue to next port
+    }
+  }
+
+  throw new Error(`Could not connect to VS Code extension on ports ${WS_BASE_PORT}-${WS_BASE_PORT + MAX_PORT_ATTEMPTS - 1}. Make sure the extension is running.`);
 }
 
 // Send command to VS Code extension and wait for response
