@@ -310,13 +310,25 @@ export class ServerManager {
 
         proxyReq.on('error', (error) => {
           console.error('[ServerManager] Proxy error:', error);
-          res.status(502).send(`Proxy error: ${error.message}`);
+          // Create an error page with MCP bridge so commands don't timeout
+          const errorHtml = this.createErrorPage(
+            `Failed to load ${targetUrl}`,
+            error.message,
+            targetUrl
+          );
+          res.status(502).send(errorHtml);
         });
 
         proxyReq.end();
       } catch (error) {
         console.error('[ServerManager] Proxy error:', error);
-        res.status(500).send(`Proxy error: ${(error as Error).message}`);
+        // Create an error page with MCP bridge so commands don't timeout
+        const errorHtml = this.createErrorPage(
+          `Failed to load ${targetUrl}`,
+          (error as Error).message,
+          targetUrl
+        );
+        res.status(500).send(errorHtml);
       }
     });
 
@@ -894,5 +906,77 @@ export class ServerManager {
     } else {
       return html + mcpBridgeScript;
     }
+  }
+
+  /**
+   * Create an error page with MCP bridge injected
+   * This ensures MCP commands don't timeout even when the target page fails to load
+   */
+  private createErrorPage(title: string, message: string, url: string): string {
+    const errorHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e1e;
+      color: #cccccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .error-container {
+      text-align: center;
+      max-width: 600px;
+    }
+    .error-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #e06c75;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+    .error-message {
+      color: #abb2bf;
+      font-size: 14px;
+      background: #2d2d2d;
+      padding: 12px 16px;
+      border-radius: 6px;
+      word-break: break-all;
+      margin-bottom: 16px;
+    }
+    .url {
+      color: #61afef;
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    .hint {
+      color: #98c379;
+      font-size: 13px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-container">
+    <div class="error-icon">⚠️</div>
+    <h1>${title}</h1>
+    <div class="error-message">${message}</div>
+    <div class="url">URL: ${url}</div>
+    <div class="hint">Make sure the server is running and accessible.</div>
+  </div>
+</body>
+</html>`;
+
+    // Inject MCP bridge so commands like getUrl, getText still work
+    return this.injectMCPBridgeScript(errorHtml);
   }
 }
