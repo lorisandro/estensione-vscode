@@ -38,20 +38,34 @@ export class DevServerRunner extends EventEmitter {
   }
 
   /**
-   * Check if a port is in use
+   * Check if a port is in use using netstat (more reliable on Windows)
+   * The net.createServer approach can miss servers listening on 0.0.0.0 or IPv6
    */
   private async isPortInUse(port: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      const server = net.createServer();
-      server.once('error', () => {
-        resolve(true); // Port is in use
-      });
-      server.once('listening', () => {
-        server.close();
-        resolve(false); // Port is free
-      });
-      server.listen(port, '127.0.0.1');
-    });
+    if (process.platform === 'win32') {
+      try {
+        const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, {
+          encoding: 'utf-8',
+          windowsHide: true,
+          timeout: 5000,
+        });
+        return result.trim().length > 0;
+      } catch {
+        // No process found on this port (findstr returns error when no match)
+        return false;
+      }
+    } else {
+      // Unix: use lsof or ss
+      try {
+        const result = execSync(`lsof -i :${port} -sTCP:LISTEN -t 2>/dev/null || ss -tlnp "sport = :${port}" 2>/dev/null | grep LISTEN`, {
+          encoding: 'utf-8',
+          timeout: 5000,
+        });
+        return result.trim().length > 0;
+      } catch {
+        return false;
+      }
+    }
   }
 
   /**

@@ -15,6 +15,10 @@ let wsConnection: WebSocket | null = null;
 let pendingRequests: Map<string, { resolve: (value: any) => void; reject: (error: any) => void }> = new Map();
 let requestId = 0;
 let connectedPort: number | null = null;
+let isReconnecting = false;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY_MS = 2000;
 
 const WS_BASE_PORT = 3334; // Starting port for communication with VS Code extension
 const MAX_PORT_ATTEMPTS = 10; // Try up to 10 ports
@@ -90,7 +94,31 @@ function tryConnectToPort(port: number): Promise<void> {
     ws.on('close', () => {
       console.error('[MCP] Disconnected from VS Code extension');
       wsConnection = null;
-      connectedPort = null;
+
+      // Attempt auto-reconnect (extension might have restarted)
+      if (!isReconnecting && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        isReconnecting = true;
+        reconnectAttempts++;
+        console.error(`[MCP] Attempting auto-reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${RECONNECT_DELAY_MS}ms...`);
+
+        setTimeout(async () => {
+          isReconnecting = false;
+          // Clear connected port so we try workspace file and port scan
+          connectedPort = null;
+          try {
+            await connectToExtension();
+            reconnectAttempts = 0; // Reset on success
+            console.error('[MCP] Auto-reconnect successful');
+          } catch (error) {
+            console.error('[MCP] Auto-reconnect failed:', (error as Error).message);
+            // Will retry on next command
+          }
+        }, RECONNECT_DELAY_MS);
+      } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error('[MCP] Max reconnect attempts reached. Will retry on next command.');
+        reconnectAttempts = 0; // Reset for next round
+        connectedPort = null;
+      }
     });
   });
 }
@@ -611,9 +639,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (result.error) {
           return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
         }
-        const statusText = result.running
-          ? `Server running (PID: ${result.pid})\nCommand: ${result.command}`
-          : 'No server running';
+        // Build a comprehensive status message
+        let statusText: string;
+        if (result.running) {
+          const parts: string[] = ['Server running'];
+          if (result.pid) {
+            parts.push(`PID: ${result.pid}`);
+          }
+          if (result.ports && result.ports.length > 0) {
+            parts.push(`Ports: ${result.ports.join(', ')}`);
+          }
+          if (result.command) {
+            parts.push(`Command: ${result.command}`);
+          }
+          statusText = parts.join('\n');
+        } else {
+          statusText = 'No server running';
+        }
         return { content: [{ type: 'text', text: statusText }] };
 
       case 'backend_get_logs':
