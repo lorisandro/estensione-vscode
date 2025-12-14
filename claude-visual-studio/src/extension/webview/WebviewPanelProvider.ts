@@ -1052,17 +1052,7 @@ export class WebviewPanelProvider {
       await vscode.workspace.fs.writeFile(fileUri, encoder.encode(updatedContent));
 
       console.log('[PageBuilder] Text updated in file:', path.basename(filePath));
-      vscode.window.setStatusBarMessage(`Text updated in ${path.basename(filePath)}`, 3000);
-
-      // Show the file to the user and highlight the change
-      const doc = await vscode.workspace.openTextDocument(fileUri);
-      const editor = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: false });
-
-      // Calculate position and select the new text
-      const pos = doc.positionAt(selectedIndex);
-      const endPos = doc.positionAt(selectedIndex + newText.length);
-      editor.selection = new vscode.Selection(pos, endPos);
-      editor.revealRange(new vscode.Range(pos, endPos), vscode.TextEditorRevealType.InCenter);
+      vscode.window.setStatusBarMessage(`✓ Text updated in ${path.basename(filePath)}`, 3000);
 
     } catch (error) {
       console.error('[PageBuilder] Error updating source file:', error);

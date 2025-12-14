@@ -772,6 +772,11 @@ class ElementInspector {
 
     document.body.appendChild(this.floatingToolbar);
     this.setupToolbarEvents();
+
+    // Force cursor styles on all interactive elements (to override any site styles)
+    this.floatingToolbar.querySelectorAll('button, select, input').forEach((el) => {
+      (el as HTMLElement).style.setProperty('cursor', 'pointer', 'important');
+    });
   }
 
   /**
