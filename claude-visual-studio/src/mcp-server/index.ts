@@ -422,6 +422,32 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
         },
       },
+      {
+        name: 'extension_get_logs',
+        description: 'Get logs from the VS Code Extension Host. This captures console.log, console.error, etc. from the extension itself, useful for debugging extension behavior.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            filter: {
+              type: 'string',
+              description: 'Filter logs by type: "all", "log", "error", "warn", "info", "debug". Default is "all".',
+              enum: ['all', 'log', 'error', 'warn', 'info', 'debug'],
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of logs to return. Default is 100.',
+            },
+          },
+        },
+      },
+      {
+        name: 'extension_clear_logs',
+        description: 'Clear the extension host logs buffer.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -618,6 +644,33 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
         }
         return { content: [{ type: 'text', text: 'Backend logs cleared.' }] };
+
+      case 'extension_get_logs':
+        result = await sendCommand('getExtensionLogs', {
+          filter: args?.filter || 'all',
+          limit: args?.limit || 100,
+        });
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        const extensionLogs = result.logs || [];
+        if (extensionLogs.length === 0) {
+          return { content: [{ type: 'text', text: 'No extension host logs captured.' }] };
+        }
+        const formattedExtensionLogs = extensionLogs.map((log: any) => {
+          const time = new Date(log.timestamp).toISOString().split('T')[1].slice(0, 12);
+          const prefix = `[${time}] [${log.type.toUpperCase()}]`;
+          return `${prefix} ${log.message}`;
+        }).join('\n');
+        const extensionSummary = `${extensionLogs.length} log(s) (total: ${result.total})\n\n`;
+        return { content: [{ type: 'text', text: extensionSummary + formattedExtensionLogs }] };
+
+      case 'extension_clear_logs':
+        result = await sendCommand('clearExtensionLogs');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: 'Extension host logs cleared.' }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

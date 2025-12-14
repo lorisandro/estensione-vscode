@@ -123,6 +123,33 @@ const logTypeStyles: Record<ConsoleLogEntry['type'], React.CSSProperties> = {
   warn: { color: 'var(--vscode-editorWarning-foreground, #cca700)', backgroundColor: 'rgba(204, 167, 0, 0.1)' },
   error: { color: 'var(--vscode-errorForeground, #f14c4c)', backgroundColor: 'rgba(241, 76, 76, 0.1)' },
   debug: { color: 'var(--vscode-descriptionForeground)' },
+  stdout: { color: 'var(--vscode-terminal-ansiGreen, #23d18b)' },
+  stderr: { color: 'var(--vscode-terminal-ansiRed, #f14c4c)', backgroundColor: 'rgba(241, 76, 76, 0.1)' },
+};
+
+const sourceStyles: Record<string, React.CSSProperties> = {
+  browser: { backgroundColor: '#3794ff', color: 'white' },
+  backend: { backgroundColor: '#23d18b', color: 'black' },
+  extension: { backgroundColor: '#cca700', color: 'black' },
+};
+
+const SourceBadge: React.FC<{ source?: string }> = ({ source }) => {
+  if (!source) return null;
+  const style = sourceStyles[source] || sourceStyles.browser;
+  return (
+    <span style={{
+      ...style,
+      fontSize: '9px',
+      padding: '1px 4px',
+      borderRadius: '3px',
+      marginRight: '6px',
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      flexShrink: 0,
+    }}>
+      {source === 'browser' ? 'FE' : source === 'backend' ? 'BE' : 'EXT'}
+    </span>
+  );
 };
 
 const LogIcon: React.FC<{ type: ConsoleLogEntry['type'] }> = ({ type }) => {
@@ -264,6 +291,7 @@ export const ConsolePanel: React.FC = () => {
                 ...logTypeStyles[log.type],
               }}
             >
+              <SourceBadge source={log.source} />
               <LogIcon type={log.type} />
               <span style={styles.logMessage}>{log.message}</span>
               <span style={styles.logTimestamp}>{formatTimestamp(log.timestamp)}</span>

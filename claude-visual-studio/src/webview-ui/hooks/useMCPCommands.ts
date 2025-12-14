@@ -113,12 +113,33 @@ export function useMCPCommands(
         console.log('[MCP] MCP bridge ready in iframe!');
         markBridgeReady();
       } else if (event.data?.type === 'console-log') {
-        // Handle console logs from the MCP bridge
+        // Handle console logs from the MCP bridge (browser/frontend logs)
         const { payload } = event.data;
         if (payload) {
           useEditorStore.getState().addConsoleLog({
             type: payload.logType as ConsoleLogEntry['type'],
             message: payload.message,
+            source: 'browser',
+          });
+        }
+      } else if (event.data?.type === 'backendLog') {
+        // Handle backend server logs (Next.js, Vite, etc.)
+        const { payload } = event.data;
+        if (payload) {
+          useEditorStore.getState().addConsoleLog({
+            type: payload.type as ConsoleLogEntry['type'],
+            message: payload.message,
+            source: 'backend',
+          });
+        }
+      } else if (event.data?.type === 'extensionLog') {
+        // Handle Extension Host logs
+        const { payload } = event.data;
+        if (payload) {
+          useEditorStore.getState().addConsoleLog({
+            type: payload.type as ConsoleLogEntry['type'],
+            message: payload.message,
+            source: 'extension',
           });
         }
       }

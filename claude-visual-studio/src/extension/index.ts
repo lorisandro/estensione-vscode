@@ -24,11 +24,99 @@ let fileWatcher: vscode.FileSystemWatcher | undefined;
 let mcpBridge: MCPBridge | undefined;
 let serverManager: ServerManager | undefined;
 
+// Extension Host log capture
+const originalConsole = {
+  log: console.log.bind(console),
+  error: console.error.bind(console),
+  warn: console.warn.bind(console),
+  info: console.info.bind(console),
+  debug: console.debug.bind(console),
+};
+
+// Store extension logs for retrieval
+const extensionLogs: Array<{ type: string; message: string; timestamp: number }> = [];
+const MAX_EXTENSION_LOGS = 500;
+
+function captureExtensionLog(type: string, args: unknown[]): void {
+  const message = args.map(arg => {
+    if (typeof arg === 'string') return arg;
+    try {
+      return JSON.stringify(arg, null, 2);
+    } catch {
+      return String(arg);
+    }
+  }).join(' ');
+
+  const logEntry = {
+    type,
+    message,
+    timestamp: Date.now(),
+  };
+
+  // Store log
+  extensionLogs.push(logEntry);
+  if (extensionLogs.length > MAX_EXTENSION_LOGS) {
+    extensionLogs.shift();
+  }
+
+  // Send to webview if available
+  if (webviewProvider) {
+    webviewProvider.postMessage({
+      type: 'extensionLog',
+      payload: logEntry,
+    });
+  }
+}
+
+// Install console interceptors
+function installConsoleInterceptors(): void {
+  console.log = (...args: unknown[]) => {
+    originalConsole.log(...args);
+    captureExtensionLog('log', args);
+  };
+  console.error = (...args: unknown[]) => {
+    originalConsole.error(...args);
+    captureExtensionLog('error', args);
+  };
+  console.warn = (...args: unknown[]) => {
+    originalConsole.warn(...args);
+    captureExtensionLog('warn', args);
+  };
+  console.info = (...args: unknown[]) => {
+    originalConsole.info(...args);
+    captureExtensionLog('info', args);
+  };
+  console.debug = (...args: unknown[]) => {
+    originalConsole.debug(...args);
+    captureExtensionLog('debug', args);
+  };
+}
+
+// Get extension logs for MCP
+function getExtensionLogs(filter?: string, limit?: number): { logs: typeof extensionLogs; total: number } {
+  let logs = extensionLogs;
+  if (filter && filter !== 'all') {
+    logs = logs.filter(log => log.type === filter);
+  }
+  const total = logs.length;
+  if (limit && limit > 0) {
+    logs = logs.slice(-limit);
+  }
+  return { logs, total };
+}
+
+function clearExtensionLogs(): void {
+  extensionLogs.length = 0;
+}
+
 /**
  * Extension activation function
  * Called when the extension is activated (first command execution or activation event)
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  // Install console interceptors early to capture all extension logs
+  installConsoleInterceptors();
+
   console.log('Claude Visual Studio extension is now active');
 
   try {
@@ -346,6 +434,18 @@ async function initializeMCPBridge(): Promise<void> {
   mcpBridge.registerHandler('clearBackendLogs', async () => {
     devServerRunner.clearLogs();
     return { success: true, message: 'Backend logs cleared' };
+  });
+
+  // Extension Host log handlers
+  mcpBridge.registerHandler('getExtensionLogs', async (params) => {
+    const filter = params.filter || 'all';
+    const limit = params.limit || 100;
+    return getExtensionLogs(filter, limit);
+  });
+
+  mcpBridge.registerHandler('clearExtensionLogs', async () => {
+    clearExtensionLogs();
+    return { success: true, message: 'Extension logs cleared' };
   });
 
   // Listen for backend logs and send to webview in real-time

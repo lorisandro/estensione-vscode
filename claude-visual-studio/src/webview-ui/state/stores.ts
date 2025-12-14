@@ -286,9 +286,10 @@ export const useSelectionStore = create<SelectionState>()(
 // Console log entry type
 export interface ConsoleLogEntry {
   id: string;
-  type: 'log' | 'warn' | 'error' | 'info' | 'debug';
+  type: 'log' | 'warn' | 'error' | 'info' | 'debug' | 'stdout' | 'stderr';
   message: string;
   timestamp: number;
+  source?: 'browser' | 'backend' | 'extension'; // Where the log came from
 }
 
 // CSS Change represents a single style modification for undo/apply
@@ -567,9 +568,10 @@ export const useEditorStore = create<EditorState>()(
             ...log,
             id: generateLogId(),
             timestamp: Date.now(),
+            source: log.source || 'browser', // Default to browser if not specified
           };
           set((state) => ({
-            consoleLogs: [...state.consoleLogs.slice(-99), newLog], // Keep last 100 logs
+            consoleLogs: [...state.consoleLogs.slice(-199), newLog], // Keep last 200 logs
           }), undefined, 'editor/addConsoleLog');
         },
 
