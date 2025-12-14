@@ -1180,8 +1180,9 @@ export class ServerManager {
    */
   private extractStyledJsxCss(jsContent: string): void {
     // Match styled-jsx pattern: { id: "hash", children: "css" }
-    // The pattern in Turbopack looks like: ["default"], { id: "hash", children: "CSS_STRING" }
-    const styledJsxPattern = /\["default"\]\s*,\s*\{\s*id:\s*"([a-f0-9]+)"\s*,\s*children:\s*"([^"]+)"/g;
+    // The pattern in Turbopack looks like: __["default"], {\n    id: "hash",\n    children: "CSS_STRING"
+    // Use a more flexible regex that handles newlines and whitespace
+    const styledJsxPattern = /\["default"\],\s*\{\s*id:\s*"([a-f0-9]+)",\s*children:\s*"([^"]+)"/g;
 
     let match;
     while ((match = styledJsxPattern.exec(jsContent)) !== null) {
