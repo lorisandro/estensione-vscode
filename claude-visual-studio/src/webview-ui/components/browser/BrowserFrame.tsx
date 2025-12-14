@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigationStore, useSelectionStore, useEditorStore, type ElementInfo, type ConsoleLogEntry, type DragChange } from '../../state/stores';
 import { useVSCodeApi } from '../../hooks/useVSCodeApi';
+import { resetIframeBridgeReady } from '../../hooks/useMCPCommands';
 
 interface BrowserFrameProps {
   onElementHover?: (element: ElementInfo | null) => void;
@@ -208,6 +209,9 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
     setLoading(true);
     // Clear any selected/hovered elements when navigating or refreshing
     clearSelection();
+    // Reset MCP bridge ready state so commands wait for the new page to load
+    resetIframeBridgeReady();
+    console.log('[BrowserFrame] URL/refresh changed, reset bridge ready state');
   }, [url, refreshKey, setLoading, clearSelection]);
 
   // Determine if we're in responsive mode (fixed viewport)

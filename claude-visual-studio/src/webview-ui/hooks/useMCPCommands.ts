@@ -25,6 +25,52 @@ const pendingIframeRequests = new Map<string, {
 
 let iframeRequestId = 0;
 
+// Track if the MCP bridge in the iframe is ready
+let iframeBridgeReady = false;
+let bridgeReadyResolvers: Array<() => void> = [];
+
+// Reset bridge ready state (called when iframe is reloaded)
+export function resetIframeBridgeReady() {
+  console.log('[MCP] Resetting iframe bridge ready state');
+  iframeBridgeReady = false;
+  // Clear any pending resolvers
+  bridgeReadyResolvers = [];
+}
+
+// Wait for the bridge to be ready (with timeout)
+function waitForBridgeReady(timeoutMs: number = 5000): Promise<void> {
+  if (iframeBridgeReady) {
+    console.log('[MCP] Bridge already ready');
+    return Promise.resolve();
+  }
+
+  console.log('[MCP] Waiting for bridge to be ready...');
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      const index = bridgeReadyResolvers.indexOf(resolve);
+      if (index > -1) {
+        bridgeReadyResolvers.splice(index, 1);
+      }
+      console.error('[MCP] Timeout waiting for bridge ready');
+      reject(new Error('Timeout waiting for MCP bridge to be ready'));
+    }, timeoutMs);
+
+    bridgeReadyResolvers.push(() => {
+      clearTimeout(timeout);
+      resolve();
+    });
+  });
+}
+
+// Mark bridge as ready and notify waiters
+function markBridgeReady() {
+  console.log('[MCP] Marking bridge as ready, notifying', bridgeReadyResolvers.length, 'waiters');
+  iframeBridgeReady = true;
+  const resolvers = bridgeReadyResolvers;
+  bridgeReadyResolvers = [];
+  resolvers.forEach(resolve => resolve());
+}
+
 /**
  * Hook to handle MCP commands from the extension
  * Executes browser control commands and returns results
@@ -65,6 +111,7 @@ export function useMCPCommands(
         }
       } else if (event.data?.type === '__claude_mcp_bridge_ready__') {
         console.log('[MCP] MCP bridge ready in iframe!');
+        markBridgeReady();
       }
     };
 
@@ -73,7 +120,15 @@ export function useMCPCommands(
   }, []);
 
   // Send command to iframe and wait for response
-  const sendToIframe = useCallback((command: string, params: Record<string, any> = {}): Promise<any> => {
+  const sendToIframe = useCallback(async (command: string, params: Record<string, any> = {}): Promise<any> => {
+    // Wait for the MCP bridge to be ready before sending command
+    try {
+      await waitForBridgeReady(10000);
+    } catch (error) {
+      console.error('[MCP] Bridge not ready, failing command:', command);
+      throw error;
+    }
+
     return new Promise((resolve, reject) => {
       const iframe = iframeRef.current;
       console.log('[MCP] sendToIframe called:', command, 'iframe:', !!iframe, 'contentWindow:', !!iframe?.contentWindow);
