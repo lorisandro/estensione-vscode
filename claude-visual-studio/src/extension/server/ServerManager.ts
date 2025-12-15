@@ -1435,6 +1435,313 @@ export class ServerManager {
                 result = { success: true, message: 'Console logs cleared' };
                 break;
 
+              case 'getAllResources':
+                // Extract ALL resources from the page
+                var resources = {
+                  stylesheets: [],
+                  scripts: [],
+                  images: [],
+                  fonts: [],
+                  videos: [],
+                  audios: [],
+                  iframes: [],
+                  links: [],
+                  meta: []
+                };
+
+                // Get all stylesheets (link tags)
+                document.querySelectorAll('link[rel="stylesheet"], link[type="text/css"]').forEach(function(el) {
+                  resources.stylesheets.push({
+                    href: el.href || el.getAttribute('href'),
+                    media: el.media || undefined,
+                    type: 'external'
+                  });
+                });
+
+                // Get all style tags (inline CSS)
+                document.querySelectorAll('style').forEach(function(el, i) {
+                  resources.stylesheets.push({
+                    content: el.textContent,
+                    id: el.id || 'style-' + i,
+                    type: 'inline'
+                  });
+                });
+
+                // Get all scripts
+                document.querySelectorAll('script').forEach(function(el, i) {
+                  if (el.src) {
+                    resources.scripts.push({
+                      src: el.src,
+                      type: el.type || 'text/javascript',
+                      async: el.async,
+                      defer: el.defer,
+                      scriptType: 'external'
+                    });
+                  } else if (el.textContent && el.textContent.trim()) {
+                    resources.scripts.push({
+                      content: el.textContent.substring(0, 5000), // Limit inline script size
+                      id: el.id || 'script-' + i,
+                      type: el.type || 'text/javascript',
+                      scriptType: 'inline',
+                      truncated: el.textContent.length > 5000
+                    });
+                  }
+                });
+
+                // Get all images
+                document.querySelectorAll('img').forEach(function(el) {
+                  resources.images.push({
+                    src: el.src,
+                    alt: el.alt || undefined,
+                    width: el.naturalWidth || el.width,
+                    height: el.naturalHeight || el.height,
+                    srcset: el.srcset || undefined
+                  });
+                });
+
+                // Get background images from inline styles
+                document.querySelectorAll('[style*="background"]').forEach(function(el) {
+                  var style = el.getAttribute('style') || '';
+                  var match = style.match(/url\\(['"]*([^'"\\)]+)['"]*\\)/);
+                  if (match) {
+                    resources.images.push({
+                      src: match[1],
+                      type: 'background-image',
+                      element: el.tagName.toLowerCase()
+                    });
+                  }
+                });
+
+                // Get all videos
+                document.querySelectorAll('video, source[type^="video"]').forEach(function(el) {
+                  resources.videos.push({
+                    src: el.src || el.getAttribute('src'),
+                    type: el.type || undefined,
+                    poster: el.poster || undefined
+                  });
+                });
+
+                // Get all audio
+                document.querySelectorAll('audio, source[type^="audio"]').forEach(function(el) {
+                  resources.audios.push({
+                    src: el.src || el.getAttribute('src'),
+                    type: el.type || undefined
+                  });
+                });
+
+                // Get all iframes
+                document.querySelectorAll('iframe').forEach(function(el) {
+                  resources.iframes.push({
+                    src: el.src,
+                    width: el.width,
+                    height: el.height,
+                    title: el.title || undefined
+                  });
+                });
+
+                // Get all links (anchors)
+                document.querySelectorAll('a[href]').forEach(function(el) {
+                  resources.links.push({
+                    href: el.href,
+                    text: (el.textContent || '').substring(0, 100),
+                    target: el.target || undefined,
+                    rel: el.rel || undefined
+                  });
+                });
+
+                // Get all meta tags
+                document.querySelectorAll('meta').forEach(function(el) {
+                  resources.meta.push({
+                    name: el.name || undefined,
+                    property: el.getAttribute('property') || undefined,
+                    content: el.content || undefined,
+                    httpEquiv: el.httpEquiv || undefined,
+                    charset: el.getAttribute('charset') || undefined
+                  });
+                });
+
+                // Get fonts from @font-face in stylesheets
+                try {
+                  Array.from(document.styleSheets).forEach(function(sheet) {
+                    try {
+                      Array.from(sheet.cssRules || []).forEach(function(rule) {
+                        if (rule.type === CSSRule.FONT_FACE_RULE) {
+                          var fontRule = rule;
+                          resources.fonts.push({
+                            family: fontRule.style.getPropertyValue('font-family'),
+                            src: fontRule.style.getPropertyValue('src'),
+                            weight: fontRule.style.getPropertyValue('font-weight') || undefined,
+                            style: fontRule.style.getPropertyValue('font-style') || undefined
+                          });
+                        }
+                      });
+                    } catch (e) {
+                      // Cross-origin stylesheet, skip
+                    }
+                  });
+                } catch (e) {}
+
+                // Get preload/prefetch links
+                document.querySelectorAll('link[rel="preload"], link[rel="prefetch"], link[rel="preconnect"]').forEach(function(el) {
+                  resources.fonts.push({
+                    href: el.href,
+                    rel: el.rel,
+                    as: el.getAttribute('as') || undefined,
+                    crossorigin: el.getAttribute('crossorigin') || undefined
+                  });
+                });
+
+                result = {
+                  url: window.location.href,
+                  title: document.title,
+                  resources: resources,
+                  counts: {
+                    stylesheets: resources.stylesheets.length,
+                    scripts: resources.scripts.length,
+                    images: resources.images.length,
+                    fonts: resources.fonts.length,
+                    videos: resources.videos.length,
+                    audios: resources.audios.length,
+                    iframes: resources.iframes.length,
+                    links: resources.links.length,
+                    meta: resources.meta.length
+                  }
+                };
+                break;
+
+              case 'getAllStyles':
+                // Extract all CSS styles from the page
+                var allStyles = {
+                  external: [],
+                  inline: [],
+                  computed: []
+                };
+
+                // Get external stylesheets content
+                Array.from(document.styleSheets).forEach(function(sheet, i) {
+                  try {
+                    var rules = Array.from(sheet.cssRules || []).map(function(rule) {
+                      return rule.cssText;
+                    }).join('\\n');
+                    allStyles.external.push({
+                      href: sheet.href || 'inline-' + i,
+                      rules: rules,
+                      ruleCount: sheet.cssRules ? sheet.cssRules.length : 0
+                    });
+                  } catch (e) {
+                    // Cross-origin stylesheet
+                    allStyles.external.push({
+                      href: sheet.href,
+                      error: 'Cross-origin: cannot access rules',
+                      ruleCount: 0
+                    });
+                  }
+                });
+
+                // Get inline styles from elements
+                document.querySelectorAll('[style]').forEach(function(el) {
+                  var selector = el.tagName.toLowerCase();
+                  if (el.id) selector += '#' + el.id;
+                  if (el.className) selector += '.' + String(el.className).split(' ').join('.');
+                  allStyles.inline.push({
+                    selector: selector,
+                    style: el.getAttribute('style')
+                  });
+                });
+
+                // Get computed styles for key elements (limited to avoid huge output)
+                var keySelectors = ['body', 'header', 'nav', 'main', 'footer', 'h1', 'h2', 'p', 'a', 'button'];
+                keySelectors.forEach(function(sel) {
+                  var el = document.querySelector(sel);
+                  if (el) {
+                    var cs = getComputedStyle(el);
+                    allStyles.computed.push({
+                      selector: sel,
+                      styles: {
+                        color: cs.color,
+                        backgroundColor: cs.backgroundColor,
+                        fontFamily: cs.fontFamily,
+                        fontSize: cs.fontSize,
+                        fontWeight: cs.fontWeight,
+                        lineHeight: cs.lineHeight,
+                        margin: cs.margin,
+                        padding: cs.padding,
+                        display: cs.display,
+                        position: cs.position
+                      }
+                    });
+                  }
+                });
+
+                result = {
+                  url: window.location.href,
+                  styles: allStyles,
+                  counts: {
+                    externalSheets: allStyles.external.length,
+                    inlineStyles: allStyles.inline.length,
+                    computedSamples: allStyles.computed.length
+                  }
+                };
+                break;
+
+              case 'getAllScripts':
+                // Extract all JavaScript from the page
+                var allScripts = {
+                  external: [],
+                  inline: [],
+                  eventHandlers: []
+                };
+
+                // Get external scripts
+                document.querySelectorAll('script[src]').forEach(function(el) {
+                  allScripts.external.push({
+                    src: el.src,
+                    type: el.type || 'text/javascript',
+                    async: el.async,
+                    defer: el.defer,
+                    integrity: el.integrity || undefined,
+                    crossorigin: el.getAttribute('crossorigin') || undefined
+                  });
+                });
+
+                // Get inline scripts with full content
+                document.querySelectorAll('script:not([src])').forEach(function(el, i) {
+                  if (el.textContent && el.textContent.trim()) {
+                    allScripts.inline.push({
+                      id: el.id || 'inline-script-' + i,
+                      type: el.type || 'text/javascript',
+                      content: el.textContent,
+                      length: el.textContent.length
+                    });
+                  }
+                });
+
+                // Get inline event handlers (onclick, onload, etc.)
+                var eventAttrs = ['onclick', 'onload', 'onsubmit', 'onchange', 'oninput', 'onmouseover', 'onmouseout', 'onfocus', 'onblur', 'onkeydown', 'onkeyup'];
+                eventAttrs.forEach(function(attr) {
+                  document.querySelectorAll('[' + attr + ']').forEach(function(el) {
+                    var selector = el.tagName.toLowerCase();
+                    if (el.id) selector += '#' + el.id;
+                    allScripts.eventHandlers.push({
+                      selector: selector,
+                      event: attr,
+                      handler: el.getAttribute(attr)
+                    });
+                  });
+                });
+
+                result = {
+                  url: window.location.href,
+                  scripts: allScripts,
+                  counts: {
+                    external: allScripts.external.length,
+                    inline: allScripts.inline.length,
+                    eventHandlers: allScripts.eventHandlers.length,
+                    totalInlineSize: allScripts.inline.reduce(function(sum, s) { return sum + s.length; }, 0)
+                  }
+                };
+                break;
+
               default:
                 result = { error: 'Unknown command: ' + command };
             }

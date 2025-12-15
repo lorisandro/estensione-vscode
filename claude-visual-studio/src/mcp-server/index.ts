@@ -476,6 +476,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
         },
       },
+      {
+        name: 'browser_get_all_resources',
+        description: 'Extract ALL resources from the current page including stylesheets, scripts, images, fonts, videos, audio, iframes, links, and meta tags. Returns complete URLs and content where accessible.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'browser_get_all_styles',
+        description: 'Extract ALL CSS styles from the current page including external stylesheet rules, inline styles, and computed styles for key elements. Returns the actual CSS code.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'browser_get_all_scripts',
+        description: 'Extract ALL JavaScript from the current page including external script URLs, inline script content, and event handlers (onclick, onload, etc.).',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
     ],
   };
 });
@@ -713,6 +737,57 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
         }
         return { content: [{ type: 'text', text: 'Extension host logs cleared.' }] };
+
+      case 'browser_get_all_resources':
+        result = await sendCommand('getAllResources');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        // Format the output nicely
+        let resourceOutput = `# Page Resources\n\n`;
+        resourceOutput += `**URL:** ${result.url}\n`;
+        resourceOutput += `**Title:** ${result.title}\n\n`;
+        resourceOutput += `## Summary\n`;
+        resourceOutput += `- Stylesheets: ${result.counts.stylesheets}\n`;
+        resourceOutput += `- Scripts: ${result.counts.scripts}\n`;
+        resourceOutput += `- Images: ${result.counts.images}\n`;
+        resourceOutput += `- Fonts: ${result.counts.fonts}\n`;
+        resourceOutput += `- Videos: ${result.counts.videos}\n`;
+        resourceOutput += `- Audio: ${result.counts.audios}\n`;
+        resourceOutput += `- Iframes: ${result.counts.iframes}\n`;
+        resourceOutput += `- Links: ${result.counts.links}\n`;
+        resourceOutput += `- Meta tags: ${result.counts.meta}\n\n`;
+        resourceOutput += `## Full Data\n\`\`\`json\n${JSON.stringify(result.resources, null, 2)}\n\`\`\``;
+        return { content: [{ type: 'text', text: resourceOutput }] };
+
+      case 'browser_get_all_styles':
+        result = await sendCommand('getAllStyles');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        let styleOutput = `# Page Styles\n\n`;
+        styleOutput += `**URL:** ${result.url}\n\n`;
+        styleOutput += `## Summary\n`;
+        styleOutput += `- External stylesheets: ${result.counts.externalSheets}\n`;
+        styleOutput += `- Elements with inline styles: ${result.counts.inlineStyles}\n`;
+        styleOutput += `- Computed style samples: ${result.counts.computedSamples}\n\n`;
+        styleOutput += `## Full CSS Data\n\`\`\`json\n${JSON.stringify(result.styles, null, 2)}\n\`\`\``;
+        return { content: [{ type: 'text', text: styleOutput }] };
+
+      case 'browser_get_all_scripts':
+        result = await sendCommand('getAllScripts');
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        let scriptOutput = `# Page Scripts\n\n`;
+        scriptOutput += `**URL:** ${result.url}\n\n`;
+        scriptOutput += `## Summary\n`;
+        scriptOutput += `- External scripts: ${result.counts.external}\n`;
+        scriptOutput += `- Inline scripts: ${result.counts.inline}\n`;
+        scriptOutput += `- Event handlers: ${result.counts.eventHandlers}\n`;
+        scriptOutput += `- Total inline code size: ${result.counts.totalInlineSize} bytes\n\n`;
+        scriptOutput += `## Full Script Data\n\`\`\`json\n${JSON.stringify(result.scripts, null, 2)}\n\`\`\``;
+        return { content: [{ type: 'text', text: scriptOutput }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);
