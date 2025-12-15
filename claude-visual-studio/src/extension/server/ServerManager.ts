@@ -591,6 +591,91 @@ export class ServerManager {
       }
     });
 
+    // Proxy route for common asset paths (fonts, images, css, js, vendor, assets)
+    // These are root-relative URLs that external sites commonly use
+    this.app.get(/^\/(fonts|images|assets|vendor|css|js|img|static)\//, async (req, res) => {
+      if (!this.lastProxiedOrigin) {
+        // No proxied origin, fall through to static file serving
+        res.status(404).send('File not found');
+        return;
+      }
+
+      const targetUrl = `${this.lastProxiedOrigin}${req.originalUrl}`;
+      console.log('[ServerManager] Proxying asset path:', req.originalUrl, '->', targetUrl);
+
+      try {
+        const parsedUrl = new URL(targetUrl);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const httpModule = isHttps ? https : http;
+
+        const proxyReq = httpModule.request(
+          {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (isHttps ? 443 : 80),
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'GET',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Accept': '*/*',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Accept-Encoding': 'identity',
+              'Host': parsedUrl.host,
+              'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
+              'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
+            },
+          },
+          (proxyRes) => {
+            // Copy headers
+            const headers = { ...proxyRes.headers };
+            delete headers['transfer-encoding'];
+            delete headers['content-encoding'];
+
+            // Disable caching to always get fresh content
+            headers['cache-control'] = 'no-cache, no-store, must-revalidate';
+            headers['pragma'] = 'no-cache';
+            headers['expires'] = '0';
+            headers['access-control-allow-origin'] = '*';
+
+            res.status(proxyRes.statusCode || 200);
+            Object.entries(headers).forEach(([key, value]) => {
+              if (value) {
+                res.setHeader(key, value as string);
+              }
+            });
+
+            // Check if it's CSS - need to rewrite URLs
+            const contentType = proxyRes.headers['content-type'] || '';
+            if (contentType.includes('text/css') || req.originalUrl.endsWith('.css')) {
+              const chunks: Buffer[] = [];
+              proxyRes.on('data', (chunk) => chunks.push(chunk));
+              proxyRes.on('end', () => {
+                let cssContent = Buffer.concat(chunks).toString('utf-8');
+                const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
+                const fullBasePath = baseOrigin + basePath;
+
+                cssContent = this.rewriteCssUrls(cssContent, baseOrigin, fullBasePath, this.config!.port);
+                res.send(cssContent);
+              });
+            } else {
+              // Pipe non-CSS responses directly
+              proxyRes.pipe(res);
+            }
+          }
+        );
+
+        proxyReq.on('error', (error) => {
+          console.error('[ServerManager] Asset proxy error:', error);
+          res.status(502).send(`Proxy error: ${error.message}`);
+        });
+
+        proxyReq.end();
+      } catch (error) {
+        console.error('[ServerManager] Asset proxy error:', error);
+        res.status(500).send(`Proxy error: ${(error as Error).message}`);
+      }
+    });
+
     // Serve all files with proper MIME types and HTML injection
     this.app.get('*', async (req, res) => {
       try {
