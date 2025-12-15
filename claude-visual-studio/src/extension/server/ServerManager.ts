@@ -910,7 +910,41 @@ export class ServerManager {
       // Force all hidden elements to be visible
       // This is necessary because Intersection Observer doesn't work in VS Code webview
 
+      // Check if element is a dropdown/menu that should stay hidden
+      function isDropdownOrMenu(el) {
+        var className = (el.className || '').toLowerCase();
+        var tagName = (el.tagName || '').toLowerCase();
+        var parent = el.parentElement;
+        var parentClass = parent ? (parent.className || '').toLowerCase() : '';
+
+        // Common dropdown/menu class patterns
+        var menuPatterns = [
+          'dropdown', 'drop-down', 'submenu', 'sub-menu', 'mega-menu', 'megamenu',
+          'nav-item', 'nav-link', 'navbar-nav', 'menu-item', 'menu-link',
+          'collapse', 'collapsing', 'accordion', 'modal', 'popup', 'popover',
+          'tooltip', 'offcanvas', 'sidebar', 'drawer', 'panel',
+          'tab-pane', 'tab-content', 'carousel-item'
+        ];
+
+        for (var i = 0; i < menuPatterns.length; i++) {
+          if (className.indexOf(menuPatterns[i]) !== -1 || parentClass.indexOf(menuPatterns[i]) !== -1) {
+            return true;
+          }
+        }
+
+        // Check for common menu elements
+        if (tagName === 'ul' || tagName === 'li') {
+          var navParent = el.closest('nav, [class*="nav"], [class*="menu"], header');
+          if (navParent) return true;
+        }
+
+        return false;
+      }
+
       function forceVisible(el) {
+        // Skip dropdown menus and navigation items
+        if (isDropdownOrMenu(el)) return;
+
         el.style.setProperty('opacity', '1', 'important');
         el.style.setProperty('transform', 'none', 'important');
         el.style.setProperty('visibility', 'visible', 'important');
@@ -926,16 +960,18 @@ export class ServerManager {
       function fixPage() {
         hideCurtains();
 
-        // Fix all elements with inline opacity/transform
+        // Fix all elements with inline opacity/transform (except menus)
         document.querySelectorAll('[style]').forEach(function(el) {
+          if (isDropdownOrMenu(el)) return;
           var style = el.getAttribute('style') || '';
           if (style.includes('opacity') || style.includes('transform')) {
             forceVisible(el);
           }
         });
 
-        // Fix elements with computed low opacity
+        // Fix elements with computed low opacity (except menus)
         document.querySelectorAll('body *').forEach(function(el) {
+          if (isDropdownOrMenu(el)) return;
           try {
             var cs = getComputedStyle(el);
             if (parseFloat(cs.opacity) < 0.5 && (el.children.length > 0 || el.textContent.trim())) {
@@ -944,8 +980,12 @@ export class ServerManager {
           } catch(e) {}
         });
 
-        // Fix common animation classes
-        document.querySelectorAll('[class*="hero-"], [class*="fade-"], [class*="slide-"], [class*="animate-"]').forEach(forceVisible);
+        // Fix common animation classes (but not menu-related ones)
+        document.querySelectorAll('[class*="hero-"], [class*="fade-"], [class*="slide-"], [class*="animate-"]').forEach(function(el) {
+          if (!isDropdownOrMenu(el)) {
+            forceVisible(el);
+          }
+        });
       }
 
       // Run multiple times to catch dynamically added content
@@ -961,8 +1001,7 @@ export class ServerManager {
       /* Hide curtains */
       [class*="curtain"] { display: none !important; }
 
-      /* Force visibility */
-      [style*="opacity: 0"], [style*="opacity:0"] { opacity: 1 !important; transform: none !important; }
+      /* Force visibility for hero content only (not menus) */
       [class*="hero-content"], [class*="hero-reveal"] { opacity: 1 !important; transform: none !important; }
     </style>
     <!-- Claude Visual Studio: Cache Control -->
