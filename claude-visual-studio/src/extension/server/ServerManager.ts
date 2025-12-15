@@ -510,6 +510,76 @@ export class ServerManager {
       }
     });
 
+    // Proxy route for /media/ files (remap to /_next/static/media/)
+    // Some browsers/frameworks request fonts without the /_next/static prefix
+    this.app.get('/media/*', async (req, res) => {
+      if (!this.lastProxiedOrigin) {
+        res.status(404).send('No proxied origin available');
+        return;
+      }
+
+      // Remap /media/* to /_next/static/media/*
+      const mediaPath = req.originalUrl;
+      const nextStaticPath = mediaPath.replace(/^\/media\//, '/_next/static/media/');
+      const targetUrl = `${this.lastProxiedOrigin}${nextStaticPath}`;
+      console.log('[ServerManager] Proxying media resource:', mediaPath, '->', targetUrl);
+
+      try {
+        const parsedUrl = new URL(targetUrl);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const httpModule = isHttps ? https : http;
+
+        const proxyReq = httpModule.request(
+          {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (isHttps ? 443 : 80),
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'GET',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Accept': '*/*',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Accept-Encoding': 'identity',
+              'Host': parsedUrl.host,
+              'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
+              'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
+            },
+          },
+          (proxyRes) => {
+            // Copy headers
+            const headers = { ...proxyRes.headers };
+            delete headers['transfer-encoding'];
+            delete headers['content-encoding'];
+
+            // Disable caching to always get fresh content
+            headers['cache-control'] = 'no-cache, no-store, must-revalidate';
+            headers['pragma'] = 'no-cache';
+            headers['expires'] = '0';
+
+            res.status(proxyRes.statusCode || 200);
+            Object.entries(headers).forEach(([key, value]) => {
+              if (value) {
+                res.setHeader(key, value as string);
+              }
+            });
+
+            // Pipe response directly (fonts/media don't need processing)
+            proxyRes.pipe(res);
+          }
+        );
+
+        proxyReq.on('error', (error) => {
+          console.error('[ServerManager] Media proxy error:', error);
+          res.status(502).send(`Proxy error: ${error.message}`);
+        });
+
+        proxyReq.end();
+      } catch (error) {
+        console.error('[ServerManager] Media proxy error:', error);
+        res.status(500).send(`Proxy error: ${(error as Error).message}`);
+      }
+    });
+
     // Serve all files with proper MIME types and HTML injection
     this.app.get('*', async (req, res) => {
       try {

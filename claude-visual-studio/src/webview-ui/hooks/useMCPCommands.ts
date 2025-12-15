@@ -71,6 +71,27 @@ function markBridgeReady() {
   resolvers.forEach(resolve => resolve());
 }
 
+// Helper for retry logic with exponential backoff
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 2000
+): Promise<T> {
+  let lastError: Error | undefined;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      if (i < maxRetries - 1) {
+        console.log(`[MCP] Retry ${i + 1}/${maxRetries} after error:`, (error as Error).message);
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+  }
+  throw lastError;
+}
+
 /**
  * Hook to handle MCP commands from the extension
  * Executes browser control commands and returns results
@@ -239,7 +260,8 @@ export function useMCPCommands(
 
         case 'screenshot':
           // Use html2canvas in iframe to capture screenshot
-          result = await sendToIframe('screenshot', {});
+          // Retry logic to handle bridge not ready issues
+          result = await withRetry(() => sendToIframe('screenshot', {}), 3, 2000);
           break;
 
         case 'click':
