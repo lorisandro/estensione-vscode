@@ -270,6 +270,8 @@ export class ServerManager {
               'Accept-Language': 'en-US,en;q=0.9',
               'Accept-Encoding': 'identity', // Don't request compression for simplicity
               'Host': parsedUrl.host,
+              'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
+              'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
             },
           },
           (proxyRes) => {
@@ -452,6 +454,8 @@ export class ServerManager {
               'Accept-Language': 'en-US,en;q=0.9',
               'Accept-Encoding': 'identity',
               'Host': parsedUrl.host,
+              'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
+              'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
             },
           },
           (proxyRes) => {
