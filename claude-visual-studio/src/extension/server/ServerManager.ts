@@ -912,10 +912,26 @@ export class ServerManager {
 
       // Check if element is a dropdown/menu that should stay hidden
       function isDropdownOrMenu(el) {
-        var className = (el.className || '').toLowerCase();
+        // Safely get className as string (handles SVGAnimatedString and other edge cases)
+        var className = '';
+        try {
+          className = (typeof el.className === 'string' ? el.className : (el.className.baseVal || '')).toLowerCase();
+        } catch(e) {
+          className = el.getAttribute('class') || '';
+          className = className.toLowerCase();
+        }
+
         var tagName = (el.tagName || '').toLowerCase();
         var parent = el.parentElement;
-        var parentClass = parent ? (parent.className || '').toLowerCase() : '';
+        var parentClass = '';
+        if (parent) {
+          try {
+            parentClass = (typeof parent.className === 'string' ? parent.className : (parent.className.baseVal || '')).toLowerCase();
+          } catch(e) {
+            parentClass = parent.getAttribute('class') || '';
+            parentClass = parentClass.toLowerCase();
+          }
+        }
 
         // Common dropdown/menu class patterns
         var menuPatterns = [
@@ -923,7 +939,7 @@ export class ServerManager {
           'nav-item', 'nav-link', 'navbar-nav', 'menu-item', 'menu-link',
           'collapse', 'collapsing', 'accordion', 'modal', 'popup', 'popover',
           'tooltip', 'offcanvas', 'sidebar', 'drawer', 'panel',
-          'tab-pane', 'tab-content', 'carousel-item'
+          'tab-pane', 'tab-content', 'carousel-item', 'navbar'
         ];
 
         for (var i = 0; i < menuPatterns.length; i++) {
@@ -932,10 +948,18 @@ export class ServerManager {
           }
         }
 
-        // Check for common menu elements
-        if (tagName === 'ul' || tagName === 'li') {
-          var navParent = el.closest('nav, [class*="nav"], [class*="menu"], header');
+        // Check for common menu elements inside navigation
+        if (tagName === 'ul' || tagName === 'li' || tagName === 'nav') {
+          var navParent = el.closest('nav, [class*="nav"], [class*="menu"], header, .navbar');
           if (navParent) return true;
+        }
+
+        // Check if element or parent has aria attributes indicating interactive component
+        if (el.hasAttribute('aria-expanded') || el.hasAttribute('data-bs-toggle')) {
+          return true;
+        }
+        if (parent && (parent.hasAttribute('aria-expanded') || parent.hasAttribute('data-bs-toggle'))) {
+          return true;
         }
 
         return false;
@@ -998,11 +1022,47 @@ export class ServerManager {
     })();
     </script>
     <style id="__claude-vs-animation-fallback__">
-      /* Hide curtains */
-      [class*="curtain"] { display: none !important; }
+      /* Hide curtains and preloaders */
+      [class*="curtain"], [class*="preloader"], [class*="loading-screen"] { display: none !important; }
 
       /* Force visibility for hero content only (not menus) */
       [class*="hero-content"], [class*="hero-reveal"] { opacity: 1 !important; transform: none !important; }
+
+      /* IMPORTANT: Reset dropdown menus to their natural hidden state */
+      /* Bootstrap and common framework dropdowns */
+      .dropdown-menu:not(.show),
+      .dropdown-content:not(.show):not(.active),
+      ul.dropdown:not(.show):not(.active),
+      .sub-menu:not(.show):not(.active),
+      .submenu:not(.show):not(.active),
+      .mega-menu:not(.show):not(.active),
+      .megamenu:not(.show):not(.active),
+      [class*="dropdown-menu"]:not(.show):not(.active):not([aria-expanded="true"]),
+      nav ul ul:not(.show):not(.active),
+      .navbar-nav .nav-item > ul:not(.show):not(.active) {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+
+      /* Ensure shown dropdowns are visible */
+      .dropdown-menu.show,
+      .dropdown-content.show,
+      .dropdown-content.active,
+      [aria-expanded="true"] > .dropdown-menu,
+      .nav-item.show > .dropdown-menu {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+
+      /* Reset collapsed elements */
+      .collapse:not(.show),
+      .accordion-collapse:not(.show),
+      .offcanvas:not(.show),
+      .modal:not(.show) {
+        display: none !important;
+      }
     </style>
     <!-- Claude Visual Studio: Cache Control -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1233,7 +1293,7 @@ export class ServerManager {
       }
     );
 
-    // Also handle @import statements
+    // Handle @import "..." and @import '...' syntax
     css = css.replace(
       /@import\s+["'](?!https?:\/\/|data:)([^"']+)["']/gi,
       (match, url) => {
@@ -1245,6 +1305,32 @@ export class ServerManager {
             absoluteUrl = new URL(url, fullBasePath).href;
           }
           return `@import "${proxyBase}${encodeURIComponent(absoluteUrl)}"`;
+        } catch {
+          return match;
+        }
+      }
+    );
+
+    // Handle @import url(...) syntax (with or without quotes)
+    css = css.replace(
+      /@import\s+url\(["']?(?!https?:\/\/|data:)(\/[^"')]+)["']?\)/gi,
+      (match, url) => {
+        try {
+          const absoluteUrl = baseOrigin + url;
+          return `@import url("${proxyBase}${encodeURIComponent(absoluteUrl)}")`;
+        } catch {
+          return match;
+        }
+      }
+    );
+
+    // Handle @import url(...) with relative paths (without leading /)
+    css = css.replace(
+      /@import\s+url\(["']?(?!https?:\/\/|\/|data:)([^"')]+)["']?\)/gi,
+      (match, url) => {
+        try {
+          const absoluteUrl = new URL(url, fullBasePath).href;
+          return `@import url("${proxyBase}${encodeURIComponent(absoluteUrl)}")`;
         } catch {
           return match;
         }
