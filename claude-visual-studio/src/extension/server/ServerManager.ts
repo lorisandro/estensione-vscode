@@ -1122,83 +1122,29 @@ export class ServerManager {
           console.info('Console connected - logs from this page will appear here');
         }, 200);
 
-        // Load html2canvas dynamically with error handling
+        // Load html2canvas-pro dynamically (supports modern CSS colors: oklab, oklch, lab, lch)
         var html2canvasLoaded = false;
         var html2canvasLoadPromise = new Promise(function(resolve, reject) {
           var html2canvasScript = document.createElement('script');
-          html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+          html2canvasScript.src = 'https://unpkg.com/html2canvas-pro@1.5.13/dist/html2canvas-pro.min.js';
           html2canvasScript.onload = function() {
             html2canvasLoaded = true;
-            console.log('[MCP Bridge] html2canvas loaded successfully');
+            console.log('[MCP Bridge] html2canvas-pro loaded successfully');
             resolve(true);
           };
           html2canvasScript.onerror = function(e) {
-            console.error('[MCP Bridge] html2canvas failed to load from CDN');
-            reject(new Error('Failed to load html2canvas'));
+            console.error('[MCP Bridge] html2canvas-pro failed to load from CDN');
+            reject(new Error('Failed to load html2canvas-pro'));
           };
           document.head.appendChild(html2canvasScript);
 
           // Timeout after 10 seconds
           setTimeout(function() {
             if (!html2canvasLoaded) {
-              reject(new Error('html2canvas load timeout'));
+              reject(new Error('html2canvas-pro load timeout'));
             }
           }, 10000);
         });
-
-        // Helper function to fix unsupported CSS color functions BEFORE html2canvas parsing
-        function fixUnsupportedColors() {
-          console.log('[MCP Bridge] Pre-processing colors for html2canvas compatibility...');
-          var fixedCount = 0;
-          var originalStyles = [];
-
-          // Fix inline styles on all elements
-          var allElements = document.querySelectorAll('*');
-          allElements.forEach(function(el, index) {
-            try {
-              var computed = window.getComputedStyle(el);
-              var colorProps = ['color', 'background-color', 'border-color', 'outline-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
-              var elementFixed = false;
-              var origStyles = {};
-
-              colorProps.forEach(function(prop) {
-                var value = computed.getPropertyValue(prop);
-                if (value && (value.includes('lab(') || value.includes('lch(') || value.includes('oklch(') || value.includes('oklab('))) {
-                  // Store original inline style
-                  origStyles[prop] = el.style.getPropertyValue(prop);
-
-                  // Set fallback color as inline style
-                  var fallback = prop.includes('background') ? '#ffffff' : '#000000';
-                  el.style.setProperty(prop, fallback, 'important');
-                  elementFixed = true;
-                  fixedCount++;
-                }
-              });
-
-              if (elementFixed) {
-                originalStyles.push({ element: el, styles: origStyles });
-              }
-            } catch (e) {
-              // Ignore errors
-            }
-          });
-
-          console.log('[MCP Bridge] Fixed ' + fixedCount + ' color properties');
-          return originalStyles;
-        }
-
-        // Helper to restore original styles after screenshot
-        function restoreOriginalStyles(originalStyles) {
-          originalStyles.forEach(function(item) {
-            Object.keys(item.styles).forEach(function(prop) {
-              if (item.styles[prop]) {
-                item.element.style.setProperty(prop, item.styles[prop]);
-              } else {
-                item.element.style.removeProperty(prop);
-              }
-            });
-          });
-        }
 
         // Screenshot function with proper wait for html2canvas
         async function captureScreenshot() {
@@ -1216,12 +1162,9 @@ export class ServerManager {
             console.warn('[MCP Bridge] html2canvas not available:', loadError.message);
           }
 
-          // Try html2canvas if available
+          // Try html2canvas-pro if available (supports modern CSS colors)
           if (typeof html2canvas === 'function') {
-            console.log('[MCP Bridge] Using html2canvas for screenshot');
-
-            // Pre-fix unsupported colors BEFORE calling html2canvas
-            var originalStyles = fixUnsupportedColors();
+            console.log('[MCP Bridge] Using html2canvas-pro for screenshot');
 
             try {
               const canvas = await html2canvas(document.body, {
@@ -1234,20 +1177,17 @@ export class ServerManager {
                 removeContainer: true,
                 foreignObjectRendering: false,
                 onclone: function(clonedDoc) {
-                  console.log('[MCP Bridge] html2canvas cloning document...');
+                  console.log('[MCP Bridge] html2canvas-pro cloning document...');
                   // Fix fixed positioning
                   var fixedElements = clonedDoc.querySelectorAll('[style*="position: fixed"]');
                   fixedElements.forEach(function(el) {
                     el.style.position = 'absolute';
                   });
-                  console.log('[MCP Bridge] html2canvas clone ready');
+                  console.log('[MCP Bridge] html2canvas-pro clone ready');
                 }
               });
 
-              // Restore original styles
-              restoreOriginalStyles(originalStyles);
-
-              console.log('[MCP Bridge] html2canvas render complete, canvas size:', canvas.width, 'x', canvas.height);
+              console.log('[MCP Bridge] html2canvas-pro render complete, canvas size:', canvas.width, 'x', canvas.height);
               var dataUrl = canvas.toDataURL('image/png');
               var base64 = dataUrl.split(',')[1];
 
@@ -1262,13 +1202,11 @@ export class ServerManager {
                 throw new Error('Canvas produced empty or invalid image');
               }
             } catch (html2canvasError) {
-              console.error('[MCP Bridge] html2canvas failed:', html2canvasError.message, html2canvasError.stack);
-              // Restore original styles before fallback
-              restoreOriginalStyles(originalStyles);
+              console.error('[MCP Bridge] html2canvas-pro failed:', html2canvasError.message, html2canvasError.stack);
               // Continue to native canvas fallback
             }
           } else {
-            console.warn('[MCP Bridge] html2canvas not available (typeof:', typeof html2canvas, ')');
+            console.warn('[MCP Bridge] html2canvas-pro not available (typeof:', typeof html2canvas, ')');
           }
 
           // Native Canvas API fallback - try to capture visible viewport

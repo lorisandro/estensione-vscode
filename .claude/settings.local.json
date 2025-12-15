@@ -75,7 +75,9 @@
       "WebFetch(domain:localhost)",
       "Bash(git checkout:*)",
       "Bash(git push:*)",
-      "Bash(timeout /t 2 /nobreak)"
+      "Bash(timeout /t 2 /nobreak)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:unpkg.com)"
     ]
   }
 }
