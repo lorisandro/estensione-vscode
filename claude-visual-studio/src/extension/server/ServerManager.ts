@@ -237,6 +237,8 @@ export class ServerManager {
     if (!this.app || !this.config) return;
 
     // Proxy route for external URLs (to bypass X-Frame-Options)
+    // Includes fallback logic: if an asset returns 404 and we have a base path,
+    // try loading from the relative path instead
     this.app.get('/__claude-vs__/proxy', async (req, res) => {
       const targetUrl = req.query.url as string;
 
@@ -245,144 +247,207 @@ export class ServerManager {
         return;
       }
 
-      try {
-        const parsedUrl = new URL(targetUrl);
-        const isHttps = parsedUrl.protocol === 'https:';
-        const httpModule = isHttps ? https : http;
-
-        // Save the origin for resolving relative URLs (like /_next/...)
-        const newOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
-        // Save the base path for fallback asset resolution (directory of the page)
-        const pagePath = parsedUrl.pathname;
-        const newBasePath = pagePath.substring(0, pagePath.lastIndexOf('/') + 1) || '/';
-
-        // Only clear CSS when navigating to a different origin (new site)
-        // Don't clear on every proxy request, as JS files extract CSS during loading
-        if (this.lastProxiedOrigin !== newOrigin) {
-          this.clearExtractedStyledJsxCss();
-          this.lastProxiedOrigin = newOrigin;
+      // Helper to check if URL is likely an asset (not an HTML page)
+      const isAssetUrl = (url: string): boolean => {
+        const assetPatterns = /\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|ico|webp|mp4|mp3|pdf)$/i;
+        const assetPaths = /^\/(css|js|fonts|images|assets|vendor|img|static|media)\//i;
+        try {
+          const parsed = new URL(url);
+          return assetPatterns.test(parsed.pathname) || assetPaths.test(parsed.pathname);
+        } catch {
+          return false;
         }
-        // Always update base path for asset fallback
-        this.lastProxiedBasePath = newBasePath;
+      };
 
-        const proxyReq = httpModule.request(
-          {
-            hostname: parsedUrl.hostname,
-            port: parsedUrl.port || (isHttps ? 443 : 80),
-            path: parsedUrl.pathname + parsedUrl.search,
-            method: 'GET',
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-              'Accept-Language': 'en-US,en;q=0.9',
-              'Accept-Encoding': 'identity', // Don't request compression for simplicity
-              'Host': parsedUrl.host,
-              'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
-              'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
+      // Helper to build fallback URL using the page's base path
+      const buildFallbackUrl = (originalUrl: string): string | null => {
+        if (!this.lastProxiedOrigin || !this.lastProxiedBasePath || this.lastProxiedBasePath === '/') {
+          return null;
+        }
+        try {
+          const parsed = new URL(originalUrl);
+          // Only create fallback for root-relative paths (paths starting with /)
+          if (parsed.pathname.startsWith('/') && !parsed.pathname.startsWith(this.lastProxiedBasePath)) {
+            // Remove leading slash and prepend the base path
+            const relativePath = parsed.pathname.substring(1);
+            const fallbackPath = this.lastProxiedBasePath + relativePath;
+            return `${this.lastProxiedOrigin}${fallbackPath}${parsed.search}`;
+          }
+        } catch {
+          // Ignore parsing errors
+        }
+        return null;
+      };
+
+      // Main proxy function that can be called recursively for fallback
+      const proxyUrl = (url: string, isFallback: boolean): void => {
+        try {
+          const parsedUrl = new URL(url);
+          const isHttps = parsedUrl.protocol === 'https:';
+          const httpModule = isHttps ? https : http;
+
+          // Save the origin for resolving relative URLs (like /_next/...)
+          const newOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+
+          // Only update origin/basePath for non-fallback requests (original navigation)
+          if (!isFallback) {
+            // Save the base path for fallback asset resolution (directory of the page)
+            const pagePath = parsedUrl.pathname;
+            const newBasePath = pagePath.substring(0, pagePath.lastIndexOf('/') + 1) || '/';
+
+            // Only clear CSS when navigating to a different origin (new site)
+            if (this.lastProxiedOrigin !== newOrigin) {
+              this.clearExtractedStyledJsxCss();
+              this.lastProxiedOrigin = newOrigin;
+            }
+            // Only update base path for HTML pages (not assets)
+            if (!isAssetUrl(url)) {
+              this.lastProxiedBasePath = newBasePath;
+            }
+          }
+
+          if (isFallback) {
+            console.log('[ServerManager] Trying fallback URL:', url);
+          }
+
+          const proxyReq = httpModule.request(
+            {
+              hostname: parsedUrl.hostname,
+              port: parsedUrl.port || (isHttps ? 443 : 80),
+              path: parsedUrl.pathname + parsedUrl.search,
+              method: 'GET',
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'identity',
+                'Host': parsedUrl.host,
+                'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
+                'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
+              },
             },
-          },
-          (proxyRes) => {
-            // Handle redirects - use absolute URL for iframe compatibility
-            if (proxyRes.statusCode && proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
-              const redirectUrl = new URL(proxyRes.headers.location, targetUrl).href;
-              const absoluteProxyUrl = `http://localhost:${this.config!.port}/__claude-vs__/proxy?url=${encodeURIComponent(redirectUrl)}`;
-              res.redirect(absoluteProxyUrl);
-              return;
+            (proxyRes) => {
+              // If 404 and this is an asset, try fallback
+              if (proxyRes.statusCode === 404 && !isFallback && isAssetUrl(url)) {
+                const fallbackUrl = buildFallbackUrl(url);
+                if (fallbackUrl) {
+                  // Consume the 404 response
+                  proxyRes.resume();
+                  // Try the fallback URL
+                  proxyUrl(fallbackUrl, true);
+                  return;
+                }
+              }
+
+              // Handle redirects - use absolute URL for iframe compatibility
+              if (proxyRes.statusCode && proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+                const redirectUrl = new URL(proxyRes.headers.location, url).href;
+                const absoluteProxyUrl = `http://localhost:${this.config!.port}/__claude-vs__/proxy?url=${encodeURIComponent(redirectUrl)}`;
+                res.redirect(absoluteProxyUrl);
+                return;
+              }
+
+              // Copy headers but remove frame-blocking ones
+              const headers = { ...proxyRes.headers };
+              delete headers['x-frame-options'];
+              delete headers['content-security-policy'];
+              delete headers['content-security-policy-report-only'];
+
+              // Set CORS headers
+              headers['access-control-allow-origin'] = '*';
+
+              // Disable caching to always get fresh content
+              headers['cache-control'] = 'no-cache, no-store, must-revalidate';
+              headers['pragma'] = 'no-cache';
+              headers['expires'] = '0';
+
+              res.status(proxyRes.statusCode || 200);
+
+              // Set headers
+              Object.entries(headers).forEach(([key, value]) => {
+                if (value && key !== 'transfer-encoding' && key !== 'content-encoding') {
+                  res.setHeader(key, value as string);
+                }
+              });
+
+              // Collect response body
+              const chunks: Buffer[] = [];
+              proxyRes.on('data', (chunk) => chunks.push(chunk));
+              proxyRes.on('end', () => {
+                let body = Buffer.concat(chunks);
+
+                // For HTML content, rewrite relative URLs to use proxy
+                const contentType = proxyRes.headers['content-type'] || '';
+                if (contentType.includes('text/html')) {
+                  // Use full URL as base (including path) for proper relative URL resolution
+                  const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                  const fullBaseUrl = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
+                  let html = body.toString('utf-8');
+
+                  // Rewrite relative URLs in href and src attributes
+                  html = this.rewriteHtmlUrls(html, baseOrigin, fullBaseUrl, this.config!.port);
+
+                  // Inject element inspector script for selection mode
+                  html = this.injectInspectorScript(html);
+
+                  // Inject MCP bridge script for parent-iframe communication
+                  html = this.injectMCPBridgeScript(html);
+
+                  res.send(html);
+                } else if (contentType.includes('javascript') || parsedUrl.pathname.endsWith('.js')) {
+                  // For JavaScript content, extract styled-jsx CSS
+                  const jsContent = body.toString('utf-8');
+                  this.extractStyledJsxCss(jsContent);
+                  res.send(body);
+                } else if (contentType.includes('text/css') || parsedUrl.pathname.endsWith('.css')) {
+                  // For CSS content, rewrite url() references
+                  let cssContent = body.toString('utf-8');
+                  const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                  const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
+                  const fullBasePath = baseOrigin + basePath;
+
+                  cssContent = this.rewriteCssUrls(cssContent, baseOrigin, fullBasePath, this.config!.port);
+                  res.send(cssContent);
+                } else {
+                  res.send(body);
+                }
+              });
+            }
+          );
+
+          proxyReq.on('error', (error) => {
+            // If error on primary request and this is an asset, try fallback
+            if (!isFallback && isAssetUrl(url)) {
+              const fallbackUrl = buildFallbackUrl(url);
+              if (fallbackUrl) {
+                proxyUrl(fallbackUrl, true);
+                return;
+              }
             }
 
-            // Copy headers but remove frame-blocking ones
-            const headers = { ...proxyRes.headers };
-            delete headers['x-frame-options'];
-            delete headers['content-security-policy'];
-            delete headers['content-security-policy-report-only'];
+            console.error('[ServerManager] Proxy error:', error);
+            const errorHtml = this.createErrorPage(
+              `Failed to load ${url}`,
+              error.message,
+              url
+            );
+            res.status(502).send(errorHtml);
+          });
 
-            // Don't set any CSP - let the content load freely in iframe
-            // VS Code webviews use special schemes that CSP wildcards don't cover
-
-            // Set CORS headers
-            headers['access-control-allow-origin'] = '*';
-
-            // Disable caching to always get fresh content
-            headers['cache-control'] = 'no-cache, no-store, must-revalidate';
-            headers['pragma'] = 'no-cache';
-            headers['expires'] = '0';
-
-            res.status(proxyRes.statusCode || 200);
-
-            // Set headers
-            Object.entries(headers).forEach(([key, value]) => {
-              if (value && key !== 'transfer-encoding' && key !== 'content-encoding') {
-                res.setHeader(key, value as string);
-              }
-            });
-
-            // Collect response body
-            const chunks: Buffer[] = [];
-            proxyRes.on('data', (chunk) => chunks.push(chunk));
-            proxyRes.on('end', () => {
-              let body = Buffer.concat(chunks);
-
-              // For HTML content, rewrite relative URLs to use proxy
-              const contentType = proxyRes.headers['content-type'] || '';
-              if (contentType.includes('text/html')) {
-                // Use full URL as base (including path) for proper relative URL resolution
-                const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
-                const fullBaseUrl = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
-                let html = body.toString('utf-8');
-
-                // Rewrite relative URLs in href and src attributes
-                html = this.rewriteHtmlUrls(html, baseOrigin, fullBaseUrl, this.config!.port);
-
-                // Inject element inspector script for selection mode
-                html = this.injectInspectorScript(html);
-
-                // Inject MCP bridge script for parent-iframe communication
-                html = this.injectMCPBridgeScript(html);
-
-                res.send(html);
-              } else if (contentType.includes('javascript') || parsedUrl.pathname.endsWith('.js')) {
-                // For JavaScript content, extract styled-jsx CSS
-                const jsContent = body.toString('utf-8');
-                this.extractStyledJsxCss(jsContent);
-                res.send(body);
-              } else if (contentType.includes('text/css') || parsedUrl.pathname.endsWith('.css')) {
-                // For CSS content, rewrite url() references
-                let cssContent = body.toString('utf-8');
-                const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
-                const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
-                const fullBasePath = baseOrigin + basePath;
-
-                cssContent = this.rewriteCssUrls(cssContent, baseOrigin, fullBasePath, this.config!.port);
-                res.send(cssContent);
-              } else {
-                res.send(body);
-              }
-            });
-          }
-        );
-
-        proxyReq.on('error', (error) => {
+          proxyReq.end();
+        } catch (error) {
           console.error('[ServerManager] Proxy error:', error);
-          // Create an error page with MCP bridge so commands don't timeout
           const errorHtml = this.createErrorPage(
-            `Failed to load ${targetUrl}`,
-            error.message,
-            targetUrl
+            `Failed to load ${url}`,
+            (error as Error).message,
+            url
           );
-          res.status(502).send(errorHtml);
-        });
+          res.status(500).send(errorHtml);
+        }
+      };
 
-        proxyReq.end();
-      } catch (error) {
-        console.error('[ServerManager] Proxy error:', error);
-        // Create an error page with MCP bridge so commands don't timeout
-        const errorHtml = this.createErrorPage(
-          `Failed to load ${targetUrl}`,
-          (error as Error).message,
-          targetUrl
-        );
-        res.status(500).send(errorHtml);
-      }
+      // Start proxying
+      proxyUrl(targetUrl, false);
     });
 
     // Endpoint to retrieve extracted styled-jsx CSS
