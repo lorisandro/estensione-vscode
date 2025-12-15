@@ -318,11 +318,13 @@ export class ServerManager {
               // For HTML content, rewrite relative URLs to use proxy
               const contentType = proxyRes.headers['content-type'] || '';
               if (contentType.includes('text/html')) {
-                const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                // Use full URL as base (including path) for proper relative URL resolution
+                const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                const fullBaseUrl = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
                 let html = body.toString('utf-8');
 
                 // Rewrite relative URLs in href and src attributes
-                html = this.rewriteHtmlUrls(html, baseUrl, this.config!.port);
+                html = this.rewriteHtmlUrls(html, baseOrigin, fullBaseUrl, this.config!.port);
 
                 // Inject element inspector script for selection mode
                 html = this.injectInspectorScript(html);
@@ -336,6 +338,15 @@ export class ServerManager {
                 const jsContent = body.toString('utf-8');
                 this.extractStyledJsxCss(jsContent);
                 res.send(body);
+              } else if (contentType.includes('text/css') || parsedUrl.pathname.endsWith('.css')) {
+                // For CSS content, rewrite url() references
+                let cssContent = body.toString('utf-8');
+                const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
+                const fullBasePath = baseOrigin + basePath;
+
+                cssContent = this.rewriteCssUrls(cssContent, baseOrigin, fullBasePath, this.config!.port);
+                res.send(cssContent);
               } else {
                 res.send(body);
               }
@@ -849,9 +860,18 @@ export class ServerManager {
 
   /**
    * Rewrite HTML URLs to use the proxy for external resources
+   * @param html - The HTML content to process
+   * @param baseOrigin - The origin (protocol://host) for root-relative URLs
+   * @param fullBaseUrl - The full URL (including path) for relative URLs
+   * @param proxyPort - The proxy server port
    */
-  private rewriteHtmlUrls(html: string, baseUrl: string, proxyPort: number): string {
+  private rewriteHtmlUrls(html: string, baseOrigin: string, fullBaseUrl: string, proxyPort: number): string {
     const proxyBase = `http://localhost:${proxyPort}/__claude-vs__/proxy?url=`;
+
+    // Get the directory path for resolving relative URLs
+    // For /path/to/page.html -> /path/to/
+    // For /path/to/ -> /path/to/
+    const basePath = fullBaseUrl.endsWith('/') ? fullBaseUrl : fullBaseUrl.substring(0, fullBaseUrl.lastIndexOf('/') + 1);
 
     // Rewrite absolute URLs in href and src attributes
     html = html.replace(
@@ -863,10 +883,11 @@ export class ServerManager {
     );
 
     // Rewrite root-relative URLs (starting with /) but not protocol-relative (//)
+    // These should resolve against the origin only
     html = html.replace(
       /(href|src|action)=["'](\/(?!\/)[^"']+)["']/gi,
       (match, attr, url) => {
-        const absoluteUrl = baseUrl + url;
+        const absoluteUrl = baseOrigin + url;
         const proxiedUrl = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
         return `${attr}="${proxiedUrl}"`;
       }
@@ -884,25 +905,39 @@ export class ServerManager {
 
     // Rewrite relative URLs (not starting with /, http, or #)
     // Match: href="script.js", src="assets/img.png", src="./style.css", src="../lib.js"
+    // These should resolve against the full base path (including directory)
     html = html.replace(
       /(href|src|action)=["'](?!https?:\/\/|\/|#|data:|javascript:|mailto:)([^"']+)["']/gi,
       (match, attr, url) => {
-        // Handle ../ and ./ by normalizing the URL
-        const absoluteUrl = new URL(url, baseUrl + '/').href;
+        // Handle ../ and ./ by normalizing the URL against the full base path
+        const absoluteUrl = new URL(url, basePath).href;
         const proxiedUrl = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
         return `${attr}="${proxiedUrl}"`;
       }
     );
 
-    // Rewrite CSS url() references
+    // Rewrite CSS url() references - use full base path for relative URLs
     html = html.replace(
       /url\(["']?(?!https?:\/\/|\/|data:|#)([^"')]+)["']?\)/gi,
       (match, url) => {
         try {
-          const absoluteUrl = new URL(url, baseUrl + '/').href;
+          const absoluteUrl = new URL(url, basePath).href;
           return `url("${proxyBase}${encodeURIComponent(absoluteUrl)}")`;
         } catch {
           return match; // Keep original if URL parsing fails
+        }
+      }
+    );
+
+    // Rewrite root-relative CSS url() references
+    html = html.replace(
+      /url\(["']?(\/(?!\/)[^"')]+)["']?\)/gi,
+      (match, url) => {
+        try {
+          const absoluteUrl = baseOrigin + url;
+          return `url("${proxyBase}${encodeURIComponent(absoluteUrl)}")`;
+        } catch {
+          return match;
         }
       }
     );
@@ -911,6 +946,76 @@ export class ServerManager {
     // The browser would resolve relative URLs against the path portion, not the query string
 
     return html;
+  }
+
+  /**
+   * Rewrite CSS url() references to use the proxy
+   * @param css - The CSS content to process
+   * @param baseOrigin - The origin (protocol://host) for root-relative URLs
+   * @param fullBasePath - The full base path for relative URLs
+   * @param proxyPort - The proxy server port
+   */
+  private rewriteCssUrls(css: string, baseOrigin: string, fullBasePath: string, proxyPort: number): string {
+    const proxyBase = `http://localhost:${proxyPort}/__claude-vs__/proxy?url=`;
+
+    // Rewrite absolute URLs
+    css = css.replace(
+      /url\(["']?(https?:\/\/[^"')]+)["']?\)/gi,
+      (match, url) => {
+        return `url("${proxyBase}${encodeURIComponent(url)}")`;
+      }
+    );
+
+    // Rewrite root-relative URLs (starting with /)
+    css = css.replace(
+      /url\(["']?(\/(?!\/)[^"')]+)["']?\)/gi,
+      (match, url) => {
+        const absoluteUrl = baseOrigin + url;
+        return `url("${proxyBase}${encodeURIComponent(absoluteUrl)}")`;
+      }
+    );
+
+    // Rewrite protocol-relative URLs (starting with //)
+    css = css.replace(
+      /url\(["']?(\/\/[^"')]+)["']?\)/gi,
+      (match, url) => {
+        const absoluteUrl = 'https:' + url;
+        return `url("${proxyBase}${encodeURIComponent(absoluteUrl)}")`;
+      }
+    );
+
+    // Rewrite relative URLs (not starting with /, http, data, or #)
+    css = css.replace(
+      /url\(["']?(?!https?:\/\/|\/|data:|#)([^"')]+)["']?\)/gi,
+      (match, url) => {
+        try {
+          const absoluteUrl = new URL(url, fullBasePath).href;
+          return `url("${proxyBase}${encodeURIComponent(absoluteUrl)}")`;
+        } catch {
+          return match;
+        }
+      }
+    );
+
+    // Also handle @import statements
+    css = css.replace(
+      /@import\s+["'](?!https?:\/\/|data:)([^"']+)["']/gi,
+      (match, url) => {
+        try {
+          let absoluteUrl: string;
+          if (url.startsWith('/')) {
+            absoluteUrl = baseOrigin + url;
+          } else {
+            absoluteUrl = new URL(url, fullBasePath).href;
+          }
+          return `@import "${proxyBase}${encodeURIComponent(absoluteUrl)}"`;
+        } catch {
+          return match;
+        }
+      }
+    );
+
+    return css;
   }
 
   /**
