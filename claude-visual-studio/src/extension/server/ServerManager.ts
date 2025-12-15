@@ -1123,13 +1123,17 @@ export class ServerManager {
         }, 200);
 
         // Load html2canvas-pro dynamically (supports modern CSS colors: oklab, oklch, lab, lch)
+        // Save to a unique variable to avoid conflicts with pages that load their own html2canvas
         var html2canvasLoaded = false;
+        var html2canvasPro = null;
         var html2canvasLoadPromise = new Promise(function(resolve, reject) {
           var html2canvasScript = document.createElement('script');
           html2canvasScript.src = 'https://unpkg.com/html2canvas-pro@1.5.13/dist/html2canvas-pro.min.js';
           html2canvasScript.onload = function() {
+            // Immediately save reference before page scripts can overwrite it
+            html2canvasPro = window.html2canvas;
             html2canvasLoaded = true;
-            console.log('[MCP Bridge] html2canvas-pro loaded successfully');
+            console.log('[MCP Bridge] html2canvas-pro loaded and saved to isolated variable');
             resolve(true);
           };
           html2canvasScript.onerror = function(e) {
@@ -1163,11 +1167,12 @@ export class ServerManager {
           }
 
           // Try html2canvas-pro if available (supports modern CSS colors)
-          if (typeof html2canvas === 'function') {
+          // Use our saved reference to avoid conflicts with page's html2canvas
+          if (typeof html2canvasPro === 'function') {
             console.log('[MCP Bridge] Using html2canvas-pro for screenshot');
 
             try {
-              const canvas = await html2canvas(document.body, {
+              const canvas = await html2canvasPro(document.body, {
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
@@ -1206,7 +1211,7 @@ export class ServerManager {
               // Continue to native canvas fallback
             }
           } else {
-            console.warn('[MCP Bridge] html2canvas-pro not available (typeof:', typeof html2canvas, ')');
+            console.warn('[MCP Bridge] html2canvas-pro not available (typeof:', typeof html2canvasPro, ')');
           }
 
           // Native Canvas API fallback - try to capture visible viewport

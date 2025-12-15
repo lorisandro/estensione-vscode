@@ -1844,10 +1844,52 @@ class ElementInspector {
   }
 
   /**
+   * Ensure canvas dimensions don't exceed the maximum allowed size
+   * Resizes the canvas if needed while maintaining aspect ratio
+   */
+  private ensureMaxDimensions(canvas: HTMLCanvasElement, maxDimension: number): HTMLCanvasElement {
+    const { width, height } = canvas;
+
+    // Check if resizing is needed
+    if (width <= maxDimension && height <= maxDimension) {
+      return canvas;
+    }
+
+    // Calculate new dimensions while maintaining aspect ratio
+    const scale = Math.min(maxDimension / width, maxDimension / height);
+    const newWidth = Math.floor(width * scale);
+    const newHeight = Math.floor(height * scale);
+
+    // Create a new canvas with the resized dimensions
+    const resizedCanvas = document.createElement('canvas');
+    resizedCanvas.width = newWidth;
+    resizedCanvas.height = newHeight;
+
+    const ctx = resizedCanvas.getContext('2d');
+    if (ctx) {
+      // Use high-quality image smoothing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
+    }
+
+    console.log(`[Element Inspector] Resized screenshot from ${width}x${height} to ${newWidth}x${newHeight}`);
+    return resizedCanvas;
+  }
+
+  /**
    * Capture screenshot of specified area using html2canvas or canvas
    */
   private async captureScreenshot(area: { x: number; y: number; width: number; height: number }): Promise<void> {
     try {
+      // Maximum dimension allowed by Claude API
+      const MAX_DIMENSION = 8000;
+
+      // Calculate scale that keeps dimensions under the limit
+      const dpr = window.devicePixelRatio || 1;
+      const maxDimension = Math.max(area.width * dpr, area.height * dpr);
+      const scale = maxDimension > MAX_DIMENSION ? (MAX_DIMENSION / Math.max(area.width, area.height)) : dpr;
+
       // Try to use html2canvas if available
       if (typeof (window as any).html2canvas === 'function') {
         const canvas = await (window as any).html2canvas(document.body, {
@@ -1857,13 +1899,15 @@ class ElementInspector {
           height: area.height,
           windowWidth: document.documentElement.scrollWidth,
           windowHeight: document.documentElement.scrollHeight,
-          scale: window.devicePixelRatio || 1,
+          scale: scale,
           useCORS: true,
           allowTaint: true,
           logging: false,
         });
 
-        const imageData = canvas.toDataURL('image/png');
+        // Double-check the canvas dimensions and resize if needed
+        const finalCanvas = this.ensureMaxDimensions(canvas, MAX_DIMENSION);
+        const imageData = finalCanvas.toDataURL('image/png');
         this.sendScreenshotResponse(imageData);
         return;
       }
@@ -1876,10 +1920,9 @@ class ElementInspector {
         return;
       }
 
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = area.width * dpr;
-      canvas.height = area.height * dpr;
-      ctx.scale(dpr, dpr);
+      canvas.width = area.width * scale;
+      canvas.height = area.height * scale;
+      ctx.scale(scale, scale);
 
       // Draw a white background
       ctx.fillStyle = '#ffffff';
@@ -1910,7 +1953,9 @@ class ElementInspector {
         ctx.drawImage(img, 0, 0, area.width, area.height);
         URL.revokeObjectURL(url);
 
-        const imageData = canvas.toDataURL('image/png');
+        // Double-check dimensions and resize if needed
+        const finalCanvas = this.ensureMaxDimensions(canvas, MAX_DIMENSION);
+        const imageData = finalCanvas.toDataURL('image/png');
         this.sendScreenshotResponse(imageData);
       } catch (svgError) {
         console.error('[Element Inspector] SVG capture failed:', svgError);
@@ -1923,7 +1968,8 @@ class ElementInspector {
         ctx.textBaseline = 'middle';
         ctx.fillText(`Area: ${area.width}x${area.height}`, area.width / 2, area.height / 2);
 
-        const imageData = canvas.toDataURL('image/png');
+        const finalCanvas = this.ensureMaxDimensions(canvas, MAX_DIMENSION);
+        const imageData = finalCanvas.toDataURL('image/png');
         this.sendScreenshotResponse(imageData);
       }
     } catch (error) {

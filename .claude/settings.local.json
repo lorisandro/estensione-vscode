@@ -77,7 +77,9 @@
       "Bash(git push:*)",
       "Bash(timeout /t 2 /nobreak)",
       "WebFetch(domain:www.npmjs.com)",
-      "WebFetch(domain:unpkg.com)"
+      "WebFetch(domain:unpkg.com)",
+      "mcp__claude-visual-studio__browser_clear_console_logs",
+      "mcp__claude-visual-studio__backend_restart_dev_server"
     ]
   }
 }
