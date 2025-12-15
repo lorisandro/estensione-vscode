@@ -23,6 +23,8 @@ export class ServerManager {
 
   // Track the last proxied origin for relative URL resolution
   private lastProxiedOrigin: string | null = null;
+  // Track the last proxied page path for fallback asset resolution
+  private lastProxiedBasePath: string | null = null;
 
   // Store extracted styled-jsx CSS to inject into HTML
   private extractedStyledJsxCss: Map<string, string> = new Map();
@@ -250,6 +252,9 @@ export class ServerManager {
 
         // Save the origin for resolving relative URLs (like /_next/...)
         const newOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+        // Save the base path for fallback asset resolution (directory of the page)
+        const pagePath = parsedUrl.pathname;
+        const newBasePath = pagePath.substring(0, pagePath.lastIndexOf('/') + 1) || '/';
 
         // Only clear CSS when navigating to a different origin (new site)
         // Don't clear on every proxy request, as JS files extract CSS during loading
@@ -257,6 +262,8 @@ export class ServerManager {
           this.clearExtractedStyledJsxCss();
           this.lastProxiedOrigin = newOrigin;
         }
+        // Always update base path for asset fallback
+        this.lastProxiedBasePath = newBasePath;
 
         const proxyReq = httpModule.request(
           {
@@ -593,6 +600,7 @@ export class ServerManager {
 
     // Proxy route for common asset paths (fonts, images, css, js, vendor, assets)
     // These are root-relative URLs that external sites commonly use
+    // Implements fallback: if root-relative path returns 404, try relative to page path
     this.app.get(/^\/(fonts|images|assets|vendor|css|js|img|static)\//, async (req, res) => {
       if (!this.lastProxiedOrigin) {
         // No proxied origin, fall through to static file serving
@@ -600,79 +608,118 @@ export class ServerManager {
         return;
       }
 
-      const targetUrl = `${this.lastProxiedOrigin}${req.originalUrl}`;
-      console.log('[ServerManager] Proxying asset path:', req.originalUrl, '->', targetUrl);
+      // Build list of URLs to try (primary + fallback)
+      const urlsToTry: string[] = [
+        // Primary: root-relative path
+        `${this.lastProxiedOrigin}${req.originalUrl}`,
+      ];
 
-      try {
-        const parsedUrl = new URL(targetUrl);
-        const isHttps = parsedUrl.protocol === 'https:';
-        const httpModule = isHttps ? https : http;
+      // Add fallback: relative to the page's directory path
+      if (this.lastProxiedBasePath && this.lastProxiedBasePath !== '/') {
+        // Remove leading slash from asset path to make it relative
+        const relativePath = req.originalUrl.substring(1);
+        urlsToTry.push(`${this.lastProxiedOrigin}${this.lastProxiedBasePath}${relativePath}`);
+      }
 
-        const proxyReq = httpModule.request(
-          {
-            hostname: parsedUrl.hostname,
-            port: parsedUrl.port || (isHttps ? 443 : 80),
-            path: parsedUrl.pathname + parsedUrl.search,
-            method: 'GET',
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              'Accept': '*/*',
-              'Accept-Language': 'en-US,en;q=0.9',
-              'Accept-Encoding': 'identity',
-              'Host': parsedUrl.host,
-              'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
-              'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
-            },
-          },
-          (proxyRes) => {
-            // Copy headers
-            const headers = { ...proxyRes.headers };
-            delete headers['transfer-encoding'];
-            delete headers['content-encoding'];
+      // Helper function to try fetching from a URL
+      const tryFetchUrl = (url: string, isFallback: boolean): Promise<boolean> => {
+        return new Promise((resolve) => {
+          try {
+            const parsedUrl = new URL(url);
+            const isHttps = parsedUrl.protocol === 'https:';
+            const httpModule = isHttps ? https : http;
 
-            // Disable caching to always get fresh content
-            headers['cache-control'] = 'no-cache, no-store, must-revalidate';
-            headers['pragma'] = 'no-cache';
-            headers['expires'] = '0';
-            headers['access-control-allow-origin'] = '*';
+            console.log(`[ServerManager] ${isFallback ? 'Fallback' : 'Proxying'} asset path:`, req.originalUrl, '->', url);
 
-            res.status(proxyRes.statusCode || 200);
-            Object.entries(headers).forEach(([key, value]) => {
-              if (value) {
-                res.setHeader(key, value as string);
+            const proxyReq = httpModule.request(
+              {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || (isHttps ? 443 : 80),
+                path: parsedUrl.pathname + parsedUrl.search,
+                method: 'GET',
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                  'Accept': '*/*',
+                  'Accept-Language': 'en-US,en;q=0.9',
+                  'Accept-Encoding': 'identity',
+                  'Host': parsedUrl.host,
+                  'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
+                  'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
+                },
+              },
+              (proxyRes) => {
+                // If 404 and we have more URLs to try, reject to try next
+                if (proxyRes.statusCode === 404 && !isFallback && urlsToTry.length > 1) {
+                  // Consume the response to free up the connection
+                  proxyRes.resume();
+                  resolve(false);
+                  return;
+                }
+
+                // Copy headers
+                const headers = { ...proxyRes.headers };
+                delete headers['transfer-encoding'];
+                delete headers['content-encoding'];
+
+                // Disable caching to always get fresh content
+                headers['cache-control'] = 'no-cache, no-store, must-revalidate';
+                headers['pragma'] = 'no-cache';
+                headers['expires'] = '0';
+                headers['access-control-allow-origin'] = '*';
+
+                res.status(proxyRes.statusCode || 200);
+                Object.entries(headers).forEach(([key, value]) => {
+                  if (value) {
+                    res.setHeader(key, value as string);
+                  }
+                });
+
+                // Check if it's CSS - need to rewrite URLs
+                const contentType = proxyRes.headers['content-type'] || '';
+                if (contentType.includes('text/css') || req.originalUrl.endsWith('.css')) {
+                  const chunks: Buffer[] = [];
+                  proxyRes.on('data', (chunk) => chunks.push(chunk));
+                  proxyRes.on('end', () => {
+                    let cssContent = Buffer.concat(chunks).toString('utf-8');
+                    const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                    const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
+                    const fullBasePath = baseOrigin + basePath;
+
+                    cssContent = this.rewriteCssUrls(cssContent, baseOrigin, fullBasePath, this.config!.port);
+                    res.send(cssContent);
+                    resolve(true);
+                  });
+                } else {
+                  // Pipe non-CSS responses directly
+                  proxyRes.pipe(res);
+                  proxyRes.on('end', () => resolve(true));
+                }
               }
+            );
+
+            proxyReq.on('error', (error) => {
+              console.error('[ServerManager] Asset proxy error:', error);
+              resolve(false);
             });
 
-            // Check if it's CSS - need to rewrite URLs
-            const contentType = proxyRes.headers['content-type'] || '';
-            if (contentType.includes('text/css') || req.originalUrl.endsWith('.css')) {
-              const chunks: Buffer[] = [];
-              proxyRes.on('data', (chunk) => chunks.push(chunk));
-              proxyRes.on('end', () => {
-                let cssContent = Buffer.concat(chunks).toString('utf-8');
-                const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
-                const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
-                const fullBasePath = baseOrigin + basePath;
-
-                cssContent = this.rewriteCssUrls(cssContent, baseOrigin, fullBasePath, this.config!.port);
-                res.send(cssContent);
-              });
-            } else {
-              // Pipe non-CSS responses directly
-              proxyRes.pipe(res);
-            }
+            proxyReq.end();
+          } catch (error) {
+            console.error('[ServerManager] Asset proxy error:', error);
+            resolve(false);
           }
-        );
-
-        proxyReq.on('error', (error) => {
-          console.error('[ServerManager] Asset proxy error:', error);
-          res.status(502).send(`Proxy error: ${error.message}`);
         });
+      };
 
-        proxyReq.end();
-      } catch (error) {
-        console.error('[ServerManager] Asset proxy error:', error);
-        res.status(500).send(`Proxy error: ${(error as Error).message}`);
+      // Try URLs in order until one succeeds
+      let success = false;
+      for (let i = 0; i < urlsToTry.length; i++) {
+        success = await tryFetchUrl(urlsToTry[i], i > 0);
+        if (success) break;
+      }
+
+      // If all URLs failed, send 404
+      if (!success && !res.headersSent) {
+        res.status(404).send('Asset not found');
       }
     });
 
