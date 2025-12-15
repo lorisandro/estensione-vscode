@@ -1146,6 +1146,60 @@ export class ServerManager {
           }, 10000);
         });
 
+        // Helper function to fix unsupported CSS color functions BEFORE html2canvas parsing
+        function fixUnsupportedColors() {
+          console.log('[MCP Bridge] Pre-processing colors for html2canvas compatibility...');
+          var fixedCount = 0;
+          var originalStyles = [];
+
+          // Fix inline styles on all elements
+          var allElements = document.querySelectorAll('*');
+          allElements.forEach(function(el, index) {
+            try {
+              var computed = window.getComputedStyle(el);
+              var colorProps = ['color', 'background-color', 'border-color', 'outline-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
+              var elementFixed = false;
+              var origStyles = {};
+
+              colorProps.forEach(function(prop) {
+                var value = computed.getPropertyValue(prop);
+                if (value && (value.includes('lab(') || value.includes('lch(') || value.includes('oklch(') || value.includes('oklab('))) {
+                  // Store original inline style
+                  origStyles[prop] = el.style.getPropertyValue(prop);
+
+                  // Set fallback color as inline style
+                  var fallback = prop.includes('background') ? '#ffffff' : '#000000';
+                  el.style.setProperty(prop, fallback, 'important');
+                  elementFixed = true;
+                  fixedCount++;
+                }
+              });
+
+              if (elementFixed) {
+                originalStyles.push({ element: el, styles: origStyles });
+              }
+            } catch (e) {
+              // Ignore errors
+            }
+          });
+
+          console.log('[MCP Bridge] Fixed ' + fixedCount + ' color properties');
+          return originalStyles;
+        }
+
+        // Helper to restore original styles after screenshot
+        function restoreOriginalStyles(originalStyles) {
+          originalStyles.forEach(function(item) {
+            Object.keys(item.styles).forEach(function(prop) {
+              if (item.styles[prop]) {
+                item.element.style.setProperty(prop, item.styles[prop]);
+              } else {
+                item.element.style.removeProperty(prop);
+              }
+            });
+          });
+        }
+
         // Screenshot function with proper wait for html2canvas
         async function captureScreenshot() {
           console.log('[MCP Bridge] Starting screenshot capture...');
@@ -1165,13 +1219,17 @@ export class ServerManager {
           // Try html2canvas if available
           if (typeof html2canvas === 'function') {
             console.log('[MCP Bridge] Using html2canvas for screenshot');
+
+            // Pre-fix unsupported colors BEFORE calling html2canvas
+            var originalStyles = fixUnsupportedColors();
+
             try {
               const canvas = await html2canvas(document.body, {
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
                 scale: window.devicePixelRatio || 1,
-                logging: true, // Enable logging for debugging
+                logging: false,
                 imageTimeout: 15000,
                 removeContainer: true,
                 foreignObjectRendering: false,
@@ -1182,29 +1240,12 @@ export class ServerManager {
                   fixedElements.forEach(function(el) {
                     el.style.position = 'absolute';
                   });
-                  // Remove problematic CSS color functions that html2canvas doesn't support
-                  var allElements = clonedDoc.querySelectorAll('*');
-                  allElements.forEach(function(el) {
-                    try {
-                      var computed = window.getComputedStyle(el);
-                      // Replace unsupported color functions with fallbacks
-                      ['color', 'backgroundColor', 'borderColor', 'outlineColor'].forEach(function(prop) {
-                        var value = computed[prop];
-                        if (value && (value.includes('lab(') || value.includes('lch(') || value.includes('oklch(') || value.includes('oklab('))) {
-                          if (prop === 'backgroundColor') {
-                            el.style.setProperty(prop, '#ffffff', 'important');
-                          } else {
-                            el.style.setProperty(prop, '#000000', 'important');
-                          }
-                        }
-                      });
-                    } catch (e) {
-                      // Ignore styling errors
-                    }
-                  });
                   console.log('[MCP Bridge] html2canvas clone ready');
                 }
               });
+
+              // Restore original styles
+              restoreOriginalStyles(originalStyles);
 
               console.log('[MCP Bridge] html2canvas render complete, canvas size:', canvas.width, 'x', canvas.height);
               var dataUrl = canvas.toDataURL('image/png');
@@ -1222,6 +1263,8 @@ export class ServerManager {
               }
             } catch (html2canvasError) {
               console.error('[MCP Bridge] html2canvas failed:', html2canvasError.message, html2canvasError.stack);
+              // Restore original styles before fallback
+              restoreOriginalStyles(originalStyles);
               // Continue to native canvas fallback
             }
           } else {
