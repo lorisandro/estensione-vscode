@@ -1150,23 +1150,30 @@ export class ServerManager {
           }, 10000);
         });
 
-        // Maximum dimension allowed by Claude API
-        var MAX_SCREENSHOT_DIMENSION = 8000;
+        // Maximum dimension allowed by Claude API (using 7900 for safety margin)
+        var MAX_SCREENSHOT_DIMENSION = 7900;
 
         // Resize canvas if any dimension exceeds max allowed size
         function resizeCanvasIfNeeded(canvas) {
           var width = canvas.width;
           var height = canvas.height;
 
-          // Check if resizing is needed
-          if (width <= MAX_SCREENSHOT_DIMENSION && height <= MAX_SCREENSHOT_DIMENSION) {
+          // Check if resizing is needed (strict check)
+          if (width < MAX_SCREENSHOT_DIMENSION && height < MAX_SCREENSHOT_DIMENSION) {
             return canvas;
           }
 
-          // Calculate scale to fit within max dimensions
-          var scale = Math.min(MAX_SCREENSHOT_DIMENSION / width, MAX_SCREENSHOT_DIMENSION / height);
+          // Calculate scale to fit within max dimensions with safety margin
+          var scale = Math.min(
+            (MAX_SCREENSHOT_DIMENSION - 1) / width,
+            (MAX_SCREENSHOT_DIMENSION - 1) / height
+          );
           var newWidth = Math.floor(width * scale);
           var newHeight = Math.floor(height * scale);
+
+          // Ensure we never exceed the limit
+          newWidth = Math.min(newWidth, MAX_SCREENSHOT_DIMENSION - 1);
+          newHeight = Math.min(newHeight, MAX_SCREENSHOT_DIMENSION - 1);
 
           console.log('[MCP Bridge] Resizing screenshot from ' + width + 'x' + height + ' to ' + newWidth + 'x' + newHeight);
 
@@ -1211,12 +1218,18 @@ export class ServerManager {
               var dpr = window.devicePixelRatio || 1;
               var bodyWidth = document.body.scrollWidth || window.innerWidth;
               var bodyHeight = document.body.scrollHeight || window.innerHeight;
-              var maxDimension = Math.max(bodyWidth * dpr, bodyHeight * dpr);
-              var scale = maxDimension > MAX_SCREENSHOT_DIMENSION
-                ? MAX_SCREENSHOT_DIMENSION / Math.max(bodyWidth, bodyHeight)
-                : dpr;
 
-              console.log('[MCP Bridge] Calculated scale:', scale, '(dpr:', dpr, ', body:', bodyWidth, 'x', bodyHeight, ')');
+              // Use conservative limit (100px safety margin)
+              var safeLimit = MAX_SCREENSHOT_DIMENSION - 100;
+
+              // Calculate scale ensuring BOTH dimensions stay under limit
+              var scale = Math.min(
+                safeLimit / bodyWidth,
+                safeLimit / bodyHeight,
+                dpr  // Don't exceed device pixel ratio
+              );
+
+              console.log('[MCP Bridge] Calculated scale:', scale, '(dpr:', dpr, ', body:', bodyWidth, 'x', bodyHeight, ', safeLimit:', safeLimit, ')');
 
               var canvas = await html2canvasPro(document.body, {
                 useCORS: true,

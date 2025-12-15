@@ -1850,15 +1850,20 @@ class ElementInspector {
   private ensureMaxDimensions(canvas: HTMLCanvasElement, maxDimension: number): HTMLCanvasElement {
     const { width, height } = canvas;
 
-    // Check if resizing is needed
-    if (width <= maxDimension && height <= maxDimension) {
+    // Check if resizing is needed (strict check)
+    if (width < maxDimension && height < maxDimension) {
       return canvas;
     }
 
-    // Calculate new dimensions while maintaining aspect ratio
-    const scale = Math.min(maxDimension / width, maxDimension / height);
-    const newWidth = Math.floor(width * scale);
-    const newHeight = Math.floor(height * scale);
+    // Calculate new dimensions while maintaining aspect ratio with safety margin
+    const safeLimit = maxDimension - 1;
+    const scale = Math.min(safeLimit / width, safeLimit / height);
+    let newWidth = Math.floor(width * scale);
+    let newHeight = Math.floor(height * scale);
+
+    // Ensure we never exceed the limit
+    newWidth = Math.min(newWidth, safeLimit);
+    newHeight = Math.min(newHeight, safeLimit);
 
     // Create a new canvas with the resized dimensions
     const resizedCanvas = document.createElement('canvas');
@@ -1882,13 +1887,19 @@ class ElementInspector {
    */
   private async captureScreenshot(area: { x: number; y: number; width: number; height: number }): Promise<void> {
     try {
-      // Maximum dimension allowed by Claude API
-      const MAX_DIMENSION = 8000;
+      // Maximum dimension allowed by Claude API (using 7900 for safety margin)
+      const MAX_DIMENSION = 7900;
 
-      // Calculate scale that keeps dimensions under the limit
+      // Use conservative limit for scale calculation
+      const safeLimit = MAX_DIMENSION - 100;
+
+      // Calculate scale ensuring BOTH dimensions stay under limit
       const dpr = window.devicePixelRatio || 1;
-      const maxDimension = Math.max(area.width * dpr, area.height * dpr);
-      const scale = maxDimension > MAX_DIMENSION ? (MAX_DIMENSION / Math.max(area.width, area.height)) : dpr;
+      const scale = Math.min(
+        safeLimit / area.width,
+        safeLimit / area.height,
+        dpr  // Don't exceed device pixel ratio
+      );
 
       // Try to use html2canvas if available
       if (typeof (window as any).html2canvas === 'function') {
