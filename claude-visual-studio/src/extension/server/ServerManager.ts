@@ -1150,6 +1150,41 @@ export class ServerManager {
           }, 10000);
         });
 
+        // Maximum dimension allowed by Claude API
+        var MAX_SCREENSHOT_DIMENSION = 8000;
+
+        // Resize canvas if any dimension exceeds max allowed size
+        function resizeCanvasIfNeeded(canvas) {
+          var width = canvas.width;
+          var height = canvas.height;
+
+          // Check if resizing is needed
+          if (width <= MAX_SCREENSHOT_DIMENSION && height <= MAX_SCREENSHOT_DIMENSION) {
+            return canvas;
+          }
+
+          // Calculate scale to fit within max dimensions
+          var scale = Math.min(MAX_SCREENSHOT_DIMENSION / width, MAX_SCREENSHOT_DIMENSION / height);
+          var newWidth = Math.floor(width * scale);
+          var newHeight = Math.floor(height * scale);
+
+          console.log('[MCP Bridge] Resizing screenshot from ' + width + 'x' + height + ' to ' + newWidth + 'x' + newHeight);
+
+          // Create resized canvas
+          var resizedCanvas = document.createElement('canvas');
+          resizedCanvas.width = newWidth;
+          resizedCanvas.height = newHeight;
+
+          var ctx = resizedCanvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(canvas, 0, 0, newWidth, newHeight);
+          }
+
+          return resizedCanvas;
+        }
+
         // Screenshot function with proper wait for html2canvas
         async function captureScreenshot() {
           console.log('[MCP Bridge] Starting screenshot capture...');
@@ -1172,11 +1207,22 @@ export class ServerManager {
             console.log('[MCP Bridge] Using html2canvas-pro for screenshot');
 
             try {
-              const canvas = await html2canvasPro(document.body, {
+              // Calculate scale that won't exceed max dimensions
+              var dpr = window.devicePixelRatio || 1;
+              var bodyWidth = document.body.scrollWidth || window.innerWidth;
+              var bodyHeight = document.body.scrollHeight || window.innerHeight;
+              var maxDimension = Math.max(bodyWidth * dpr, bodyHeight * dpr);
+              var scale = maxDimension > MAX_SCREENSHOT_DIMENSION
+                ? MAX_SCREENSHOT_DIMENSION / Math.max(bodyWidth, bodyHeight)
+                : dpr;
+
+              console.log('[MCP Bridge] Calculated scale:', scale, '(dpr:', dpr, ', body:', bodyWidth, 'x', bodyHeight, ')');
+
+              var canvas = await html2canvasPro(document.body, {
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
-                scale: window.devicePixelRatio || 1,
+                scale: scale,
                 logging: false,
                 imageTimeout: 15000,
                 removeContainer: true,
@@ -1193,15 +1239,19 @@ export class ServerManager {
               });
 
               console.log('[MCP Bridge] html2canvas-pro render complete, canvas size:', canvas.width, 'x', canvas.height);
-              var dataUrl = canvas.toDataURL('image/png');
+
+              // Double-check and resize if still too large
+              var finalCanvas = resizeCanvasIfNeeded(canvas);
+
+              var dataUrl = finalCanvas.toDataURL('image/png');
               var base64 = dataUrl.split(',')[1];
 
               if (base64 && base64.length > 100) {
-                console.log('[MCP Bridge] Screenshot captured successfully, base64 length:', base64.length);
+                console.log('[MCP Bridge] Screenshot captured successfully, final size:', finalCanvas.width, 'x', finalCanvas.height, ', base64 length:', base64.length);
                 return {
                   screenshot: base64,
-                  width: canvas.width,
-                  height: canvas.height
+                  width: finalCanvas.width,
+                  height: finalCanvas.height
                 };
               } else {
                 throw new Error('Canvas produced empty or invalid image');
