@@ -35,6 +35,15 @@ export function resetIframeBridgeReady() {
   iframeBridgeReady = false;
   // Clear any pending resolvers
   bridgeReadyResolvers = [];
+
+  // Cancel all pending iframe requests - they will never get a response
+  // because the iframe has been reloaded with new context
+  for (const [id, pending] of pendingIframeRequests.entries()) {
+    console.log('[MCP] Cancelling pending request due to bridge reset:', id);
+    clearTimeout(pending.timeout);
+    pending.reject(new Error('Bridge reset - iframe reloaded'));
+  }
+  pendingIframeRequests.clear();
 }
 
 // Wait for the bridge to be ready (with timeout)
