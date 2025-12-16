@@ -289,8 +289,10 @@ export class ServerManager {
           // Save the origin for resolving relative URLs (like /_next/...)
           const newOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
 
-          // Only update origin/basePath for non-fallback requests (original navigation)
-          if (!isFallback) {
+          // Only update origin/basePath for non-fallback requests and non-asset URLs
+          // This prevents assets loaded from CDNs (like randomuser.me) from overwriting
+          // the actual page origin (like localhost:3000)
+          if (!isFallback && !isAssetUrl(url)) {
             // Save the base path for fallback asset resolution (directory of the page)
             const pagePath = parsedUrl.pathname;
             const newBasePath = pagePath.substring(0, pagePath.lastIndexOf('/') + 1) || '/';
@@ -300,10 +302,7 @@ export class ServerManager {
               this.clearExtractedStyledJsxCss();
               this.lastProxiedOrigin = newOrigin;
             }
-            // Only update base path for HTML pages (not assets)
-            if (!isAssetUrl(url)) {
-              this.lastProxiedBasePath = newBasePath;
-            }
+            this.lastProxiedBasePath = newBasePath;
           }
 
           if (isFallback) {
