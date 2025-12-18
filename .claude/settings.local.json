@@ -80,7 +80,8 @@
       "WebFetch(domain:unpkg.com)",
       "mcp__claude-visual-studio__browser_clear_console_logs",
       "mcp__claude-visual-studio__backend_restart_dev_server",
-      "WebFetch(domain:html.creativegigstf.com)"
+      "WebFetch(domain:html.creativegigstf.com)",
+      "Bash(claude --version:*)"
     ]
   }
 }

@@ -508,6 +508,81 @@ export class ServerManager {
       }
     });
 
+    // Proxy route for Turbopack files requested under /__claude-vs__/
+    // When a proxied page has sourceMappingURL=./file.js.map, the browser resolves it
+    // relative to /__claude-vs__/proxy?url=... which becomes /__claude-vs__/file.js.map
+    this.app.get('/__claude-vs__/:filename(*)', async (req, res, next) => {
+      // Only handle requests that look like Turbopack files (not our own endpoints)
+      const filename = req.params.filename;
+      const isTurbopackFile = filename && (
+        filename.startsWith('node_modules_') ||
+        filename.startsWith('src_') ||
+        filename.startsWith('_') ||
+        filename.match(/^[a-f0-9]+\._\.js/) ||  // hex hash patterns
+        filename.includes('._.js')
+      ) && (filename.endsWith('.js') || filename.endsWith('.js.map') || filename.endsWith('.css') || filename.endsWith('.css.map'));
+
+      if (!isTurbopackFile) {
+        // Not a Turbopack file, pass to next handler
+        return next();
+      }
+
+      if (!this.lastProxiedOrigin) {
+        res.status(404).send('No proxied origin available');
+        return;
+      }
+
+      // Turbopack files are usually served from the root
+      const targetUrl = `${this.lastProxiedOrigin}/${filename}`;
+      console.log('[ServerManager] Proxying Turbopack file:', filename, '->', targetUrl);
+
+      try {
+        const parsedUrl = new URL(targetUrl);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const httpModule = isHttps ? https : http;
+
+        const proxyReq = httpModule.request(
+          {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (isHttps ? 443 : 80),
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'GET',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Accept': '*/*',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Accept-Encoding': 'identity',
+              'Host': parsedUrl.host,
+            },
+          },
+          (proxyRes) => {
+            const headers = { ...proxyRes.headers };
+            delete headers['transfer-encoding'];
+            delete headers['content-encoding'];
+            headers['cache-control'] = 'no-cache, no-store, must-revalidate';
+
+            res.status(proxyRes.statusCode || 200);
+            Object.entries(headers).forEach(([key, value]) => {
+              if (value) {
+                res.setHeader(key, value as string);
+              }
+            });
+
+            proxyRes.pipe(res);
+          }
+        );
+
+        proxyReq.on('error', (error) => {
+          console.error('[ServerManager] Turbopack proxy error:', error.message);
+          res.status(404).send('');  // Silent 404 for sourcemaps
+        });
+
+        proxyReq.end();
+      } catch (error) {
+        res.status(404).send('');
+      }
+    });
+
     // Proxy route for /_next/ static files (Next.js resources)
     // This intercepts relative URLs that browsers resolve against the proxy server
     this.app.get('/_next/*', async (req, res) => {
@@ -1162,6 +1237,11 @@ export class ServerManager {
    */
   private rewriteHtmlUrls(html: string, baseOrigin: string, fullBaseUrl: string, proxyPort: number): string {
     const proxyBase = `http://localhost:${proxyPort}/__claude-vs__/proxy?url=`;
+
+    // Remove CSP meta tags that could block our injected scripts
+    // Next.js and other frameworks sometimes add these as meta tags instead of headers
+    html = html.replace(/<meta[^>]*http-equiv=["']?content-security-policy["']?[^>]*>/gi, '<!-- CSP removed by Claude VS -->');
+    html = html.replace(/<meta[^>]*content-security-policy[^>]*http-equiv[^>]*>/gi, '<!-- CSP removed by Claude VS -->');
 
     // Get the directory path for resolving relative URLs
     // For /path/to/page.html -> /path/to/
