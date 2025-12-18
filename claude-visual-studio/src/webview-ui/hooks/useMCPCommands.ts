@@ -29,21 +29,37 @@ let iframeRequestId = 0;
 let iframeBridgeReady = false;
 let bridgeReadyResolvers: Array<() => void> = [];
 
-// Reset bridge ready state (called when iframe is reloaded)
-export function resetIframeBridgeReady() {
-  console.log('[MCP] Resetting iframe bridge ready state');
-  iframeBridgeReady = false;
-  // Clear any pending resolvers
-  bridgeReadyResolvers = [];
+// Debounce timer for bridge reset to prevent rapid successive resets
+let bridgeResetDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const BRIDGE_RESET_DEBOUNCE_MS = 300;
 
-  // Cancel all pending iframe requests - they will never get a response
-  // because the iframe has been reloaded with new context
-  for (const [id, pending] of pendingIframeRequests.entries()) {
-    console.log('[MCP] Cancelling pending request due to bridge reset:', id);
-    clearTimeout(pending.timeout);
-    pending.reject(new Error('Bridge reset - iframe reloaded'));
+// Reset bridge ready state (called when iframe is reloaded)
+// Uses debounce to prevent rapid successive resets from HMR/file watchers
+export function resetIframeBridgeReady() {
+  // Immediately mark bridge as not ready so new commands wait
+  iframeBridgeReady = false;
+
+  // Debounce the full reset to handle rapid successive refreshes
+  if (bridgeResetDebounceTimer) {
+    clearTimeout(bridgeResetDebounceTimer);
   }
-  pendingIframeRequests.clear();
+
+  bridgeResetDebounceTimer = setTimeout(() => {
+    console.log('[MCP] Executing debounced bridge reset');
+    bridgeResetDebounceTimer = null;
+
+    // Clear any pending resolvers
+    bridgeReadyResolvers = [];
+
+    // Cancel all pending iframe requests - they will never get a response
+    // because the iframe has been reloaded with new context
+    for (const [id, pending] of pendingIframeRequests.entries()) {
+      console.log('[MCP] Cancelling pending request due to bridge reset:', id);
+      clearTimeout(pending.timeout);
+      pending.reject(new Error('Bridge reset - iframe reloaded'));
+    }
+    pendingIframeRequests.clear();
+  }, BRIDGE_RESET_DEBOUNCE_MS);
 }
 
 // Wait for the bridge to be ready (with timeout)
