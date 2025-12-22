@@ -414,7 +414,7 @@ export class ServerManager {
             }
           );
 
-          proxyReq.on('error', (error) => {
+          proxyReq.on('error', (error: NodeJS.ErrnoException) => {
             // If error on primary request and this is an asset, try fallback
             if (!isFallback && isAssetUrl(url)) {
               const fallbackUrl = buildFallbackUrl(url);
@@ -424,7 +424,10 @@ export class ServerManager {
               }
             }
 
-            console.error('[ServerManager] Proxy error:', error);
+            // ECONNRESET and ETIMEDOUT are normal during HMR - don't log as errors
+            if (error.code !== 'ECONNRESET' && error.code !== 'ETIMEDOUT') {
+              console.error('[ServerManager] Proxy error:', error);
+            }
             const errorHtml = this.createErrorPage(
               `Failed to load ${url}`,
               error.message,
@@ -572,9 +575,14 @@ export class ServerManager {
           }
         );
 
-        proxyReq.on('error', (error) => {
-          console.error('[ServerManager] Turbopack proxy error:', error.message);
-          res.status(404).send('');  // Silent 404 for sourcemaps
+        proxyReq.on('error', (error: NodeJS.ErrnoException) => {
+          // ECONNRESET and ETIMEDOUT are normal during HMR - don't log as errors
+          if (error.code !== 'ECONNRESET' && error.code !== 'ETIMEDOUT') {
+            console.error('[ServerManager] Turbopack proxy error:', error.message);
+          }
+          if (!res.headersSent) {
+            res.status(404).send('');  // Silent 404 for sourcemaps
+          }
         });
 
         proxyReq.end();
@@ -655,9 +663,14 @@ export class ServerManager {
           }
         );
 
-        proxyReq.on('error', (error) => {
-          console.error('[ServerManager] Next.js proxy error:', error);
-          res.status(502).send(`Proxy error: ${error.message}`);
+        proxyReq.on('error', (error: NodeJS.ErrnoException) => {
+          // ECONNRESET and ETIMEDOUT are normal during HMR - don't log as errors
+          if (error.code !== 'ECONNRESET' && error.code !== 'ETIMEDOUT') {
+            console.error('[ServerManager] Next.js proxy error:', error);
+          }
+          if (!res.headersSent) {
+            res.status(502).send(`Proxy error: ${error.message}`);
+          }
         });
 
         proxyReq.end();
@@ -725,9 +738,14 @@ export class ServerManager {
           }
         );
 
-        proxyReq.on('error', (error) => {
-          console.error('[ServerManager] Media proxy error:', error);
-          res.status(502).send(`Proxy error: ${error.message}`);
+        proxyReq.on('error', (error: NodeJS.ErrnoException) => {
+          // ECONNRESET and ETIMEDOUT are normal during HMR - don't log as errors
+          if (error.code !== 'ECONNRESET' && error.code !== 'ETIMEDOUT') {
+            console.error('[ServerManager] Media proxy error:', error);
+          }
+          if (!res.headersSent) {
+            res.status(502).send(`Proxy error: ${error.message}`);
+          }
         });
 
         proxyReq.end();
@@ -836,8 +854,11 @@ export class ServerManager {
               }
             );
 
-            proxyReq.on('error', (error) => {
-              console.error('[ServerManager] Asset proxy error:', error);
+            proxyReq.on('error', (error: NodeJS.ErrnoException) => {
+              // ECONNRESET and ETIMEDOUT are normal during HMR - don't log as errors
+              if (error.code !== 'ECONNRESET' && error.code !== 'ETIMEDOUT') {
+                console.error('[ServerManager] Asset proxy error:', error);
+              }
               resolve(false);
             });
 
