@@ -29,6 +29,10 @@ export class ServerManager {
   // Store extracted styled-jsx CSS to inject into HTML
   private extractedStyledJsxCss: Map<string, string> = new Map();
 
+  // Cookie jar for maintaining session state across proxy requests
+  // Map<domain, Map<cookieName, { value: string, attributes: string }>>
+  private cookieJar: Map<string, Map<string, { value: string; attributes: string }>> = new Map();
+
   // Track the current served HTML file for Page Builder text editing
   private currentServedFile: string | null = null;
 
@@ -239,7 +243,8 @@ export class ServerManager {
     // Proxy route for external URLs (to bypass X-Frame-Options)
     // Includes fallback logic: if an asset returns 404 and we have a base path,
     // try loading from the relative path instead
-    this.app.get('/__claude-vs__/proxy', async (req, res) => {
+    // Uses 'all' to support GET, POST, etc. for form submissions
+    this.app.all('/__claude-vs__/proxy', async (req, res) => {
       const targetUrl = req.query.url as string;
 
       if (!targetUrl) {
@@ -279,8 +284,16 @@ export class ServerManager {
         return null;
       };
 
+      // Get request method and body for form submissions (POST, etc.)
+      const requestMethod = req.method;
+      const requestContentType = req.headers['content-type'];
+
+      // Collect request body for POST/PUT requests
+      const requestBodyChunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => requestBodyChunks.push(chunk));
+
       // Main proxy function that can be called recursively for fallback
-      const proxyUrl = (url: string, isFallback: boolean): void => {
+      const proxyUrl = (url: string, isFallback: boolean, bodyBuffer?: Buffer): void => {
         try {
           const parsedUrl = new URL(url);
           const isHttps = parsedUrl.protocol === 'https:';
@@ -309,21 +322,39 @@ export class ServerManager {
             console.log('[ServerManager] Trying fallback URL:', url);
           }
 
+          // Get domain for cookie handling
+          const cookieDomain = parsedUrl.host;
+
+          // Build headers including stored cookies
+          const requestHeaders: Record<string, string> = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'identity',
+            'Host': parsedUrl.host,
+            'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
+            'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
+          };
+
+          // Add stored cookies for this domain
+          const storedCookies = this.getStoredCookies(cookieDomain);
+          if (storedCookies) {
+            requestHeaders['Cookie'] = storedCookies;
+          }
+
+          // Add Content-Type for POST/PUT requests
+          if (requestContentType && bodyBuffer && bodyBuffer.length > 0) {
+            requestHeaders['Content-Type'] = requestContentType;
+            requestHeaders['Content-Length'] = String(bodyBuffer.length);
+          }
+
           const proxyReq = httpModule.request(
             {
               hostname: parsedUrl.hostname,
               port: parsedUrl.port || (isHttps ? 443 : 80),
               path: parsedUrl.pathname + parsedUrl.search,
-              method: 'GET',
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'identity',
-                'Host': parsedUrl.host,
-                'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
-                'Origin': `${parsedUrl.protocol}//${parsedUrl.host}`,
-              },
+              method: requestMethod,
+              headers: requestHeaders,
             },
             (proxyRes) => {
               // If 404 and this is an asset, try fallback
@@ -332,16 +363,30 @@ export class ServerManager {
                 if (fallbackUrl) {
                   // Consume the 404 response
                   proxyRes.resume();
-                  // Try the fallback URL
-                  proxyUrl(fallbackUrl, true);
+                  // Try the fallback URL (pass body for consistency, though assets are GET)
+                  proxyUrl(fallbackUrl, true, bodyBuffer);
                   return;
                 }
+              }
+
+              // Store cookies from Set-Cookie headers in our cookie jar
+              // This must happen before redirects so login cookies are captured
+              const setCookieHeaders = proxyRes.headers['set-cookie'];
+              if (setCookieHeaders) {
+                this.storeResponseCookies(cookieDomain, setCookieHeaders);
               }
 
               // Handle redirects - use absolute URL for iframe compatibility
               if (proxyRes.statusCode && proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
                 const redirectUrl = new URL(proxyRes.headers.location, url).href;
                 const absoluteProxyUrl = `http://localhost:${this.config!.port}/__claude-vs__/proxy?url=${encodeURIComponent(redirectUrl)}`;
+
+                // Forward rewritten Set-Cookie headers even on redirects
+                const rewrittenCookies = this.rewriteSetCookieHeaders(setCookieHeaders, this.config!.port);
+                rewrittenCookies.forEach(cookie => {
+                  res.append('Set-Cookie', cookie);
+                });
+
                 res.redirect(absoluteProxyUrl);
                 return;
               }
@@ -351,6 +396,8 @@ export class ServerManager {
               delete headers['x-frame-options'];
               delete headers['content-security-policy'];
               delete headers['content-security-policy-report-only'];
+              // Remove original set-cookie, we'll add rewritten ones
+              delete headers['set-cookie'];
 
               // Set CORS headers
               headers['access-control-allow-origin'] = '*';
@@ -367,6 +414,12 @@ export class ServerManager {
                 if (value && key !== 'transfer-encoding' && key !== 'content-encoding') {
                   res.setHeader(key, value as string);
                 }
+              });
+
+              // Add rewritten Set-Cookie headers for the browser
+              const rewrittenCookies = this.rewriteSetCookieHeaders(setCookieHeaders, this.config!.port);
+              rewrittenCookies.forEach(cookie => {
+                res.append('Set-Cookie', cookie);
               });
 
               // Collect response body
@@ -419,7 +472,7 @@ export class ServerManager {
             if (!isFallback && isAssetUrl(url)) {
               const fallbackUrl = buildFallbackUrl(url);
               if (fallbackUrl) {
-                proxyUrl(fallbackUrl, true);
+                proxyUrl(fallbackUrl, true, bodyBuffer);
                 return;
               }
             }
@@ -436,6 +489,10 @@ export class ServerManager {
             res.status(502).send(errorHtml);
           });
 
+          // Write request body for POST/PUT and end the request
+          if (bodyBuffer && bodyBuffer.length > 0) {
+            proxyReq.write(bodyBuffer);
+          }
           proxyReq.end();
         } catch (error) {
           console.error('[ServerManager] Proxy error:', error);
@@ -448,8 +505,11 @@ export class ServerManager {
         }
       };
 
-      // Start proxying
-      proxyUrl(targetUrl, false);
+      // Wait for request body to complete before proxying
+      req.on('end', () => {
+        const bodyBuffer = requestBodyChunks.length > 0 ? Buffer.concat(requestBodyChunks) : undefined;
+        proxyUrl(targetUrl, false, bodyBuffer);
+      });
     });
 
     // Endpoint to retrieve extracted styled-jsx CSS
@@ -2364,6 +2424,94 @@ ${allCss}
    */
   private clearExtractedStyledJsxCss(): void {
     this.extractedStyledJsxCss.clear();
+  }
+
+  /**
+   * Parse Set-Cookie header and store in cookie jar
+   */
+  private storeResponseCookies(domain: string, setCookieHeaders: string | string[] | undefined): void {
+    if (!setCookieHeaders) return;
+
+    const cookies = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+
+    if (!this.cookieJar.has(domain)) {
+      this.cookieJar.set(domain, new Map());
+    }
+    const domainCookies = this.cookieJar.get(domain)!;
+
+    for (const cookie of cookies) {
+      // Parse cookie: name=value; attributes...
+      const parts = cookie.split(';');
+      const [nameValue, ...attributeParts] = parts;
+      const eqIndex = nameValue.indexOf('=');
+      if (eqIndex === -1) continue;
+
+      const name = nameValue.substring(0, eqIndex).trim();
+      const value = nameValue.substring(eqIndex + 1).trim();
+      const attributes = attributeParts.join(';').trim();
+
+      // Check for expired cookies (Max-Age=0 or Expires in past)
+      const lowerAttrs = attributes.toLowerCase();
+      if (lowerAttrs.includes('max-age=0') || lowerAttrs.includes('max-age=-')) {
+        domainCookies.delete(name);
+      } else {
+        domainCookies.set(name, { value, attributes });
+      }
+    }
+  }
+
+  /**
+   * Get stored cookies for a domain as a Cookie header value
+   */
+  private getStoredCookies(domain: string): string | null {
+    const domainCookies = this.cookieJar.get(domain);
+    if (!domainCookies || domainCookies.size === 0) return null;
+
+    const cookiePairs: string[] = [];
+    for (const [name, { value }] of domainCookies) {
+      cookiePairs.push(`${name}=${value}`);
+    }
+    return cookiePairs.join('; ');
+  }
+
+  /**
+   * Rewrite Set-Cookie headers for the proxy domain
+   * This allows cookies to be stored by the browser for our proxy domain
+   */
+  private rewriteSetCookieHeaders(setCookieHeaders: string | string[] | undefined, proxyPort: number): string[] {
+    if (!setCookieHeaders) return [];
+
+    const cookies = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+    const rewritten: string[] = [];
+
+    for (const cookie of cookies) {
+      // Parse and rewrite cookie for localhost domain
+      const parts = cookie.split(';');
+      const [nameValue, ...attributeParts] = parts;
+
+      // Keep name=value, remove Domain and Secure attributes, set Path=/
+      const filteredAttrs = attributeParts.filter(attr => {
+        const lowerAttr = attr.trim().toLowerCase();
+        // Remove Domain (we'll use localhost), Secure (we're not https), and SameSite=None (needs Secure)
+        return !lowerAttr.startsWith('domain=') &&
+               !lowerAttr.startsWith('secure') &&
+               !lowerAttr.startsWith('samesite=none');
+      });
+
+      // Ensure Path=/ so cookies work across all proxy URLs
+      let hasPath = filteredAttrs.some(attr => attr.trim().toLowerCase().startsWith('path='));
+      if (!hasPath) {
+        filteredAttrs.push(' Path=/');
+      }
+
+      // Add SameSite=Lax for security (compatible without Secure flag)
+      filteredAttrs.push(' SameSite=Lax');
+
+      const rewrittenCookie = [nameValue, ...filteredAttrs].join(';');
+      rewritten.push(rewrittenCookie);
+    }
+
+    return rewritten;
   }
 
   /**
