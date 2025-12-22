@@ -63,7 +63,8 @@ export function resetIframeBridgeReady() {
 }
 
 // Wait for the bridge to be ready (with timeout)
-function waitForBridgeReady(timeoutMs: number = 5000): Promise<void> {
+// Increased timeout to 15s to handle dev server restarts
+function waitForBridgeReady(timeoutMs: number = 15000): Promise<void> {
   if (iframeBridgeReady) {
     console.log('[MCP] Bridge already ready');
     return Promise.resolve();
@@ -97,10 +98,11 @@ function markBridgeReady() {
 }
 
 // Helper for retry logic with exponential backoff
+// Increased delay to 3s to give dev server time to restart
 async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  delayMs: number = 2000
+  delayMs: number = 3000
 ): Promise<T> {
   let lastError: Error | undefined;
   for (let i = 0; i < maxRetries; i++) {

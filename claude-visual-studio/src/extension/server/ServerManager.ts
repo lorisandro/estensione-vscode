@@ -1452,42 +1452,8 @@ export class ServerManager {
         // styled-jsx CSS injection polyfill
         // This ensures styled-jsx CSS works even if the normal runtime fails
         (function() {
-          var injectedStyles = {};
           var serverPort = window.location.port || '3333';
           var cssEndpoint = 'http://localhost:' + serverPort + '/__claude-vs__/styled-jsx-css';
-
-
-          // Fetch and inject extracted styled-jsx CSS from server
-          // The server extracts CSS from JS files as they pass through the proxy
-          function fetchAndInjectStyledJsxCss() {
-            fetch(cssEndpoint)
-              .then(function(response) {
-                return response.text();
-              })
-              .then(function(css) {
-                if (css && css.trim().length > 0) {
-                  // Check if we already have this CSS injected
-                  var existingStyle = document.getElementById('__claude-vs-styled-jsx__');
-                  if (existingStyle) {
-                    // Update existing style
-                    if (existingStyle.textContent !== css) {
-                      existingStyle.textContent = css;
-                      console.log('[Claude VS] Updated styled-jsx CSS from server');
-                    }
-                  } else {
-                    // Create new style element
-                    var style = document.createElement('style');
-                    style.id = '__claude-vs-styled-jsx__';
-                    style.textContent = css;
-                    document.head.appendChild(style);
-                    console.log('[Claude VS] Injected styled-jsx CSS from server');
-                  }
-                }
-              })
-              .catch(function(err) {
-                // Silently ignore errors - CSS endpoint may not be ready yet
-              });
-          }
 
           // Monitor for styled-jsx style elements being created
           var originalCreateElement = document.createElement.bind(document);
@@ -1518,25 +1484,10 @@ export class ServerManager {
           };
 
           // styled-jsx CSS is extracted from JS files as they load through the proxy
-          // Poll until CSS is found, then do a few more checks and stop
-          var cssFound = false;
-          var retryCount = 0;
-          var maxRetries = 20; // Max retries before giving up
-          var postCssRetries = 0;
-          var maxPostCssRetries = 3; // Only 3 more checks after CSS is found
+          // Only fetch once after page load - no polling to avoid request spam
           var lastCssHash = '';
 
-          function fetchWithRetry() {
-            // Stop if we've done enough post-CSS retries
-            if (cssFound && postCssRetries >= maxPostCssRetries) return;
-            if (!cssFound && retryCount >= maxRetries) return;
-
-            if (cssFound) {
-              postCssRetries++;
-            } else {
-              retryCount++;
-            }
-
+          function fetchStyledJsxCss() {
             fetch(cssEndpoint)
               .then(function(response) { return response.text(); })
               .then(function(css) {
@@ -1550,7 +1501,6 @@ export class ServerManager {
                     if (cssHash !== lastCssHash) {
                       existingStyle.textContent = css;
                       lastCssHash = cssHash;
-                      console.log('[Claude VS] Updated styled-jsx CSS from server');
                     }
                   } else {
                     // Create new style element
@@ -1559,28 +1509,17 @@ export class ServerManager {
                     style.textContent = css;
                     document.head.appendChild(style);
                     lastCssHash = cssHash;
-                    cssFound = true;
-                    console.log('[Claude VS] Injected styled-jsx CSS from server');
                   }
-
-                  // Continue polling briefly to catch late CSS extractions
-                  if (postCssRetries < maxPostCssRetries) {
-                    setTimeout(fetchWithRetry, 500);
-                  }
-                } else if (!cssFound && retryCount < maxRetries) {
-                  // CSS not ready yet, retry quickly
-                  setTimeout(fetchWithRetry, 150);
                 }
               })
               .catch(function() {
-                if (!cssFound && retryCount < maxRetries) {
-                  setTimeout(fetchWithRetry, 200);
-                }
+                // Silently ignore errors
               });
           }
 
-          // Start fetching after a small delay to let JS files load
-          setTimeout(fetchWithRetry, 100);
+          // Fetch once after page load - if styled-jsx is used, CSS will be extracted
+          // by then. No need for polling since HMR will refresh the page anyway.
+          setTimeout(fetchStyledJsxCss, 500);
         })();
 
         // Console log interception - capture all console output
