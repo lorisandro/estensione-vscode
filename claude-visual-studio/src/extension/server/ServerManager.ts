@@ -3,11 +3,15 @@ import * as http from 'http';
 import * as https from 'https';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as zlib from 'zlib';
 import { promisify } from 'util';
 import { URL } from 'url';
 
 const readFile = promisify(fs.readFile);
 const stat = promisify(fs.stat);
+const gunzip = promisify(zlib.gunzip);
+const inflate = promisify(zlib.inflate);
+const brotliDecompress = promisify(zlib.brotliDecompress);
 
 interface ServerConfig {
   port: number;
@@ -424,44 +428,53 @@ export class ServerManager {
 
               // Collect response body
               const chunks: Buffer[] = [];
+              const contentEncoding = proxyRes.headers['content-encoding'];
               proxyRes.on('data', (chunk) => chunks.push(chunk));
-              proxyRes.on('end', () => {
-                let body = Buffer.concat(chunks);
+              proxyRes.on('end', async () => {
+                try {
+                  let body = Buffer.concat(chunks);
 
-                // For HTML content, rewrite relative URLs to use proxy
-                const contentType = proxyRes.headers['content-type'] || '';
-                if (contentType.includes('text/html')) {
-                  // Use full URL as base (including path) for proper relative URL resolution
-                  const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
-                  const fullBaseUrl = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
-                  let html = body.toString('utf-8');
+                  // Decompress body if needed (gzip, deflate, brotli)
+                  body = await this.decompressBody(body, contentEncoding);
 
-                  // Rewrite relative URLs in href and src attributes
-                  html = this.rewriteHtmlUrls(html, baseOrigin, fullBaseUrl, this.config!.port);
+                  // For HTML content, rewrite relative URLs to use proxy
+                  const contentType = proxyRes.headers['content-type'] || '';
+                  if (contentType.includes('text/html')) {
+                    // Use full URL as base (including path) for proper relative URL resolution
+                    const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                    const fullBaseUrl = `${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`;
+                    let html = body.toString('utf-8');
 
-                  // Inject element inspector script for selection mode
-                  html = this.injectInspectorScript(html);
+                    // Rewrite relative URLs in href and src attributes
+                    html = this.rewriteHtmlUrls(html, baseOrigin, fullBaseUrl, this.config!.port);
 
-                  // Inject MCP bridge script for parent-iframe communication
-                  html = this.injectMCPBridgeScript(html);
+                    // Inject element inspector script for selection mode
+                    html = this.injectInspectorScript(html);
 
-                  res.send(html);
-                } else if (contentType.includes('javascript') || parsedUrl.pathname.endsWith('.js')) {
-                  // For JavaScript content, extract styled-jsx CSS
-                  const jsContent = body.toString('utf-8');
-                  this.extractStyledJsxCss(jsContent);
-                  res.send(body);
-                } else if (contentType.includes('text/css') || parsedUrl.pathname.endsWith('.css')) {
-                  // For CSS content, rewrite url() references
-                  let cssContent = body.toString('utf-8');
-                  const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
-                  const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
-                  const fullBasePath = baseOrigin + basePath;
+                    // Inject MCP bridge script for parent-iframe communication
+                    html = this.injectMCPBridgeScript(html);
 
-                  cssContent = this.rewriteCssUrls(cssContent, baseOrigin, fullBasePath, this.config!.port);
-                  res.send(cssContent);
-                } else {
-                  res.send(body);
+                    res.send(html);
+                  } else if (contentType.includes('javascript') || parsedUrl.pathname.endsWith('.js')) {
+                    // For JavaScript content, extract styled-jsx CSS
+                    const jsContent = body.toString('utf-8');
+                    this.extractStyledJsxCss(jsContent);
+                    res.send(body);
+                  } else if (contentType.includes('text/css') || parsedUrl.pathname.endsWith('.css')) {
+                    // For CSS content, rewrite url() references
+                    let cssContent = body.toString('utf-8');
+                    const baseOrigin = `${parsedUrl.protocol}//${parsedUrl.host}`;
+                    const basePath = parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
+                    const fullBasePath = baseOrigin + basePath;
+
+                    cssContent = this.rewriteCssUrls(cssContent, baseOrigin, fullBasePath, this.config!.port);
+                    res.send(cssContent);
+                  } else {
+                    res.send(body);
+                  }
+                } catch (error) {
+                  console.error('[ServerManager] Response processing error:', error);
+                  res.status(500).send('Error processing response');
                 }
               });
             }
@@ -703,22 +716,42 @@ export class ServerManager {
 
             // For JavaScript files, collect body and extract styled-jsx CSS
             const contentType = proxyRes.headers['content-type'] || '';
+            const contentEncoding = proxyRes.headers['content-encoding'];
             const isJavaScript = contentType.includes('javascript') || req.originalUrl.endsWith('.js');
 
             if (isJavaScript) {
               const chunks: Buffer[] = [];
               proxyRes.on('data', (chunk) => chunks.push(chunk));
-              proxyRes.on('end', () => {
-                const body = Buffer.concat(chunks).toString('utf-8');
+              proxyRes.on('end', async () => {
+                try {
+                  let body = Buffer.concat(chunks);
+                  // Decompress if needed
+                  body = await this.decompressBody(body, contentEncoding);
+                  const jsContent = body.toString('utf-8');
 
-                // Extract styled-jsx CSS from the JavaScript
-                this.extractStyledJsxCss(body);
+                  // Extract styled-jsx CSS from the JavaScript
+                  this.extractStyledJsxCss(jsContent);
 
-                res.send(body);
+                  res.send(body);
+                } catch (error) {
+                  console.error('[ServerManager] Turbopack JS processing error:', error);
+                  res.status(500).send('Error processing JavaScript');
+                }
               });
             } else {
-              // Pipe non-JS responses directly
-              proxyRes.pipe(res);
+              // For non-JS, collect and decompress if needed
+              const chunks: Buffer[] = [];
+              proxyRes.on('data', (chunk) => chunks.push(chunk));
+              proxyRes.on('end', async () => {
+                try {
+                  let body = Buffer.concat(chunks);
+                  body = await this.decompressBody(body, contentEncoding);
+                  res.send(body);
+                } catch (error) {
+                  console.error('[ServerManager] Turbopack response error:', error);
+                  res.status(500).send('Error processing response');
+                }
+              });
             }
           }
         );
@@ -2512,6 +2545,30 @@ ${allCss}
     }
 
     return rewritten;
+  }
+
+  /**
+   * Decompress response body based on content-encoding header
+   */
+  private async decompressBody(body: Buffer, contentEncoding: string | undefined): Promise<Buffer> {
+    if (!contentEncoding) return body;
+
+    const encoding = contentEncoding.toLowerCase().trim();
+
+    try {
+      if (encoding === 'gzip' || encoding === 'x-gzip') {
+        return await gunzip(body);
+      } else if (encoding === 'deflate') {
+        return await inflate(body);
+      } else if (encoding === 'br') {
+        return await brotliDecompress(body);
+      }
+    } catch (error) {
+      console.error('[ServerManager] Decompression error:', error);
+      // Return original body if decompression fails
+    }
+
+    return body;
   }
 
   /**
