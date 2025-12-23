@@ -249,9 +249,17 @@ export class ServerManager {
     // try loading from the relative path instead
     // Uses 'all' to support GET, POST, etc. for form submissions
     this.app.all('/__claude-vs__/proxy', async (req, res) => {
-      const targetUrl = req.query.url as string;
+      let targetUrl = req.query.url as string;
 
       if (!targetUrl) {
+        // If URL is missing, redirect to the last proxied page (if available)
+        // This handles cases like empty href="" or action="" that resolve to the proxy endpoint
+        if (this.lastProxiedOrigin && this.lastProxiedBasePath) {
+          const fallbackUrl = `${this.lastProxiedOrigin}${this.lastProxiedBasePath}`;
+          console.log('[ServerManager] Empty URL parameter, redirecting to last proxied page:', fallbackUrl);
+          res.redirect(`http://localhost:${this.config!.port}/__claude-vs__/proxy?url=${encodeURIComponent(fallbackUrl)}`);
+          return;
+        }
         res.status(400).send('Missing url parameter');
         return;
       }
@@ -1361,6 +1369,18 @@ export class ServerManager {
     // For /path/to/page.html -> /path/to/
     // For /path/to/ -> /path/to/
     const basePath = fullBaseUrl.endsWith('/') ? fullBaseUrl : fullBaseUrl.substring(0, fullBaseUrl.lastIndexOf('/') + 1);
+
+    // Handle empty href, src, and action attributes
+    // Empty values would resolve to the proxy endpoint without URL parameter, causing 400 errors
+    // Replace them with the current page URL
+    html = html.replace(
+      /(href|src|action)=["']["']/gi,
+      (match, attr) => {
+        // For empty href/src/action, point to the current page
+        const proxiedUrl = `${proxyBase}${encodeURIComponent(fullBaseUrl)}`;
+        return `${attr}="${proxiedUrl}"`;
+      }
+    );
 
     // Rewrite absolute URLs in href and src attributes
     html = html.replace(
