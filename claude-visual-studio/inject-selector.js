@@ -182,12 +182,16 @@ const SELECTOR_SCRIPT = `
       toolbar.style.padding = '6px 10px';
     } else {
       selectBtn.style.display = '';
+      styleBtn.style.display = '';
       dragBtn.style.display = '';
       status.style.display = '';
       minimizeBtn.textContent = '◀';
       toolbar.style.padding = '8px 12px';
-      updateChangesCount();
-      if (window.__claudeSelectedElement) styleBtn.style.display = '';
+      if (window.__claudeChanges && window.__claudeChanges.length > 0) {
+        copyBtn.style.display = '';
+        changesCount.style.display = '';
+        changesCount.textContent = window.__claudeChanges.length;
+      }
     }
   };
 

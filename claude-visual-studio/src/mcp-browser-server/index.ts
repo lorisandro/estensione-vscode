@@ -869,16 +869,19 @@ const SELECTOR_SCRIPT = `
       minimizeBtn.title = 'Expand toolbar';
       toolbar.style.padding = '6px 10px';
     } else {
+      // Restore all main buttons
       selectBtn.style.display = '';
+      styleBtn.style.display = '';
       dragBtn.style.display = '';
       status.style.display = '';
       minimizeBtn.textContent = '◀';
       minimizeBtn.title = 'Minimize toolbar';
       toolbar.style.padding = '8px 12px';
-      updateChangesCount(); // Show copy button if there are changes
-      // Show style button if element is selected
-      if (window.__claudeSelectedElement) {
-        styleBtn.style.display = '';
+      // Show copy button and badge if there are changes
+      if (window.__claudeChanges && window.__claudeChanges.length > 0) {
+        copyBtn.style.display = '';
+        changesCount.style.display = '';
+        changesCount.textContent = window.__claudeChanges.length;
       }
     }
   };
