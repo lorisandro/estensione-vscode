@@ -776,7 +776,9 @@ const SELECTOR_SCRIPT = `
     <button id="__claude-minimize-btn" title="Minimize/Expand">◀</button>
     <button id="__claude-selector-btn" title="Toggle element selection mode">🎯</button>
     <button id="__claude-drag-btn" title="Toggle element drag mode">🖐️</button>
+    <button id="__claude-copy-btn" title="Copy all changes as prompt" style="display:none;">📋</button>
     <span id="__claude-selector-status"></span>
+    <span id="__claude-changes-count" style="display:none;background:#ff9500;color:#000;padding:2px 6px;border-radius:10px;font-size:11px;font-weight:bold;"></span>
   \`;
   toolbar.style.cssText = \`
     position: fixed;
@@ -800,7 +802,12 @@ const SELECTOR_SCRIPT = `
   const minimizeBtn = toolbar.querySelector('#__claude-minimize-btn');
   const selectBtn = toolbar.querySelector('#__claude-selector-btn');
   const dragBtn = toolbar.querySelector('#__claude-drag-btn');
+  const copyBtn = toolbar.querySelector('#__claude-copy-btn');
   const status = toolbar.querySelector('#__claude-selector-status');
+  const changesCount = toolbar.querySelector('#__claude-changes-count');
+
+  // Track all CSS changes
+  window.__claudeChanges = [];
 
   // Style minimize button
   minimizeBtn.style.cssText = \`
@@ -816,7 +823,7 @@ const SELECTOR_SCRIPT = `
   minimizeBtn.onmouseleave = () => minimizeBtn.style.color = '#888';
 
   // Style action buttons
-  [selectBtn, dragBtn].forEach(btn => {
+  [selectBtn, dragBtn, copyBtn].forEach(btn => {
     btn.style.cssText = \`
       background: none;
       border: 2px solid transparent;
@@ -830,6 +837,19 @@ const SELECTOR_SCRIPT = `
     btn.onmouseleave = () => { if (!btn.classList.contains('active')) btn.style.background = 'none'; };
   });
 
+  // Function to update changes count badge
+  function updateChangesCount() {
+    const count = window.__claudeChanges.length;
+    if (count > 0) {
+      changesCount.textContent = count;
+      changesCount.style.display = '';
+      copyBtn.style.display = '';
+    } else {
+      changesCount.style.display = 'none';
+      copyBtn.style.display = 'none';
+    }
+  }
+
   document.body.appendChild(toolbar);
 
   // Minimize/expand functionality
@@ -839,7 +859,9 @@ const SELECTOR_SCRIPT = `
     if (isMinimized) {
       selectBtn.style.display = 'none';
       dragBtn.style.display = 'none';
+      copyBtn.style.display = 'none';
       status.style.display = 'none';
+      changesCount.style.display = 'none';
       minimizeBtn.textContent = '🎯';
       minimizeBtn.title = 'Expand toolbar';
       toolbar.style.padding = '6px 10px';
@@ -850,6 +872,7 @@ const SELECTOR_SCRIPT = `
       minimizeBtn.textContent = '◀';
       minimizeBtn.title = 'Minimize toolbar';
       toolbar.style.padding = '8px 12px';
+      updateChangesCount(); // Show copy button if there are changes
     }
   };
 
@@ -1126,21 +1149,47 @@ const SELECTOR_SCRIPT = `
 
     isDraggingElement = false;
     dragTarget.style.cursor = '';
+    dragTarget.style.zIndex = originalPosition.zIndex || '';
+
+    const selector = getSelector(dragTarget);
+    const computedStyle = getComputedStyle(dragTarget);
+
+    // Track the CSS change
+    const change = {
+      type: 'position',
+      selector: selector,
+      element: dragTarget.tagName.toLowerCase(),
+      css: {
+        position: dragTarget.style.position || computedStyle.position,
+        left: dragTarget.style.left,
+        top: dragTarget.style.top
+      },
+      original: {
+        position: originalPosition.position,
+        left: originalPosition.left,
+        top: originalPosition.top
+      }
+    };
+
+    window.__claudeChanges.push(change);
+    updateChangesCount();
 
     const rect = dragTarget.getBoundingClientRect();
     window.__claudeDraggedElement = {
       tagName: dragTarget.tagName.toLowerCase(),
-      selector: getSelector(dragTarget),
+      selector: selector,
       newPosition: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
-      originalPosition: originalPosition
+      originalPosition: originalPosition,
+      cssChange: change
     };
 
     highlight.style.border = '3px solid #00ff00';
     highlight.style.background = 'rgba(0, 255, 0, 0.2)';
-    status.textContent = 'Dropped: ' + dragTarget.tagName.toLowerCase();
+    status.textContent = 'Changed! (' + window.__claudeChanges.length + ')';
     status.style.color = '#00ff00';
+    setTimeout(() => updateStatus(), 1500);
 
-    console.log('[Claude Drag] Element dropped:', window.__claudeDraggedElement);
+    console.log('[Claude Drag] CSS change tracked:', change);
 
     dragTarget = null;
     originalPosition = null;
@@ -1207,6 +1256,46 @@ const SELECTOR_SCRIPT = `
       }
     }
     updateStatus();
+  };
+
+  // Copy all changes as Claude Code prompt
+  copyBtn.onclick = () => {
+    if (window.__claudeChanges.length === 0) return;
+
+    // Generate prompt from changes
+    let prompt = 'Applica queste modifiche CSS:\\n\\n';
+
+    window.__claudeChanges.forEach((change, index) => {
+      prompt += (index + 1) + '. Elemento: ' + change.selector + '\\n';
+      prompt += '   CSS da aggiungere:\\n';
+      if (change.css.position && change.css.position !== 'static') {
+        prompt += '   position: ' + change.css.position + ';\\n';
+      }
+      if (change.css.left) {
+        prompt += '   left: ' + change.css.left + ';\\n';
+      }
+      if (change.css.top) {
+        prompt += '   top: ' + change.css.top + ';\\n';
+      }
+      prompt += '\\n';
+    });
+
+    navigator.clipboard.writeText(prompt).then(() => {
+      status.textContent = '📋 Prompt copied!';
+      status.style.color = '#00ff00';
+
+      // Show notification with prompt preview
+      const notif = document.createElement('div');
+      notif.innerHTML = '<strong>Prompt copiato!</strong><br><small>' + window.__claudeChanges.length + ' modifiche - Incolla in Claude Code</small>';
+      notif.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#00ff00;color:#000;padding:15px 25px;border-radius:8px;font-family:sans-serif;font-size:14px;z-index:2147483647;text-align:center;box-shadow:0 4px 20px rgba(0,255,0,0.4);';
+      document.body.appendChild(notif);
+      setTimeout(() => notif.remove(), 3000);
+
+      // Clear changes after copying
+      window.__claudeChanges = [];
+      updateChangesCount();
+      setTimeout(() => updateStatus(), 1500);
+    });
   };
 
   window.__claudeDisableSelector = () => {
