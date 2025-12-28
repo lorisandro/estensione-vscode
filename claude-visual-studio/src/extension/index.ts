@@ -1011,8 +1011,57 @@ async function saveChromeDebugPortToWorkspace(port: number): Promise<void> {
     }));
     await vscode.workspace.fs.writeFile(portFile, content);
     console.log(`[ExternalChrome] Saved debug port ${port} to ${portFile.fsPath}`);
+
+    // Also save MCP server configuration for Claude Code
+    await saveMcpBrowserConfig(workspaceRoot);
   } catch (error) {
     console.error('[ExternalChrome] Failed to save port file:', error);
+  }
+}
+
+/**
+ * Save MCP browser server configuration for Claude Code
+ */
+async function saveMcpBrowserConfig(workspaceRoot: string): Promise<void> {
+  // Find the extension path to get the MCP server location
+  const extensionPath = path.dirname(path.dirname(__dirname));
+  const mcpServerPath = path.join(extensionPath, 'dist', 'mcp-browser-server', 'index.js');
+
+  // Create the MCP configuration
+  const mcpConfig = {
+    mcpServers: {
+      'claude-browser': {
+        command: 'node',
+        args: [mcpServerPath],
+        cwd: workspaceRoot,
+      },
+    },
+  };
+
+  // Save to .vscode/mcp-browser.json for reference
+  const mcpConfigFile = vscode.Uri.file(`${workspaceRoot}/.vscode/mcp-browser-config.json`);
+  const configContent = Buffer.from(JSON.stringify(mcpConfig, null, 2));
+  await vscode.workspace.fs.writeFile(mcpConfigFile, configContent);
+
+  console.log(`[ExternalChrome] Saved MCP config to ${mcpConfigFile.fsPath}`);
+
+  // Show instructions to the user
+  const action = await vscode.window.showInformationMessage(
+    'Chrome MCP server ready! Add it to Claude Code to control the browser from any terminal.',
+    'Add to Claude Code',
+    'Copy Config',
+    'Later'
+  );
+
+  if (action === 'Add to Claude Code') {
+    // Run the command to add MCP server to Claude Code
+    const terminal = vscode.window.createTerminal('Claude Code MCP Setup');
+    terminal.show();
+    terminal.sendText(`claude mcp add claude-browser -- node "${mcpServerPath}"`);
+  } else if (action === 'Copy Config') {
+    const configText = `claude mcp add claude-browser -- node "${mcpServerPath}"`;
+    await vscode.env.clipboard.writeText(configText);
+    vscode.window.showInformationMessage('MCP command copied to clipboard!');
   }
 }
 
