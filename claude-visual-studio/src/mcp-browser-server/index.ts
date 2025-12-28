@@ -107,15 +107,13 @@ async function connectToBrowser(): Promise<Browser> {
       browser = await puppeteer.launch({
         executablePath: chromePath,
         headless: false,
-        defaultViewport: {
-          width: VIEWPORT_WIDTH,
-          height: VIEWPORT_HEIGHT,
-        },
+        defaultViewport: null, // Use actual window size, not fixed viewport
         args: [
           `--remote-debugging-port=${debugPort}`,
           '--no-first-run',
           '--no-default-browser-check',
           '--start-maximized',
+          '--window-size=1920,1080',
         ],
       });
 
