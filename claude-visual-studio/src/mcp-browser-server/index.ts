@@ -869,18 +869,18 @@ const SELECTOR_SCRIPT = `
       minimizeBtn.title = 'Expand toolbar';
       toolbar.style.padding = '6px 10px';
     } else {
-      // Restore all main buttons
-      selectBtn.style.display = '';
-      styleBtn.style.display = '';
-      dragBtn.style.display = '';
-      status.style.display = '';
+      // Restore all main buttons explicitly with inline-block
+      selectBtn.style.display = 'inline-block';
+      styleBtn.style.display = 'inline-block';
+      dragBtn.style.display = 'inline-block';
+      status.style.display = 'inline';
       minimizeBtn.textContent = '◀';
       minimizeBtn.title = 'Minimize toolbar';
       toolbar.style.padding = '8px 12px';
       // Show copy button and badge if there are changes
       if (window.__claudeChanges && window.__claudeChanges.length > 0) {
-        copyBtn.style.display = '';
-        changesCount.style.display = '';
+        copyBtn.style.display = 'inline-block';
+        changesCount.style.display = 'inline';
         changesCount.textContent = window.__claudeChanges.length;
       }
     }
@@ -890,7 +890,7 @@ const SELECTOR_SCRIPT = `
   let isToolbarDragging = false;
   let toolbarOffsetX, toolbarOffsetY;
   toolbar.onmousedown = (e) => {
-    if (e.target === selectBtn || e.target === dragBtn || e.target === minimizeBtn) return;
+    if (e.target === selectBtn || e.target === styleBtn || e.target === dragBtn || e.target === copyBtn || e.target === minimizeBtn) return;
     isToolbarDragging = true;
     toolbarOffsetX = e.clientX - toolbar.offsetLeft;
     toolbarOffsetY = e.clientY - toolbar.offsetTop;

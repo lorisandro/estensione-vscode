@@ -181,15 +181,15 @@ const SELECTOR_SCRIPT = `
       minimizeBtn.textContent = '🎯';
       toolbar.style.padding = '6px 10px';
     } else {
-      selectBtn.style.display = '';
-      styleBtn.style.display = '';
-      dragBtn.style.display = '';
-      status.style.display = '';
+      selectBtn.style.display = 'inline-block';
+      styleBtn.style.display = 'inline-block';
+      dragBtn.style.display = 'inline-block';
+      status.style.display = 'inline';
       minimizeBtn.textContent = '◀';
       toolbar.style.padding = '8px 12px';
       if (window.__claudeChanges && window.__claudeChanges.length > 0) {
-        copyBtn.style.display = '';
-        changesCount.style.display = '';
+        copyBtn.style.display = 'inline-block';
+        changesCount.style.display = 'inline';
         changesCount.textContent = window.__claudeChanges.length;
       }
     }
@@ -198,7 +198,7 @@ const SELECTOR_SCRIPT = `
   let isToolbarDragging = false;
   let toolbarOffsetX, toolbarOffsetY;
   toolbar.onmousedown = (e) => {
-    if (e.target === selectBtn || e.target === styleBtn || e.target === dragBtn || e.target === minimizeBtn || e.target === copyBtn) return;
+    if (e.target === selectBtn || e.target === styleBtn || e.target === dragBtn || e.target === copyBtn || e.target === minimizeBtn) return;
     isToolbarDragging = true;
     toolbarOffsetX = e.clientX - toolbar.offsetLeft;
     toolbarOffsetY = e.clientY - toolbar.offsetTop;
