@@ -775,7 +775,7 @@ const SELECTOR_SCRIPT = `
   toolbar.innerHTML = \`
     <button id="__claude-selector-btn" title="Toggle element selection mode">🎯</button>
     <button id="__claude-drag-btn" title="Toggle element drag mode">🖐️</button>
-    <span id="__claude-selector-status">Ready</span>
+    <span id="__claude-selector-status"></span>
   \`;
   toolbar.style.cssText = \`
     position: fixed;
@@ -917,17 +917,16 @@ const SELECTOR_SCRIPT = `
 
   function updateStatus() {
     if (selectionActive && dragModeActive) {
-      status.textContent = 'Select + Drag ON';
+      status.textContent = 'Select + Drag';
       status.style.color = '#ff00ff';
     } else if (selectionActive) {
-      status.textContent = 'Selection ON';
+      status.textContent = 'Select';
       status.style.color = '#00d4ff';
     } else if (dragModeActive) {
-      status.textContent = 'Drag ON';
+      status.textContent = 'Drag';
       status.style.color = '#ff9500';
     } else {
-      status.textContent = 'Ready';
-      status.style.color = '#fff';
+      status.textContent = '';
     }
   }
 

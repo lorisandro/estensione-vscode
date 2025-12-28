@@ -9,7 +9,7 @@ const SELECTOR_SCRIPT = `
 
   const toolbar = document.createElement('div');
   toolbar.id = '__claude-selector-toolbar';
-  toolbar.innerHTML = '<button id="__claude-selector-btn" title="Toggle element selection mode">🎯</button><button id="__claude-drag-btn" title="Toggle element drag mode">🖐️</button><span id="__claude-selector-status">Ready</span>';
+  toolbar.innerHTML = '<button id="__claude-selector-btn" title="Toggle element selection mode">🎯</button><button id="__claude-drag-btn" title="Toggle element drag mode">🖐️</button><span id="__claude-selector-status"></span>';
   toolbar.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;background:#1a1a2e;border:2px solid #00d4ff;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;color:#fff;box-shadow:0 4px 20px rgba(0,212,255,0.3);cursor:move;';
 
   const selectBtn = toolbar.querySelector('#__claude-selector-btn');
@@ -71,10 +71,10 @@ const SELECTOR_SCRIPT = `
   }
 
   function updateStatus() {
-    if (selectionActive && dragModeActive) { status.textContent = 'Select + Drag ON'; status.style.color = '#ff00ff'; }
-    else if (selectionActive) { status.textContent = 'Selection ON'; status.style.color = '#00d4ff'; }
-    else if (dragModeActive) { status.textContent = 'Drag ON'; status.style.color = '#ff9500'; }
-    else { status.textContent = 'Ready'; status.style.color = '#fff'; }
+    if (selectionActive && dragModeActive) { status.textContent = 'Select + Drag'; status.style.color = '#ff00ff'; }
+    else if (selectionActive) { status.textContent = 'Select'; status.style.color = '#00d4ff'; }
+    else if (dragModeActive) { status.textContent = 'Drag'; status.style.color = '#ff9500'; }
+    else { status.textContent = ''; }
   }
 
   function handleSelectMouseMove(e) {
