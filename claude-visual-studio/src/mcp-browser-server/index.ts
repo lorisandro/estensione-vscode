@@ -50,7 +50,30 @@ function getChromeDebugPort(): number {
 }
 
 /**
- * Connect to existing Chrome browser
+ * Find Chrome executable path
+ */
+function findChromePath(): string {
+  const possiblePaths = [
+    process.env.CHROME_PATH,
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+  ].filter(Boolean) as string[];
+
+  const fs = require('fs');
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return possiblePaths[1]; // Default to Windows path
+}
+
+/**
+ * Connect to existing Chrome browser, or launch a new one if not running
  */
 async function connectToBrowser(): Promise<Browser> {
   if (browser && browser.isConnected()) {
@@ -63,6 +86,7 @@ async function connectToBrowser(): Promise<Browser> {
   console.error(`[MCP Browser] Connecting to Chrome at ${browserURL}...`);
 
   try {
+    // Try to connect to existing Chrome first
     browser = await puppeteer.connect({
       browserURL,
       defaultViewport: {
@@ -71,13 +95,40 @@ async function connectToBrowser(): Promise<Browser> {
       },
     });
 
-    console.error('[MCP Browser] Connected to Chrome successfully');
+    console.error('[MCP Browser] Connected to existing Chrome successfully');
     return browser;
-  } catch (error) {
-    throw new Error(
-      `Failed to connect to Chrome. Make sure Chrome is running with --remote-debugging-port=${debugPort}. ` +
-      `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+  } catch (connectError) {
+    // Chrome not running, try to launch it
+    console.error('[MCP Browser] Chrome not running, launching new instance...');
+
+    try {
+      const chromePath = findChromePath();
+      console.error(`[MCP Browser] Using Chrome at: ${chromePath}`);
+
+      browser = await puppeteer.launch({
+        executablePath: chromePath,
+        headless: false,
+        defaultViewport: {
+          width: VIEWPORT_WIDTH,
+          height: VIEWPORT_HEIGHT,
+        },
+        args: [
+          `--remote-debugging-port=${debugPort}`,
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--start-maximized',
+        ],
+      });
+
+      console.error('[MCP Browser] Launched new Chrome instance successfully');
+      return browser;
+    } catch (launchError) {
+      throw new Error(
+        `Failed to connect or launch Chrome. ` +
+        `Connect error: ${connectError instanceof Error ? connectError.message : 'Unknown'}. ` +
+        `Launch error: ${launchError instanceof Error ? launchError.message : 'Unknown'}`
+      );
+    }
   }
 }
 
