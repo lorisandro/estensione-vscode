@@ -1045,23 +1045,38 @@ async function saveMcpBrowserConfig(workspaceRoot: string): Promise<void> {
 
   console.log(`[ExternalChrome] Saved MCP config to ${mcpConfigFile.fsPath}`);
 
-  // Show instructions to the user
-  const action = await vscode.window.showInformationMessage(
-    'Chrome MCP server ready! Add it to Claude Code to control the browser from any terminal.',
-    'Add to Claude Code',
-    'Copy Config',
-    'Later'
-  );
+  // Try to add MCP server globally (silently, in background)
+  const addCommand = `claude mcp add claude-browser -s user -- node "${mcpServerPath}"`;
 
-  if (action === 'Add to Claude Code') {
-    // Run the command to add MCP server to Claude Code
-    const terminal = vscode.window.createTerminal('Claude Code MCP Setup');
-    terminal.show();
-    terminal.sendText(`claude mcp add claude-browser -- node "${mcpServerPath}"`);
-  } else if (action === 'Copy Config') {
-    const configText = `claude mcp add claude-browser -- node "${mcpServerPath}"`;
-    await vscode.env.clipboard.writeText(configText);
-    vscode.window.showInformationMessage('MCP command copied to clipboard!');
+  try {
+    const { exec } = require('child_process');
+    exec(addCommand, (error: Error | null, stdout: string, stderr: string) => {
+      if (error) {
+        // Already exists or other error - just show info
+        console.log('[ExternalChrome] MCP add result:', stderr || error.message);
+        vscode.window.showInformationMessage(
+          'Chrome browser ready! Use chrome_* tools (e.g., chrome_navigate, chrome_screenshot) to control it.',
+          'OK'
+        );
+      } else {
+        console.log('[ExternalChrome] MCP server added globally');
+        vscode.window.showInformationMessage(
+          'Chrome browser ready and MCP configured! Use chrome_* tools in any Claude Code terminal.',
+          'OK'
+        );
+      }
+    });
+  } catch (error) {
+    // Fallback: show copy option
+    const action = await vscode.window.showInformationMessage(
+      'Chrome browser ready! Copy command to add MCP server manually.',
+      'Copy Command',
+      'Later'
+    );
+    if (action === 'Copy Command') {
+      await vscode.env.clipboard.writeText(addCommand);
+      vscode.window.showInformationMessage('Command copied to clipboard!');
+    }
   }
 }
 
