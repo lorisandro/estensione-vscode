@@ -63,7 +63,6 @@ function findChromePath(): string {
     '/usr/bin/chromium',
   ].filter(Boolean) as string[];
 
-  const fs = require('fs');
   for (const p of possiblePaths) {
     if (fs.existsSync(p)) {
       return p;
