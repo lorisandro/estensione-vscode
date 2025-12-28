@@ -718,10 +718,441 @@ const tools: Tool[] = [
     description: 'Disconnect from the browser (does not close it)',
     inputSchema: { type: 'object', properties: {} },
   },
+
+  // Element Selection
+  {
+    name: 'chrome_enable_selector',
+    description: 'Enable element selection mode - adds a floating toolbar with 🎯 icon. Click elements to select them.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'chrome_disable_selector',
+    description: 'Disable element selection mode and remove the floating toolbar',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'chrome_get_selected_element',
+    description: 'Get info about the currently selected element (selector, XPath, classes, attributes, text, dimensions)',
+    inputSchema: { type: 'object', properties: {} },
+  },
 ];
 
 // Console logs storage
 let consoleLogs: Array<{ type: string; text: string; timestamp: number }> = [];
+
+// Element selector injection script with selection and drag modes
+const SELECTOR_SCRIPT = `
+(function() {
+  if (window.__claudeSelectorActive) return;
+  window.__claudeSelectorActive = true;
+  window.__claudeSelectedElement = null;
+  window.__claudeDraggedElement = null;
+
+  // Create floating toolbar
+  const toolbar = document.createElement('div');
+  toolbar.id = '__claude-selector-toolbar';
+  toolbar.innerHTML = \`
+    <button id="__claude-selector-btn" title="Toggle element selection mode">🎯</button>
+    <button id="__claude-drag-btn" title="Toggle element drag mode">🖐️</button>
+    <span id="__claude-selector-status">Ready</span>
+  \`;
+  toolbar.style.cssText = \`
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 2147483647;
+    background: #1a1a2e;
+    border: 2px solid #00d4ff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+    cursor: move;
+  \`;
+
+  const selectBtn = toolbar.querySelector('#__claude-selector-btn');
+  const dragBtn = toolbar.querySelector('#__claude-drag-btn');
+  const status = toolbar.querySelector('#__claude-selector-status');
+
+  // Style buttons
+  [selectBtn, dragBtn].forEach(btn => {
+    btn.style.cssText = \`
+      background: none;
+      border: 2px solid transparent;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    \`;
+    btn.onmouseenter = () => { if (!btn.classList.contains('active')) btn.style.background = 'rgba(255,255,255,0.1)'; };
+    btn.onmouseleave = () => { if (!btn.classList.contains('active')) btn.style.background = 'none'; };
+  });
+
+  document.body.appendChild(toolbar);
+
+  // Toolbar drag functionality
+  let isToolbarDragging = false;
+  let toolbarOffsetX, toolbarOffsetY;
+  toolbar.onmousedown = (e) => {
+    if (e.target === selectBtn || e.target === dragBtn) return;
+    isToolbarDragging = true;
+    toolbarOffsetX = e.clientX - toolbar.offsetLeft;
+    toolbarOffsetY = e.clientY - toolbar.offsetTop;
+  };
+
+  // Highlight overlay
+  const highlight = document.createElement('div');
+  highlight.id = '__claude-selector-highlight';
+  highlight.style.cssText = \`
+    position: fixed;
+    pointer-events: none;
+    border: 2px solid #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+    z-index: 2147483646;
+    display: none;
+    transition: all 0.05s ease;
+  \`;
+  document.body.appendChild(highlight);
+
+  // Info tooltip
+  const tooltip = document.createElement('div');
+  tooltip.id = '__claude-selector-tooltip';
+  tooltip.style.cssText = \`
+    position: fixed;
+    z-index: 2147483647;
+    background: #1a1a2e;
+    border: 1px solid #00d4ff;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #00d4ff;
+    display: none;
+    max-width: 400px;
+    word-break: break-all;
+  \`;
+  document.body.appendChild(tooltip);
+
+  let selectionActive = false;
+  let dragModeActive = false;
+  let dragTarget = null;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+  let originalPosition = null;
+  let isDraggingElement = false;
+
+  function getSelector(el) {
+    if (el.id) return '#' + el.id;
+    let path = [];
+    while (el && el.nodeType === 1) {
+      let selector = el.tagName.toLowerCase();
+      if (el.id) {
+        selector = '#' + el.id;
+        path.unshift(selector);
+        break;
+      } else if (el.className && typeof el.className === 'string') {
+        const classes = el.className.trim().split(/\\s+/).filter(c => !c.startsWith('__claude'));
+        if (classes.length) selector += '.' + classes.join('.');
+      }
+      path.unshift(selector);
+      el = el.parentElement;
+    }
+    return path.join(' > ');
+  }
+
+  function getXPath(el) {
+    if (!el) return '';
+    if (el.id) return '//*[@id="' + el.id + '"]';
+    if (el === document.body) return '/html/body';
+    let ix = 0;
+    const siblings = el.parentNode ? el.parentNode.childNodes : [];
+    for (let i = 0; i < siblings.length; i++) {
+      const sibling = siblings[i];
+      if (sibling === el) {
+        return getXPath(el.parentNode) + '/' + el.tagName.toLowerCase() + '[' + (ix + 1) + ']';
+      }
+      if (sibling.nodeType === 1 && sibling.tagName === el.tagName) ix++;
+    }
+    return '';
+  }
+
+  function updateButtonState(btn, active, color) {
+    if (active) {
+      btn.classList.add('active');
+      btn.style.background = color;
+      btn.style.borderColor = color;
+    } else {
+      btn.classList.remove('active');
+      btn.style.background = 'none';
+      btn.style.borderColor = 'transparent';
+    }
+  }
+
+  function updateStatus() {
+    if (selectionActive && dragModeActive) {
+      status.textContent = 'Select + Drag ON';
+      status.style.color = '#ff00ff';
+    } else if (selectionActive) {
+      status.textContent = 'Selection ON';
+      status.style.color = '#00d4ff';
+    } else if (dragModeActive) {
+      status.textContent = 'Drag ON';
+      status.style.color = '#ff9500';
+    } else {
+      status.textContent = 'Ready';
+      status.style.color = '#fff';
+    }
+  }
+
+  // Selection mode handlers
+  function handleSelectMouseMove(e) {
+    if (!selectionActive || isDraggingElement) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || el.id?.startsWith('__claude-selector') || el.id?.startsWith('__claude-drag')) return;
+
+    const rect = el.getBoundingClientRect();
+    highlight.style.display = 'block';
+    highlight.style.left = rect.left + 'px';
+    highlight.style.top = rect.top + 'px';
+    highlight.style.width = rect.width + 'px';
+    highlight.style.height = rect.height + 'px';
+    highlight.style.border = '2px solid #00d4ff';
+    highlight.style.background = 'rgba(0, 212, 255, 0.1)';
+
+    const selector = getSelector(el);
+    tooltip.textContent = selector;
+    tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(e.clientX + 10, window.innerWidth - tooltip.offsetWidth - 10) + 'px';
+    tooltip.style.top = Math.min(e.clientY + 10, window.innerHeight - tooltip.offsetHeight - 10) + 'px';
+  }
+
+  function handleSelectClick(e) {
+    if (!selectionActive || isDraggingElement) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || el.id?.startsWith('__claude-selector') || el.id?.startsWith('__claude-drag')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = el.getBoundingClientRect();
+    window.__claudeSelectedElement = {
+      tagName: el.tagName.toLowerCase(),
+      id: el.id || null,
+      className: el.className || null,
+      selector: getSelector(el),
+      xpath: getXPath(el),
+      text: el.innerText?.substring(0, 200) || null,
+      href: el.href || null,
+      src: el.src || null,
+      attributes: Array.from(el.attributes || []).reduce((acc, attr) => {
+        acc[attr.name] = attr.value;
+        return acc;
+      }, {}),
+      boundingBox: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      computedStyles: {
+        color: getComputedStyle(el).color,
+        backgroundColor: getComputedStyle(el).backgroundColor,
+        fontSize: getComputedStyle(el).fontSize,
+        fontWeight: getComputedStyle(el).fontWeight,
+      }
+    };
+
+    highlight.style.border = '3px solid #00ff00';
+    highlight.style.background = 'rgba(0, 255, 0, 0.2)';
+    status.textContent = 'Selected: ' + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '');
+    status.style.color = '#00ff00';
+
+    console.log('[Claude Selector] Element selected:', window.__claudeSelectedElement);
+  }
+
+  // Drag mode handlers
+  function handleDragMouseDown(e) {
+    if (!dragModeActive || selectionActive) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || el.id?.startsWith('__claude-selector') || el.id?.startsWith('__claude-drag') || el === toolbar) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    dragTarget = el;
+    isDraggingElement = true;
+
+    const rect = el.getBoundingClientRect();
+    const computedStyle = getComputedStyle(el);
+
+    // Store original position info
+    originalPosition = {
+      position: computedStyle.position,
+      left: computedStyle.left,
+      top: computedStyle.top,
+      transform: computedStyle.transform,
+      zIndex: computedStyle.zIndex
+    };
+
+    // Set up for dragging
+    if (computedStyle.position === 'static') {
+      el.style.position = 'relative';
+    }
+    el.style.zIndex = '999999';
+    el.style.cursor = 'grabbing';
+
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+
+    highlight.style.display = 'block';
+    highlight.style.border = '3px solid #ff9500';
+    highlight.style.background = 'rgba(255, 149, 0, 0.2)';
+
+    status.textContent = 'Dragging: ' + el.tagName.toLowerCase();
+    status.style.color = '#ff9500';
+  }
+
+  function handleDragMouseMove(e) {
+    // Handle toolbar dragging
+    if (isToolbarDragging) {
+      toolbar.style.left = (e.clientX - toolbarOffsetX) + 'px';
+      toolbar.style.right = 'auto';
+      toolbar.style.top = (e.clientY - toolbarOffsetY) + 'px';
+      return;
+    }
+
+    // Handle element dragging
+    if (!isDraggingElement || !dragTarget) return;
+
+    e.preventDefault();
+
+    const rect = dragTarget.getBoundingClientRect();
+    const newX = e.clientX - dragOffsetX;
+    const newY = e.clientY - dragOffsetY;
+
+    // Use transform for smooth dragging
+    const computedStyle = getComputedStyle(dragTarget);
+    const currentLeft = parseFloat(computedStyle.left) || 0;
+    const currentTop = parseFloat(computedStyle.top) || 0;
+
+    dragTarget.style.left = (currentLeft + (newX - rect.left)) + 'px';
+    dragTarget.style.top = (currentTop + (newY - rect.top)) + 'px';
+
+    // Update highlight position
+    const newRect = dragTarget.getBoundingClientRect();
+    highlight.style.left = newRect.left + 'px';
+    highlight.style.top = newRect.top + 'px';
+    highlight.style.width = newRect.width + 'px';
+    highlight.style.height = newRect.height + 'px';
+  }
+
+  function handleDragMouseUp(e) {
+    isToolbarDragging = false;
+
+    if (!isDraggingElement || !dragTarget) return;
+
+    isDraggingElement = false;
+    dragTarget.style.cursor = '';
+
+    const rect = dragTarget.getBoundingClientRect();
+    window.__claudeDraggedElement = {
+      tagName: dragTarget.tagName.toLowerCase(),
+      selector: getSelector(dragTarget),
+      newPosition: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+      originalPosition: originalPosition
+    };
+
+    highlight.style.border = '3px solid #00ff00';
+    highlight.style.background = 'rgba(0, 255, 0, 0.2)';
+    status.textContent = 'Dropped: ' + dragTarget.tagName.toLowerCase();
+    status.style.color = '#00ff00';
+
+    console.log('[Claude Drag] Element dropped:', window.__claudeDraggedElement);
+
+    dragTarget = null;
+    originalPosition = null;
+  }
+
+  // Hover highlight for drag mode
+  function handleDragHover(e) {
+    if (!dragModeActive || isDraggingElement || selectionActive) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || el.id?.startsWith('__claude-selector') || el.id?.startsWith('__claude-drag') || el === toolbar) return;
+
+    const rect = el.getBoundingClientRect();
+    highlight.style.display = 'block';
+    highlight.style.left = rect.left + 'px';
+    highlight.style.top = rect.top + 'px';
+    highlight.style.width = rect.width + 'px';
+    highlight.style.height = rect.height + 'px';
+    highlight.style.border = '2px dashed #ff9500';
+    highlight.style.background = 'rgba(255, 149, 0, 0.1)';
+
+    tooltip.textContent = 'Drag: ' + getSelector(el);
+    tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(e.clientX + 10, window.innerWidth - tooltip.offsetWidth - 10) + 'px';
+    tooltip.style.top = Math.min(e.clientY + 10, window.innerHeight - tooltip.offsetHeight - 10) + 'px';
+  }
+
+  // Toggle selection mode
+  selectBtn.onclick = () => {
+    selectionActive = !selectionActive;
+    updateButtonState(selectBtn, selectionActive, 'rgba(0, 212, 255, 0.3)');
+
+    if (selectionActive) {
+      document.addEventListener('mousemove', handleSelectMouseMove, true);
+      document.addEventListener('click', handleSelectClick, true);
+    } else {
+      document.removeEventListener('mousemove', handleSelectMouseMove, true);
+      document.removeEventListener('click', handleSelectClick, true);
+      if (!dragModeActive) {
+        highlight.style.display = 'none';
+        tooltip.style.display = 'none';
+      }
+    }
+    updateStatus();
+  };
+
+  // Toggle drag mode
+  dragBtn.onclick = () => {
+    dragModeActive = !dragModeActive;
+    updateButtonState(dragBtn, dragModeActive, 'rgba(255, 149, 0, 0.3)');
+
+    if (dragModeActive) {
+      document.addEventListener('mousedown', handleDragMouseDown, true);
+      document.addEventListener('mousemove', handleDragMouseMove, true);
+      document.addEventListener('mousemove', handleDragHover, true);
+      document.addEventListener('mouseup', handleDragMouseUp, true);
+    } else {
+      document.removeEventListener('mousedown', handleDragMouseDown, true);
+      document.removeEventListener('mousemove', handleDragMouseMove, true);
+      document.removeEventListener('mousemove', handleDragHover, true);
+      document.removeEventListener('mouseup', handleDragMouseUp, true);
+      if (!selectionActive) {
+        highlight.style.display = 'none';
+        tooltip.style.display = 'none';
+      }
+    }
+    updateStatus();
+  };
+
+  window.__claudeDisableSelector = () => {
+    selectionActive = false;
+    dragModeActive = false;
+    toolbar.remove();
+    highlight.remove();
+    tooltip.remove();
+    document.removeEventListener('mousemove', handleSelectMouseMove, true);
+    document.removeEventListener('click', handleSelectClick, true);
+    document.removeEventListener('mousedown', handleDragMouseDown, true);
+    document.removeEventListener('mousemove', handleDragMouseMove, true);
+    document.removeEventListener('mousemove', handleDragHover, true);
+    document.removeEventListener('mouseup', handleDragMouseUp, true);
+    window.__claudeSelectorActive = false;
+  };
+})();
+`;
 
 /**
  * Handle tool calls
@@ -1262,6 +1693,34 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
         currentPage = null;
       }
       return { success: true, message: 'Disconnected from browser' };
+    }
+
+    // Element Selection Tools
+    case 'chrome_enable_selector': {
+      await page.evaluate(SELECTOR_SCRIPT);
+      return {
+        success: true,
+        message: 'Selector toolbar injected. Click 🎯 to toggle selection mode, 🖐️ to toggle drag mode.'
+      };
+    }
+
+    case 'chrome_disable_selector': {
+      await page.evaluate(() => {
+        if ((window as any).__claudeDisableSelector) {
+          (window as any).__claudeDisableSelector();
+        }
+      });
+      return { success: true, message: 'Selector toolbar removed' };
+    }
+
+    case 'chrome_get_selected_element': {
+      const selectedElement = await page.evaluate(() => (window as any).__claudeSelectedElement);
+      const draggedElement = await page.evaluate(() => (window as any).__claudeDraggedElement);
+      return {
+        selectedElement: selectedElement || null,
+        draggedElement: draggedElement || null,
+        message: selectedElement ? 'Element found' : 'No element selected. Use chrome_enable_selector first and click an element.'
+      };
     }
 
     default:
