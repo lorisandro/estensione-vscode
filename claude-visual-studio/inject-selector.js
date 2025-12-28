@@ -9,12 +9,17 @@ const SELECTOR_SCRIPT = `
 
   const toolbar = document.createElement('div');
   toolbar.id = '__claude-selector-toolbar';
-  toolbar.innerHTML = '<button id="__claude-selector-btn" title="Toggle element selection mode">🎯</button><button id="__claude-drag-btn" title="Toggle element drag mode">🖐️</button><span id="__claude-selector-status"></span>';
+  toolbar.innerHTML = '<button id="__claude-minimize-btn" title="Minimize">◀</button><button id="__claude-selector-btn" title="Select">🎯</button><button id="__claude-drag-btn" title="Drag">🖐️</button><span id="__claude-selector-status"></span>';
   toolbar.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;background:#1a1a2e;border:2px solid #00d4ff;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;color:#fff;box-shadow:0 4px 20px rgba(0,212,255,0.3);cursor:move;';
 
+  const minimizeBtn = toolbar.querySelector('#__claude-minimize-btn');
   const selectBtn = toolbar.querySelector('#__claude-selector-btn');
   const dragBtn = toolbar.querySelector('#__claude-drag-btn');
   const status = toolbar.querySelector('#__claude-selector-status');
+
+  minimizeBtn.style.cssText = 'background:none;border:none;font-size:14px;cursor:pointer;padding:4px;color:#888;transition:all 0.2s;';
+  minimizeBtn.onmouseenter = () => minimizeBtn.style.color = '#fff';
+  minimizeBtn.onmouseleave = () => minimizeBtn.style.color = '#888';
 
   [selectBtn, dragBtn].forEach(btn => {
     btn.style.cssText = 'background:none;border:2px solid transparent;font-size:24px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all 0.2s;';
@@ -22,10 +27,29 @@ const SELECTOR_SCRIPT = `
 
   document.body.appendChild(toolbar);
 
+  // Minimize functionality
+  let isMinimized = false;
+  minimizeBtn.onclick = () => {
+    isMinimized = !isMinimized;
+    if (isMinimized) {
+      selectBtn.style.display = 'none';
+      dragBtn.style.display = 'none';
+      status.style.display = 'none';
+      minimizeBtn.textContent = '🎯';
+      toolbar.style.padding = '6px 10px';
+    } else {
+      selectBtn.style.display = '';
+      dragBtn.style.display = '';
+      status.style.display = '';
+      minimizeBtn.textContent = '◀';
+      toolbar.style.padding = '8px 12px';
+    }
+  };
+
   let isToolbarDragging = false;
   let toolbarOffsetX, toolbarOffsetY;
   toolbar.onmousedown = (e) => {
-    if (e.target === selectBtn || e.target === dragBtn) return;
+    if (e.target === selectBtn || e.target === dragBtn || e.target === minimizeBtn) return;
     isToolbarDragging = true;
     toolbarOffsetX = e.clientX - toolbar.offsetLeft;
     toolbarOffsetY = e.clientY - toolbar.offsetTop;
@@ -112,8 +136,20 @@ const SELECTOR_SCRIPT = `
     };
     highlight.style.border = '3px solid #00ff00';
     highlight.style.background = 'rgba(0, 255, 0, 0.2)';
-    status.textContent = 'Selected: ' + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '');
-    status.style.color = '#00ff00';
+
+    // Copy selector to clipboard
+    const selectorText = window.__claudeSelectedElement.selector;
+    navigator.clipboard.writeText(selectorText).then(() => {
+      status.textContent = '📋 Copied! Ctrl+V';
+      status.style.color = '#00ff00';
+      setTimeout(() => updateStatus(), 2500);
+
+      const notif = document.createElement('div');
+      notif.textContent = selectorText;
+      notif.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#00ff00;color:#000;padding:10px 20px;border-radius:8px;font-family:monospace;font-size:12px;z-index:2147483647;max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 4px 20px rgba(0,255,0,0.4);';
+      document.body.appendChild(notif);
+      setTimeout(() => notif.remove(), 3000);
+    });
     console.log('[Claude Selector] Element selected:', window.__claudeSelectedElement);
   }
 

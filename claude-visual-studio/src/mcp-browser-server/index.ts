@@ -773,6 +773,7 @@ const SELECTOR_SCRIPT = `
   const toolbar = document.createElement('div');
   toolbar.id = '__claude-selector-toolbar';
   toolbar.innerHTML = \`
+    <button id="__claude-minimize-btn" title="Minimize/Expand">◀</button>
     <button id="__claude-selector-btn" title="Toggle element selection mode">🎯</button>
     <button id="__claude-drag-btn" title="Toggle element drag mode">🖐️</button>
     <span id="__claude-selector-status"></span>
@@ -796,11 +797,25 @@ const SELECTOR_SCRIPT = `
     cursor: move;
   \`;
 
+  const minimizeBtn = toolbar.querySelector('#__claude-minimize-btn');
   const selectBtn = toolbar.querySelector('#__claude-selector-btn');
   const dragBtn = toolbar.querySelector('#__claude-drag-btn');
   const status = toolbar.querySelector('#__claude-selector-status');
 
-  // Style buttons
+  // Style minimize button
+  minimizeBtn.style.cssText = \`
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px;
+    color: #888;
+    transition: all 0.2s;
+  \`;
+  minimizeBtn.onmouseenter = () => minimizeBtn.style.color = '#fff';
+  minimizeBtn.onmouseleave = () => minimizeBtn.style.color = '#888';
+
+  // Style action buttons
   [selectBtn, dragBtn].forEach(btn => {
     btn.style.cssText = \`
       background: none;
@@ -817,11 +832,32 @@ const SELECTOR_SCRIPT = `
 
   document.body.appendChild(toolbar);
 
+  // Minimize/expand functionality
+  let isMinimized = false;
+  minimizeBtn.onclick = () => {
+    isMinimized = !isMinimized;
+    if (isMinimized) {
+      selectBtn.style.display = 'none';
+      dragBtn.style.display = 'none';
+      status.style.display = 'none';
+      minimizeBtn.textContent = '🎯';
+      minimizeBtn.title = 'Expand toolbar';
+      toolbar.style.padding = '6px 10px';
+    } else {
+      selectBtn.style.display = '';
+      dragBtn.style.display = '';
+      status.style.display = '';
+      minimizeBtn.textContent = '◀';
+      minimizeBtn.title = 'Minimize toolbar';
+      toolbar.style.padding = '8px 12px';
+    }
+  };
+
   // Toolbar drag functionality
   let isToolbarDragging = false;
   let toolbarOffsetX, toolbarOffsetY;
   toolbar.onmousedown = (e) => {
-    if (e.target === selectBtn || e.target === dragBtn) return;
+    if (e.target === selectBtn || e.target === dragBtn || e.target === minimizeBtn) return;
     isToolbarDragging = true;
     toolbarOffsetX = e.clientX - toolbar.offsetLeft;
     toolbarOffsetY = e.clientY - toolbar.offsetTop;
