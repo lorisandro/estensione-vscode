@@ -15,6 +15,9 @@ import { OpenPreviewCommand } from './commands/OpenPreviewCommand';
 import { MCPBridge } from './mcp/MCPBridge';
 import { ServerManager } from './server/ServerManager';
 import { devServerRunner, type ServerLogEntry } from './server/DevServerRunner';
+import { spawn, ChildProcess } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
 
 // Extension-wide state
 let webviewProvider: WebviewPanelProvider | undefined;
@@ -23,6 +26,8 @@ let openPreviewCommand: OpenPreviewCommand | undefined;
 let fileWatcher: vscode.FileSystemWatcher | undefined;
 let mcpBridge: MCPBridge | undefined;
 let serverManager: ServerManager | undefined;
+let externalChromeProcess: ChildProcess | undefined;
+let externalChromePort: number | undefined;
 
 // Extension Host log capture
 const originalConsole = {
@@ -480,6 +485,22 @@ async function initializeMCPBridge(): Promise<void> {
     return { success: true, message: 'Extension logs cleared' };
   });
 
+  // External Chrome browser handlers
+  mcpBridge.registerHandler('openExternalChrome', async () => {
+    console.log('[MCP] openExternalChrome handler called');
+    const result = await launchExternalChrome();
+    return result;
+  });
+
+  mcpBridge.registerHandler('getExternalChromeStatus', async () => {
+    return getExternalChromeStatus();
+  });
+
+  mcpBridge.registerHandler('stopExternalChrome', async () => {
+    const success = stopExternalChrome();
+    return { success, message: success ? 'Chrome stopped' : 'No Chrome running' };
+  });
+
   // Listen for backend logs and send to webview in real-time
   devServerRunner.on('log', (logEntry: ServerLogEntry) => {
     if (webviewProvider) {
@@ -649,13 +670,32 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }
   );
 
+  // Command: Open External Chrome (MCP)
+  const openExternalBrowserDisposable = vscode.commands.registerCommand(
+    'claudeVisualStudio.openExternalBrowser',
+    async () => {
+      try {
+        const result = await launchExternalChrome();
+        if (!result.success) {
+          vscode.window.showErrorMessage(result.error || 'Failed to launch Chrome');
+        }
+      } catch (error) {
+        console.error('Error executing openExternalBrowser command:', error);
+        vscode.window.showErrorMessage(
+          `Failed to open external browser: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    }
+  );
+
   // Register disposables
   context.subscriptions.push(
     openPreviewDisposable,
     toggleSelectionDisposable,
     refreshPreviewDisposable,
     openSettingsDisposable,
-    reloadExtensionDisposable
+    reloadExtensionDisposable,
+    openExternalBrowserDisposable
   );
 
   console.log('Commands registered');
@@ -812,9 +852,201 @@ async function handleRefreshPreview(): Promise<void> {
 }
 
 /**
+ * Find Chrome executable path based on operating system
+ */
+function findChromePath(): string | undefined {
+  const config = vscode.workspace.getConfiguration('claudeVisualStudio');
+  const customPath = config.get<string>('chromePath', '');
+
+  if (customPath && fs.existsSync(customPath)) {
+    return customPath;
+  }
+
+  const platform = process.platform;
+
+  // Common Chrome paths by platform
+  const chromePaths: { [key: string]: string[] } = {
+    win32: [
+      process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe',
+      process.env['PROGRAMFILES'] + '\\Google\\Chrome\\Application\\chrome.exe',
+      process.env['LOCALAPPDATA'] + '\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    ],
+    darwin: [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    ],
+    linux: [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/snap/bin/chromium',
+    ],
+  };
+
+  const paths = chromePaths[platform] || [];
+
+  for (const chromePath of paths) {
+    if (chromePath && fs.existsSync(chromePath)) {
+      return chromePath;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Launch external Chrome with remote debugging enabled
+ * This browser is accessible to all Claude Code terminals via MCP
+ */
+async function launchExternalChrome(): Promise<{ success: boolean; port?: number; error?: string }> {
+  // Check if Chrome is already running
+  if (externalChromeProcess && !externalChromeProcess.killed) {
+    return {
+      success: true,
+      port: externalChromePort,
+    };
+  }
+
+  const chromePath = findChromePath();
+  if (!chromePath) {
+    const error = 'Chrome not found. Please install Chrome or set a custom path in settings.';
+    vscode.window.showErrorMessage(error);
+    return { success: false, error };
+  }
+
+  const config = vscode.workspace.getConfiguration('claudeVisualStudio');
+  const debugPort = config.get<number>('chromeDebugPort', 9222);
+
+  // Create a temporary user data directory for the debug session
+  const userDataDir = path.join(
+    process.env.TEMP || process.env.TMPDIR || '/tmp',
+    `claude-vs-chrome-${Date.now()}`
+  );
+
+  const args = [
+    `--remote-debugging-port=${debugPort}`,
+    '--no-first-run',
+    '--no-default-browser-check',
+    `--user-data-dir=${userDataDir}`,
+    'about:blank',
+  ];
+
+  try {
+    console.log(`[ExternalChrome] Launching Chrome from: ${chromePath}`);
+    console.log(`[ExternalChrome] Debug port: ${debugPort}`);
+
+    externalChromeProcess = spawn(chromePath, args, {
+      detached: true,
+      stdio: 'ignore',
+    });
+
+    externalChromePort = debugPort;
+
+    externalChromeProcess.on('error', (err) => {
+      console.error('[ExternalChrome] Failed to start:', err);
+      externalChromeProcess = undefined;
+      externalChromePort = undefined;
+    });
+
+    externalChromeProcess.on('exit', (code) => {
+      console.log(`[ExternalChrome] Chrome exited with code: ${code}`);
+      externalChromeProcess = undefined;
+      externalChromePort = undefined;
+    });
+
+    // Don't hold the parent process
+    externalChromeProcess.unref();
+
+    // Wait a bit for Chrome to start
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Save the debug port info to workspace for Claude Code to find
+    await saveChromeDebugPortToWorkspace(debugPort);
+
+    vscode.window.showInformationMessage(
+      `Chrome opened with remote debugging on port ${debugPort}. ` +
+      `Claude Code can now control this browser via MCP.`
+    );
+
+    return { success: true, port: debugPort };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[ExternalChrome] Error launching Chrome:', error);
+    vscode.window.showErrorMessage(`Failed to launch Chrome: ${errorMsg}`);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Save Chrome debug port to workspace file for Claude Code MCP to find
+ */
+async function saveChromeDebugPortToWorkspace(port: number): Promise<void> {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    console.log('[ExternalChrome] No workspace folder, skipping port file save');
+    return;
+  }
+
+  const workspaceRoot = workspaceFolders[0].uri.fsPath;
+  const vscodeDir = vscode.Uri.file(`${workspaceRoot}/.vscode`);
+  const portFile = vscode.Uri.file(`${workspaceRoot}/.vscode/.claude-chrome-debug-port`);
+
+  try {
+    // Create .vscode directory if it doesn't exist
+    try {
+      await vscode.workspace.fs.stat(vscodeDir);
+    } catch {
+      await vscode.workspace.fs.createDirectory(vscodeDir);
+    }
+
+    // Write port info to file
+    const content = Buffer.from(JSON.stringify({
+      port,
+      timestamp: Date.now(),
+      wsEndpoint: `ws://localhost:${port}`,
+      httpEndpoint: `http://localhost:${port}`,
+    }));
+    await vscode.workspace.fs.writeFile(portFile, content);
+    console.log(`[ExternalChrome] Saved debug port ${port} to ${portFile.fsPath}`);
+  } catch (error) {
+    console.error('[ExternalChrome] Failed to save port file:', error);
+  }
+}
+
+/**
+ * Get external Chrome status
+ */
+function getExternalChromeStatus(): { running: boolean; port?: number } {
+  return {
+    running: externalChromeProcess !== undefined && !externalChromeProcess.killed,
+    port: externalChromePort,
+  };
+}
+
+/**
+ * Stop external Chrome browser
+ */
+function stopExternalChrome(): boolean {
+  if (externalChromeProcess && !externalChromeProcess.killed) {
+    externalChromeProcess.kill();
+    externalChromeProcess = undefined;
+    externalChromePort = undefined;
+    console.log('[ExternalChrome] Chrome stopped');
+    return true;
+  }
+  return false;
+}
+
+/**
  * Clean up extension resources
  */
 function cleanupResources(): void {
+  // Stop external Chrome browser
+  stopExternalChrome();
+
   // Stop development server
   if (serverManager) {
     serverManager.stop();

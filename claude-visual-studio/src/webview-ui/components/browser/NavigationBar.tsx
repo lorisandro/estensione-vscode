@@ -474,6 +474,23 @@ export const NavigationBar: React.FC = () => {
           </span>
         )}
       </button>
+
+      {/* Open External Chrome (MCP) button */}
+      <button
+        onClick={() => postMessage({ type: 'openExternalChrome' })}
+        style={getButtonStyle('externalChrome')}
+        onMouseEnter={() => setHoveredButton('externalChrome')}
+        onMouseLeave={() => setHoveredButton(null)}
+        title="Open External Chrome (MCP) - Accessible from all Claude Code terminals"
+      >
+        <svg style={styles.icon} viewBox="0 0 16 16">
+          {/* Chrome-like globe icon */}
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+          <ellipse cx="8" cy="8" rx="3" ry="7" stroke="currentColor" strokeWidth="1" fill="none"/>
+          <line x1="1" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1"/>
+          <path d="M2 5h12M2 11h12" stroke="currentColor" strokeWidth="0.8"/>
+        </svg>
+      </button>
     </div>
   );
 };

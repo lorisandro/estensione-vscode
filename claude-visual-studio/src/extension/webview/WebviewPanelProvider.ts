@@ -449,6 +449,12 @@ export class WebviewPanelProvider {
         await this.handleApplyCssToClaudeCode(message as any);
         break;
 
+      // Handle open external Chrome (MCP)
+      case 'openExternalChrome':
+        console.log('[Claude VS] Opening external Chrome with MCP support');
+        await vscode.commands.executeCommand('claudeVisualStudio.openExternalBrowser');
+        break;
+
       // Text Edit Mode (Page Builder) messages
       case 'edit-mode-started':
         console.log('[PageBuilder] Edit mode started:', (message as any).payload?.selector);

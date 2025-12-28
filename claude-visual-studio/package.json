@@ -78,6 +78,12 @@
         "title": "Force Recreate Panel",
         "category": "Claude Visual Studio",
         "icon": "$(debug-restart)"
+      },
+      {
+        "command": "claudeVisualStudio.openExternalBrowser",
+        "title": "Open External Chrome (MCP)",
+        "category": "Claude Visual Studio",
+        "icon": "$(globe)"
       }
     ],
     "keybindings": [
@@ -111,6 +117,9 @@
         },
         {
           "command": "claudeVisualStudio.forceRecreate"
+        },
+        {
+          "command": "claudeVisualStudio.openExternalBrowser"
         }
       ]
     },
@@ -126,6 +135,16 @@
           "type": "boolean",
           "default": true,
           "description": "Auto-refresh preview on file save"
+        },
+        "claudeVisualStudio.chromeDebugPort": {
+          "type": "number",
+          "default": 9222,
+          "description": "Port for Chrome remote debugging (MCP external browser)"
+        },
+        "claudeVisualStudio.chromePath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom path to Chrome executable. Leave empty to use default."
         }
       }
     }
