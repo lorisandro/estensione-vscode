@@ -153,8 +153,8 @@ export class WebviewPanelProvider {
    * Post a message to the webview
    */
   public async postMessage(message: ExtensionToWebviewMessage): Promise<boolean> {
+    // Silently return false if panel doesn't exist - caller should check isVisible() first
     if (!this.panel) {
-      console.error('Cannot post message: webview panel does not exist');
       return false;
     }
 
@@ -165,7 +165,10 @@ export class WebviewPanelProvider {
       });
       return success;
     } catch (error) {
-      console.error('Error posting message to webview:', error);
+      // Only log actual errors, not disposal
+      if (!(error instanceof Error && error.message.includes('disposed'))) {
+        console.error('Error posting message to webview:', error);
+      }
       return false;
     }
   }

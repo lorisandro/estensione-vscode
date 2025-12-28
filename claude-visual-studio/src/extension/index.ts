@@ -64,8 +64,8 @@ function captureExtensionLog(type: string, args: unknown[]): void {
     extensionLogs.shift();
   }
 
-  // Send to webview if available
-  if (webviewProvider) {
+  // Send to webview if available AND visible (avoid spam when panel is closed)
+  if (webviewProvider && webviewProvider.isVisible()) {
     webviewProvider.postMessage({
       type: 'extensionLog',
       payload: logEntry,
@@ -501,9 +501,9 @@ async function initializeMCPBridge(): Promise<void> {
     return { success, message: success ? 'Chrome stopped' : 'No Chrome running' };
   });
 
-  // Listen for backend logs and send to webview in real-time
+  // Listen for backend logs and send to webview in real-time (only if visible)
   devServerRunner.on('log', (logEntry: ServerLogEntry) => {
-    if (webviewProvider) {
+    if (webviewProvider && webviewProvider.isVisible()) {
       webviewProvider.postMessage({
         type: 'backendLog',
         payload: logEntry,
