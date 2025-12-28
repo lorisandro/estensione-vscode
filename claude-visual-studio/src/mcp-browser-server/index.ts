@@ -88,10 +88,7 @@ async function connectToBrowser(): Promise<Browser> {
     // Try to connect to existing Chrome first
     browser = await puppeteer.connect({
       browserURL,
-      defaultViewport: {
-        width: VIEWPORT_WIDTH,
-        height: VIEWPORT_HEIGHT,
-      },
+      defaultViewport: null, // Use actual window size, don't resize
     });
 
     console.error('[MCP Browser] Connected to existing Chrome successfully');
