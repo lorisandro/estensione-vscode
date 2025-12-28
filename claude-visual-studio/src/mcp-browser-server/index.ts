@@ -116,7 +116,7 @@ async function getPage(): Promise<Page> {
 const tools: Tool[] = [
   // Navigation
   {
-    name: 'browser_navigate',
+    name: 'chrome_navigate',
     description: 'Navigate to a URL in the shared external browser (visible to all Claude Code terminals)',
     inputSchema: {
       type: 'object',
@@ -132,17 +132,17 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_go_back',
+    name: 'chrome_go_back',
     description: 'Go back in browser history',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'browser_go_forward',
+    name: 'chrome_go_forward',
     description: 'Go forward in browser history',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'browser_reload',
+    name: 'chrome_reload',
     description: 'Reload the current page',
     inputSchema: {
       type: 'object',
@@ -154,17 +154,17 @@ const tools: Tool[] = [
 
   // Page Information
   {
-    name: 'browser_get_url',
+    name: 'chrome_get_url',
     description: 'Get the current page URL',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'browser_get_title',
+    name: 'chrome_get_title',
     description: 'Get the current page title',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'browser_get_html',
+    name: 'chrome_get_html',
     description: 'Get the HTML content of the page or a specific element',
     inputSchema: {
       type: 'object',
@@ -175,7 +175,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_get_text',
+    name: 'chrome_get_text',
     description: 'Get the text content of the page or a specific element',
     inputSchema: {
       type: 'object',
@@ -187,7 +187,7 @@ const tools: Tool[] = [
 
   // Screenshots
   {
-    name: 'browser_screenshot',
+    name: 'chrome_screenshot',
     description: 'Take a screenshot of the current page',
     inputSchema: {
       type: 'object',
@@ -203,7 +203,7 @@ const tools: Tool[] = [
 
   // Interaction
   {
-    name: 'browser_click',
+    name: 'chrome_click',
     description: 'Click on an element',
     inputSchema: {
       type: 'object',
@@ -217,7 +217,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_double_click',
+    name: 'chrome_double_click',
     description: 'Double-click on an element',
     inputSchema: {
       type: 'object',
@@ -228,7 +228,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_hover',
+    name: 'chrome_hover',
     description: 'Hover over an element',
     inputSchema: {
       type: 'object',
@@ -239,7 +239,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_type',
+    name: 'chrome_type',
     description: 'Type text into an input field',
     inputSchema: {
       type: 'object',
@@ -253,7 +253,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_press_key',
+    name: 'chrome_press_key',
     description: 'Press a keyboard key',
     inputSchema: {
       type: 'object',
@@ -269,7 +269,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_fill_form',
+    name: 'chrome_fill_form',
     description: 'Fill multiple form fields at once',
     inputSchema: {
       type: 'object',
@@ -294,7 +294,7 @@ const tools: Tool[] = [
 
   // Select & Options
   {
-    name: 'browser_select',
+    name: 'chrome_select',
     description: 'Select an option from a dropdown',
     inputSchema: {
       type: 'object',
@@ -306,7 +306,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_check',
+    name: 'chrome_check',
     description: 'Check or uncheck a checkbox',
     inputSchema: {
       type: 'object',
@@ -320,7 +320,7 @@ const tools: Tool[] = [
 
   // Scrolling
   {
-    name: 'browser_scroll',
+    name: 'chrome_scroll',
     description: 'Scroll the page or an element',
     inputSchema: {
       type: 'object',
@@ -333,19 +333,19 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_scroll_to_bottom',
+    name: 'chrome_scroll_to_bottom',
     description: 'Scroll to the bottom of the page',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'browser_scroll_to_top',
+    name: 'chrome_scroll_to_top',
     description: 'Scroll to the top of the page',
     inputSchema: { type: 'object', properties: {} },
   },
 
   // Wait
   {
-    name: 'browser_wait_for_selector',
+    name: 'chrome_wait_for_selector',
     description: 'Wait for an element to appear',
     inputSchema: {
       type: 'object',
@@ -359,7 +359,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_wait_for_navigation',
+    name: 'chrome_wait_for_navigation',
     description: 'Wait for navigation to complete',
     inputSchema: {
       type: 'object',
@@ -373,7 +373,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_wait',
+    name: 'chrome_wait',
     description: 'Wait for a specified amount of time',
     inputSchema: {
       type: 'object',
@@ -386,7 +386,7 @@ const tools: Tool[] = [
 
   // JavaScript Execution
   {
-    name: 'browser_evaluate',
+    name: 'chrome_evaluate',
     description: 'Execute JavaScript code in the browser context',
     inputSchema: {
       type: 'object',
@@ -399,7 +399,7 @@ const tools: Tool[] = [
 
   // Element Query
   {
-    name: 'browser_query_selector',
+    name: 'chrome_query_selector',
     description: 'Find elements matching a CSS selector',
     inputSchema: {
       type: 'object',
@@ -415,7 +415,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_get_attribute',
+    name: 'chrome_get_attribute',
     description: 'Get an attribute value from an element',
     inputSchema: {
       type: 'object',
@@ -427,7 +427,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_get_computed_style',
+    name: 'chrome_get_computed_style',
     description: 'Get computed CSS styles of an element',
     inputSchema: {
       type: 'object',
@@ -443,7 +443,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_get_bounding_box',
+    name: 'chrome_get_bounding_box',
     description: 'Get the bounding box (position and size) of an element',
     inputSchema: {
       type: 'object',
@@ -456,7 +456,7 @@ const tools: Tool[] = [
 
   // Tabs & Windows
   {
-    name: 'browser_new_tab',
+    name: 'chrome_new_tab',
     description: 'Open a new browser tab',
     inputSchema: {
       type: 'object',
@@ -466,17 +466,17 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_close_tab',
+    name: 'chrome_close_tab',
     description: 'Close the current tab',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'browser_list_tabs',
+    name: 'chrome_list_tabs',
     description: 'List all open tabs',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'browser_switch_tab',
+    name: 'chrome_switch_tab',
     description: 'Switch to a different tab',
     inputSchema: {
       type: 'object',
@@ -489,7 +489,7 @@ const tools: Tool[] = [
 
   // Cookies & Storage
   {
-    name: 'browser_get_cookies',
+    name: 'chrome_get_cookies',
     description: 'Get cookies for the current page',
     inputSchema: {
       type: 'object',
@@ -499,7 +499,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_set_cookie',
+    name: 'chrome_set_cookie',
     description: 'Set a cookie',
     inputSchema: {
       type: 'object',
@@ -516,7 +516,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_delete_cookies',
+    name: 'chrome_delete_cookies',
     description: 'Delete cookies',
     inputSchema: {
       type: 'object',
@@ -526,7 +526,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_get_local_storage',
+    name: 'chrome_get_local_storage',
     description: 'Get localStorage items',
     inputSchema: {
       type: 'object',
@@ -536,7 +536,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_set_local_storage',
+    name: 'chrome_set_local_storage',
     description: 'Set a localStorage item',
     inputSchema: {
       type: 'object',
@@ -550,7 +550,7 @@ const tools: Tool[] = [
 
   // PDF & Print
   {
-    name: 'browser_pdf',
+    name: 'chrome_pdf',
     description: 'Generate a PDF of the current page',
     inputSchema: {
       type: 'object',
@@ -565,7 +565,7 @@ const tools: Tool[] = [
 
   // Network
   {
-    name: 'browser_set_extra_headers',
+    name: 'chrome_set_extra_headers',
     description: 'Set extra HTTP headers for all requests',
     inputSchema: {
       type: 'object',
@@ -580,7 +580,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_set_user_agent',
+    name: 'chrome_set_user_agent',
     description: 'Set the browser user agent',
     inputSchema: {
       type: 'object',
@@ -593,7 +593,7 @@ const tools: Tool[] = [
 
   // Viewport & Emulation
   {
-    name: 'browser_set_viewport',
+    name: 'chrome_set_viewport',
     description: 'Set the viewport size',
     inputSchema: {
       type: 'object',
@@ -608,7 +608,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'browser_emulate_device',
+    name: 'chrome_emulate_device',
     description: 'Emulate a specific device',
     inputSchema: {
       type: 'object',
@@ -624,7 +624,7 @@ const tools: Tool[] = [
 
   // Console & Logs
   {
-    name: 'browser_get_console_logs',
+    name: 'chrome_get_console_logs',
     description: 'Get console logs from the page',
     inputSchema: {
       type: 'object',
@@ -636,7 +636,7 @@ const tools: Tool[] = [
 
   // File Upload
   {
-    name: 'browser_upload_file',
+    name: 'chrome_upload_file',
     description: 'Upload a file to a file input',
     inputSchema: {
       type: 'object',
@@ -650,7 +650,7 @@ const tools: Tool[] = [
 
   // Dialog Handling
   {
-    name: 'browser_handle_dialog',
+    name: 'chrome_handle_dialog',
     description: 'Set how to handle dialogs (alert, confirm, prompt)',
     inputSchema: {
       type: 'object',
@@ -664,12 +664,12 @@ const tools: Tool[] = [
 
   // Connection Status
   {
-    name: 'browser_status',
+    name: 'chrome_status',
     description: 'Get the browser connection status',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'browser_disconnect',
+    name: 'chrome_disconnect',
     description: 'Disconnect from the browser (does not close it)',
     inputSchema: { type: 'object', properties: {} },
   },
@@ -686,23 +686,23 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
 
   switch (name) {
     // Navigation
-    case 'browser_navigate': {
+    case 'chrome_navigate': {
       const { url, waitUntil = 'load' } = args as { url: string; waitUntil?: string };
       await page.goto(url, { waitUntil: waitUntil as any });
       return { success: true, url: page.url(), title: await page.title() };
     }
 
-    case 'browser_go_back': {
+    case 'chrome_go_back': {
       await page.goBack();
       return { success: true, url: page.url() };
     }
 
-    case 'browser_go_forward': {
+    case 'chrome_go_forward': {
       await page.goForward();
       return { success: true, url: page.url() };
     }
 
-    case 'browser_reload': {
+    case 'chrome_reload': {
       const { ignoreCache = false } = args as { ignoreCache?: boolean };
       if (ignoreCache) {
         await page.reload({ waitUntil: 'load' });
@@ -713,15 +713,15 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Page Information
-    case 'browser_get_url': {
+    case 'chrome_get_url': {
       return { url: page.url() };
     }
 
-    case 'browser_get_title': {
+    case 'chrome_get_title': {
       return { title: await page.title() };
     }
 
-    case 'browser_get_html': {
+    case 'chrome_get_html': {
       const { selector, outer = true } = args as { selector?: string; outer?: boolean };
       if (selector) {
         const element = await page.$(selector);
@@ -735,7 +735,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { html };
     }
 
-    case 'browser_get_text': {
+    case 'chrome_get_text': {
       const { selector } = args as { selector?: string };
       if (selector) {
         const element = await page.$(selector);
@@ -748,7 +748,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Screenshots
-    case 'browser_screenshot': {
+    case 'chrome_screenshot': {
       const { fullPage = false, selector, path: filePath, quality, type = 'png' } = args as {
         fullPage?: boolean;
         selector?: string;
@@ -779,7 +779,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Interaction
-    case 'browser_click': {
+    case 'chrome_click': {
       const { selector, button = 'left', clickCount = 1, delay } = args as {
         selector: string;
         button?: 'left' | 'right' | 'middle';
@@ -790,19 +790,19 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, selector };
     }
 
-    case 'browser_double_click': {
+    case 'chrome_double_click': {
       const { selector } = args as { selector: string };
       await page.click(selector, { clickCount: 2 });
       return { success: true, selector };
     }
 
-    case 'browser_hover': {
+    case 'chrome_hover': {
       const { selector } = args as { selector: string };
       await page.hover(selector);
       return { success: true, selector };
     }
 
-    case 'browser_type': {
+    case 'chrome_type': {
       const { selector, text, delay = 0, clear = false } = args as {
         selector: string;
         text: string;
@@ -817,7 +817,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, selector, text };
     }
 
-    case 'browser_press_key': {
+    case 'chrome_press_key': {
       const { key, modifiers = [] } = args as { key: string; modifiers?: string[] };
       for (const mod of modifiers) {
         await page.keyboard.down(mod as any);
@@ -829,7 +829,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, key, modifiers };
     }
 
-    case 'browser_fill_form': {
+    case 'chrome_fill_form': {
       const { fields, submit = false } = args as {
         fields: Array<{ selector: string; value: string }>;
         submit?: boolean;
@@ -844,13 +844,13 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Select & Options
-    case 'browser_select': {
+    case 'chrome_select': {
       const { selector, value } = args as { selector: string; value: string };
       await page.select(selector, value);
       return { success: true, selector, value };
     }
 
-    case 'browser_check': {
+    case 'chrome_check': {
       const { selector, checked } = args as { selector: string; checked: boolean };
       const isChecked = await page.$eval(selector, (el) => (el as HTMLInputElement).checked);
       if (isChecked !== checked) {
@@ -860,7 +860,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Scrolling
-    case 'browser_scroll': {
+    case 'chrome_scroll': {
       const { x = 0, y = 0, selector, behavior = 'auto' } = args as {
         x?: number;
         y?: number;
@@ -880,18 +880,18 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true };
     }
 
-    case 'browser_scroll_to_bottom': {
+    case 'chrome_scroll_to_bottom': {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       return { success: true };
     }
 
-    case 'browser_scroll_to_top': {
+    case 'chrome_scroll_to_top': {
       await page.evaluate(() => window.scrollTo(0, 0));
       return { success: true };
     }
 
     // Wait
-    case 'browser_wait_for_selector': {
+    case 'chrome_wait_for_selector': {
       const { selector, timeout = 30000, visible = false, hidden = false } = args as {
         selector: string;
         timeout?: number;
@@ -902,7 +902,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, selector };
     }
 
-    case 'browser_wait_for_navigation': {
+    case 'chrome_wait_for_navigation': {
       const { timeout = 30000, waitUntil = 'load' } = args as {
         timeout?: number;
         waitUntil?: string;
@@ -911,21 +911,21 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, url: page.url() };
     }
 
-    case 'browser_wait': {
+    case 'chrome_wait': {
       const { ms } = args as { ms: number };
       await new Promise((resolve) => setTimeout(resolve, ms));
       return { success: true, waited: ms };
     }
 
     // JavaScript Execution
-    case 'browser_evaluate': {
+    case 'chrome_evaluate': {
       const { code } = args as { code: string };
       const result = await page.evaluate(code);
       return { result };
     }
 
     // Element Query
-    case 'browser_query_selector': {
+    case 'chrome_query_selector': {
       const { selector, attributes = ['id', 'class', 'href', 'src', 'alt', 'title'] } = args as {
         selector: string;
         attributes?: string[];
@@ -948,13 +948,13 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { elements, count: elements.length };
     }
 
-    case 'browser_get_attribute': {
+    case 'chrome_get_attribute': {
       const { selector, attribute } = args as { selector: string; attribute: string };
       const value = await page.$eval(selector, (el, attr) => el.getAttribute(attr), attribute);
       return { attribute, value };
     }
 
-    case 'browser_get_computed_style': {
+    case 'chrome_get_computed_style': {
       const { selector, properties } = args as { selector: string; properties?: string[] };
       const styles = await page.$eval(
         selector,
@@ -979,7 +979,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { styles };
     }
 
-    case 'browser_get_bounding_box': {
+    case 'chrome_get_bounding_box': {
       const { selector } = args as { selector: string };
       const box = await page.$eval(selector, (el) => {
         const rect = el.getBoundingClientRect();
@@ -998,7 +998,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Tabs & Windows
-    case 'browser_new_tab': {
+    case 'chrome_new_tab': {
       const { url } = args as { url?: string };
       const browser = await connectToBrowser();
       currentPage = await browser.newPage();
@@ -1008,13 +1008,13 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, url: currentPage.url() };
     }
 
-    case 'browser_close_tab': {
+    case 'chrome_close_tab': {
       await page.close();
       currentPage = null;
       return { success: true };
     }
 
-    case 'browser_list_tabs': {
+    case 'chrome_list_tabs': {
       const browser = await connectToBrowser();
       const pages = await browser.pages();
       const tabs = await Promise.all(
@@ -1028,7 +1028,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { tabs };
     }
 
-    case 'browser_switch_tab': {
+    case 'chrome_switch_tab': {
       const { index } = args as { index: number };
       const browser = await connectToBrowser();
       const pages = await browser.pages();
@@ -1041,13 +1041,13 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Cookies & Storage
-    case 'browser_get_cookies': {
+    case 'chrome_get_cookies': {
       const { urls } = args as { urls?: string[] };
       const cookies = await page.cookies(...(urls || []));
       return { cookies };
     }
 
-    case 'browser_set_cookie': {
+    case 'chrome_set_cookie': {
       const { name, value, domain, path: cookiePath = '/', expires, httpOnly, secure } = args as {
         name: string;
         value: string;
@@ -1069,7 +1069,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, name };
     }
 
-    case 'browser_delete_cookies': {
+    case 'chrome_delete_cookies': {
       const { name } = args as { name?: string };
       const cookies = await page.cookies();
       const toDelete = name ? cookies.filter((c) => c.name === name) : cookies;
@@ -1079,7 +1079,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, deleted: toDelete.length };
     }
 
-    case 'browser_get_local_storage': {
+    case 'chrome_get_local_storage': {
       const { key } = args as { key?: string };
       const storage = await page.evaluate((k) => {
         if (k) {
@@ -1095,7 +1095,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { localStorage: storage };
     }
 
-    case 'browser_set_local_storage': {
+    case 'chrome_set_local_storage': {
       const { key, value } = args as { key: string; value: string };
       await page.evaluate(
         (k, v) => {
@@ -1108,7 +1108,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // PDF
-    case 'browser_pdf': {
+    case 'chrome_pdf': {
       const { path: filePath, format = 'A4', landscape = false, printBackground = false } = args as {
         path?: string;
         format?: string;
@@ -1129,20 +1129,20 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Network
-    case 'browser_set_extra_headers': {
+    case 'chrome_set_extra_headers': {
       const { headers } = args as { headers: Record<string, string> };
       await page.setExtraHTTPHeaders(headers);
       return { success: true, headers: Object.keys(headers) };
     }
 
-    case 'browser_set_user_agent': {
+    case 'chrome_set_user_agent': {
       const { userAgent } = args as { userAgent: string };
       await page.setUserAgent(userAgent);
       return { success: true, userAgent };
     }
 
     // Viewport & Emulation
-    case 'browser_set_viewport': {
+    case 'chrome_set_viewport': {
       const { width, height, deviceScaleFactor = 1, isMobile = false, hasTouch = false } = args as {
         width: number;
         height: number;
@@ -1154,7 +1154,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       return { success: true, viewport: { width, height } };
     }
 
-    case 'browser_emulate_device': {
+    case 'chrome_emulate_device': {
       const { device } = args as { device: string };
       const devices = puppeteer.devices;
       const deviceConfig = devices[device as keyof typeof devices];
@@ -1167,7 +1167,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Console Logs
-    case 'browser_get_console_logs': {
+    case 'chrome_get_console_logs': {
       const { clear = false } = args as { clear?: boolean };
       const logs = [...consoleLogs];
       if (clear) {
@@ -1177,7 +1177,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // File Upload
-    case 'browser_upload_file': {
+    case 'chrome_upload_file': {
       const { selector, filePath } = args as { selector: string; filePath: string };
       const input = await page.$(selector);
       if (!input) throw new Error(`File input not found: ${selector}`);
@@ -1186,7 +1186,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Dialog Handling
-    case 'browser_handle_dialog': {
+    case 'chrome_handle_dialog': {
       const { action, promptText } = args as { action: 'accept' | 'dismiss'; promptText?: string };
       page.on('dialog', async (dialog) => {
         if (action === 'accept') {
@@ -1199,7 +1199,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     }
 
     // Status
-    case 'browser_status': {
+    case 'chrome_status': {
       const connected = browser?.isConnected() ?? false;
       const debugPort = getChromeDebugPort();
       return {
@@ -1210,7 +1210,7 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       };
     }
 
-    case 'browser_disconnect': {
+    case 'chrome_disconnect': {
       if (browser) {
         browser.disconnect();
         browser = null;
