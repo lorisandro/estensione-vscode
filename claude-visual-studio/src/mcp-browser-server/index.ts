@@ -774,9 +774,10 @@ const SELECTOR_SCRIPT = `
   toolbar.id = '__claude-selector-toolbar';
   toolbar.innerHTML = \`
     <button id="__claude-minimize-btn" title="Minimize/Expand">◀</button>
-    <button id="__claude-selector-btn" title="Toggle element selection mode">🎯</button>
-    <button id="__claude-drag-btn" title="Toggle element drag mode">🖐️</button>
-    <button id="__claude-copy-btn" title="Copy all changes as prompt" style="display:none;">📋</button>
+    <button id="__claude-selector-btn" title="Select element">🎯</button>
+    <button id="__claude-style-btn" title="Edit element styles" style="display:none;">🎨</button>
+    <button id="__claude-drag-btn" title="Drag elements">🖐️</button>
+    <button id="__claude-copy-btn" title="Copy all changes" style="display:none;">📋</button>
     <span id="__claude-selector-status"></span>
     <span id="__claude-changes-count" style="display:none;background:#ff9500;color:#000;padding:2px 6px;border-radius:10px;font-size:11px;font-weight:bold;"></span>
   \`;
@@ -801,6 +802,7 @@ const SELECTOR_SCRIPT = `
 
   const minimizeBtn = toolbar.querySelector('#__claude-minimize-btn');
   const selectBtn = toolbar.querySelector('#__claude-selector-btn');
+  const styleBtn = toolbar.querySelector('#__claude-style-btn');
   const dragBtn = toolbar.querySelector('#__claude-drag-btn');
   const copyBtn = toolbar.querySelector('#__claude-copy-btn');
   const status = toolbar.querySelector('#__claude-selector-status');
@@ -823,7 +825,7 @@ const SELECTOR_SCRIPT = `
   minimizeBtn.onmouseleave = () => minimizeBtn.style.color = '#888';
 
   // Style action buttons
-  [selectBtn, dragBtn, copyBtn].forEach(btn => {
+  [selectBtn, styleBtn, dragBtn, copyBtn].forEach(btn => {
     btn.style.cssText = \`
       background: none;
       border: 2px solid transparent;
@@ -858,6 +860,7 @@ const SELECTOR_SCRIPT = `
     isMinimized = !isMinimized;
     if (isMinimized) {
       selectBtn.style.display = 'none';
+      styleBtn.style.display = 'none';
       dragBtn.style.display = 'none';
       copyBtn.style.display = 'none';
       status.style.display = 'none';
@@ -873,6 +876,10 @@ const SELECTOR_SCRIPT = `
       minimizeBtn.title = 'Minimize toolbar';
       toolbar.style.padding = '8px 12px';
       updateChangesCount(); // Show copy button if there are changes
+      // Show style button if element is selected
+      if (window.__claudeSelectedElement) {
+        styleBtn.style.display = '';
+      }
     }
   };
 
@@ -918,6 +925,305 @@ const SELECTOR_SCRIPT = `
     word-break: break-all;
   \`;
   document.body.appendChild(tooltip);
+
+  // CSS Editor Panel (Elementor-style)
+  const cssPanel = document.createElement('div');
+  cssPanel.id = '__claude-css-panel';
+  cssPanel.innerHTML = \`
+    <div class="panel-header">
+      <span>🎨 Style Editor</span>
+      <button id="__claude-panel-close">✕</button>
+    </div>
+    <div class="panel-content">
+      <div class="control-group">
+        <label>Font Size</label>
+        <div class="control-row">
+          <input type="range" id="__css-font-size" min="8" max="72" value="16">
+          <input type="number" id="__css-font-size-val" value="16" min="8" max="200">
+          <span>px</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Line Height</label>
+        <div class="control-row">
+          <input type="range" id="__css-line-height" min="0.5" max="3" step="0.1" value="1.5">
+          <input type="number" id="__css-line-height-val" value="1.5" min="0.5" max="5" step="0.1">
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Font Weight</label>
+        <select id="__css-font-weight">
+          <option value="300">Light (300)</option>
+          <option value="400" selected>Normal (400)</option>
+          <option value="500">Medium (500)</option>
+          <option value="600">Semi Bold (600)</option>
+          <option value="700">Bold (700)</option>
+          <option value="800">Extra Bold (800)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Text Color</label>
+        <div class="control-row">
+          <input type="color" id="__css-color" value="#ffffff">
+          <input type="text" id="__css-color-val" value="#ffffff" maxlength="7">
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Background</label>
+        <div class="control-row">
+          <input type="color" id="__css-bg-color" value="#000000">
+          <input type="text" id="__css-bg-color-val" value="#000000" maxlength="7">
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Padding (px)</label>
+        <div class="control-row four">
+          <input type="number" id="__css-padding-top" placeholder="T" min="0">
+          <input type="number" id="__css-padding-right" placeholder="R" min="0">
+          <input type="number" id="__css-padding-bottom" placeholder="B" min="0">
+          <input type="number" id="__css-padding-left" placeholder="L" min="0">
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Margin (px)</label>
+        <div class="control-row four">
+          <input type="number" id="__css-margin-top" placeholder="T">
+          <input type="number" id="__css-margin-right" placeholder="R">
+          <input type="number" id="__css-margin-bottom" placeholder="B">
+          <input type="number" id="__css-margin-left" placeholder="L">
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Border Radius</label>
+        <div class="control-row">
+          <input type="range" id="__css-border-radius" min="0" max="50" value="0">
+          <input type="number" id="__css-border-radius-val" value="0" min="0" max="200">
+          <span>px</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button id="__claude-apply-styles">Apply & Track</button>
+    </div>
+  \`;
+  cssPanel.style.cssText = \`
+    position: fixed;
+    top: 60px;
+    right: 10px;
+    width: 280px;
+    z-index: 2147483647;
+    background: #1a1a2e;
+    border: 2px solid #00d4ff;
+    border-radius: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    color: #fff;
+    box-shadow: 0 8px 32px rgba(0, 212, 255, 0.3);
+    display: none;
+  \`;
+
+  const panelStyles = document.createElement('style');
+  panelStyles.textContent = \`
+    #__claude-css-panel .panel-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 15px; border-bottom: 1px solid #333; font-weight: 600;
+    }
+    #__claude-css-panel .panel-header button {
+      background: none; border: none; color: #888; cursor: pointer; font-size: 16px;
+    }
+    #__claude-css-panel .panel-header button:hover { color: #fff; }
+    #__claude-css-panel .panel-content { padding: 15px; max-height: 400px; overflow-y: auto; }
+    #__claude-css-panel .control-group { margin-bottom: 15px; }
+    #__claude-css-panel .control-group label { display: block; margin-bottom: 6px; color: #aaa; font-size: 11px; text-transform: uppercase; }
+    #__claude-css-panel .control-row { display: flex; gap: 8px; align-items: center; }
+    #__claude-css-panel .control-row.four { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    #__claude-css-panel input[type="range"] { flex: 1; accent-color: #00d4ff; }
+    #__claude-css-panel input[type="number"], #__claude-css-panel input[type="text"] {
+      width: 60px; padding: 6px 8px; background: #2a2a3e; border: 1px solid #444;
+      border-radius: 4px; color: #fff; font-size: 12px;
+    }
+    #__claude-css-panel .control-row.four input { width: 100%; text-align: center; }
+    #__claude-css-panel input[type="color"] { width: 40px; height: 30px; border: none; border-radius: 4px; cursor: pointer; }
+    #__claude-css-panel select {
+      width: 100%; padding: 8px; background: #2a2a3e; border: 1px solid #444;
+      border-radius: 4px; color: #fff; font-size: 12px;
+    }
+    #__claude-css-panel .panel-footer { padding: 15px; border-top: 1px solid #333; }
+    #__claude-css-panel .panel-footer button {
+      width: 100%; padding: 10px; background: linear-gradient(135deg, #00d4ff, #0099cc);
+      border: none; border-radius: 6px; color: #fff; font-weight: 600; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #__claude-css-panel .panel-footer button:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4); }
+  \`;
+  document.head.appendChild(panelStyles);
+  document.body.appendChild(cssPanel);
+
+  let currentEditElement = null;
+  let originalStyles = {};
+
+  // Panel close button
+  cssPanel.querySelector('#__claude-panel-close').onclick = () => {
+    cssPanel.style.display = 'none';
+    currentEditElement = null;
+    updateButtonState(styleBtn, false, '');
+  };
+
+  // Sync range and number inputs
+  function syncInputs(rangeId, numId, isFloat = false) {
+    const range = cssPanel.querySelector(rangeId);
+    const num = cssPanel.querySelector(numId);
+    range.oninput = () => { num.value = range.value; applyLivePreview(); };
+    num.oninput = () => { range.value = num.value; applyLivePreview(); };
+  }
+  syncInputs('#__css-font-size', '#__css-font-size-val');
+  syncInputs('#__css-line-height', '#__css-line-height-val', true);
+  syncInputs('#__css-border-radius', '#__css-border-radius-val');
+
+  // Sync color inputs
+  function syncColors(colorId, textId) {
+    const color = cssPanel.querySelector(colorId);
+    const text = cssPanel.querySelector(textId);
+    color.oninput = () => { text.value = color.value; applyLivePreview(); };
+    text.oninput = () => { if (/^#[0-9A-Fa-f]{6}\$/.test(text.value)) { color.value = text.value; applyLivePreview(); } };
+  }
+  syncColors('#__css-color', '#__css-color-val');
+  syncColors('#__css-bg-color', '#__css-bg-color-val');
+
+  // Other inputs live preview
+  ['#__css-font-weight', '#__css-padding-top', '#__css-padding-right', '#__css-padding-bottom', '#__css-padding-left',
+   '#__css-margin-top', '#__css-margin-right', '#__css-margin-bottom', '#__css-margin-left'].forEach(id => {
+    const el = cssPanel.querySelector(id);
+    if (el) el.oninput = applyLivePreview;
+  });
+
+  function applyLivePreview() {
+    if (!currentEditElement) return;
+    const el = currentEditElement;
+
+    el.style.fontSize = cssPanel.querySelector('#__css-font-size-val').value + 'px';
+    el.style.lineHeight = cssPanel.querySelector('#__css-line-height-val').value;
+    el.style.fontWeight = cssPanel.querySelector('#__css-font-weight').value;
+    el.style.color = cssPanel.querySelector('#__css-color').value;
+    el.style.backgroundColor = cssPanel.querySelector('#__css-bg-color').value;
+    el.style.borderRadius = cssPanel.querySelector('#__css-border-radius-val').value + 'px';
+
+    const pt = cssPanel.querySelector('#__css-padding-top').value;
+    const pr = cssPanel.querySelector('#__css-padding-right').value;
+    const pb = cssPanel.querySelector('#__css-padding-bottom').value;
+    const pl = cssPanel.querySelector('#__css-padding-left').value;
+    if (pt || pr || pb || pl) {
+      el.style.padding = (pt||0) + 'px ' + (pr||0) + 'px ' + (pb||0) + 'px ' + (pl||0) + 'px';
+    }
+
+    const mt = cssPanel.querySelector('#__css-margin-top').value;
+    const mr = cssPanel.querySelector('#__css-margin-right').value;
+    const mb = cssPanel.querySelector('#__css-margin-bottom').value;
+    const ml = cssPanel.querySelector('#__css-margin-left').value;
+    if (mt || mr || mb || ml) {
+      el.style.margin = (mt||0) + 'px ' + (mr||0) + 'px ' + (mb||0) + 'px ' + (ml||0) + 'px';
+    }
+  }
+
+  // Apply and track button
+  cssPanel.querySelector('#__claude-apply-styles').onclick = () => {
+    if (!currentEditElement) return;
+
+    const selector = getSelector(currentEditElement);
+    const newStyles = {
+      fontSize: cssPanel.querySelector('#__css-font-size-val').value + 'px',
+      lineHeight: cssPanel.querySelector('#__css-line-height-val').value,
+      fontWeight: cssPanel.querySelector('#__css-font-weight').value,
+      color: cssPanel.querySelector('#__css-color').value,
+      backgroundColor: cssPanel.querySelector('#__css-bg-color').value,
+      borderRadius: cssPanel.querySelector('#__css-border-radius-val').value + 'px',
+    };
+
+    const pt = cssPanel.querySelector('#__css-padding-top').value;
+    const pr = cssPanel.querySelector('#__css-padding-right').value;
+    const pb = cssPanel.querySelector('#__css-padding-bottom').value;
+    const pl = cssPanel.querySelector('#__css-padding-left').value;
+    if (pt || pr || pb || pl) newStyles.padding = (pt||0) + 'px ' + (pr||0) + 'px ' + (pb||0) + 'px ' + (pl||0) + 'px';
+
+    const mt = cssPanel.querySelector('#__css-margin-top').value;
+    const mr = cssPanel.querySelector('#__css-margin-right').value;
+    const mb = cssPanel.querySelector('#__css-margin-bottom').value;
+    const ml = cssPanel.querySelector('#__css-margin-left').value;
+    if (mt || mr || mb || ml) newStyles.margin = (mt||0) + 'px ' + (mr||0) + 'px ' + (mb||0) + 'px ' + (ml||0) + 'px';
+
+    // Track the style change
+    const change = {
+      type: 'style',
+      selector: selector,
+      element: currentEditElement.tagName.toLowerCase(),
+      css: newStyles,
+      original: originalStyles
+    };
+
+    window.__claudeChanges.push(change);
+    updateChangesCount();
+
+    status.textContent = 'Styled! (' + window.__claudeChanges.length + ')';
+    status.style.color = '#00ff00';
+    setTimeout(() => updateStatus(), 1500);
+
+    cssPanel.style.display = 'none';
+    updateButtonState(styleBtn, false, '');
+  };
+
+  function openCssPanel(el) {
+    currentEditElement = el;
+    const computed = getComputedStyle(el);
+
+    // Store original styles
+    originalStyles = {
+      fontSize: computed.fontSize,
+      lineHeight: computed.lineHeight,
+      fontWeight: computed.fontWeight,
+      color: computed.color,
+      backgroundColor: computed.backgroundColor,
+      padding: computed.padding,
+      margin: computed.margin,
+      borderRadius: computed.borderRadius
+    };
+
+    // Populate panel with current values
+    cssPanel.querySelector('#__css-font-size').value = parseInt(computed.fontSize) || 16;
+    cssPanel.querySelector('#__css-font-size-val').value = parseInt(computed.fontSize) || 16;
+    cssPanel.querySelector('#__css-line-height').value = parseFloat(computed.lineHeight) / parseInt(computed.fontSize) || 1.5;
+    cssPanel.querySelector('#__css-line-height-val').value = (parseFloat(computed.lineHeight) / parseInt(computed.fontSize) || 1.5).toFixed(1);
+    cssPanel.querySelector('#__css-font-weight').value = computed.fontWeight;
+
+    // Convert rgb to hex
+    function rgbToHex(rgb) {
+      const match = rgb.match(/\\d+/g);
+      if (!match || match.length < 3) return '#000000';
+      return '#' + match.slice(0,3).map(x => parseInt(x).toString(16).padStart(2,'0')).join('');
+    }
+    cssPanel.querySelector('#__css-color').value = rgbToHex(computed.color);
+    cssPanel.querySelector('#__css-color-val').value = rgbToHex(computed.color);
+    cssPanel.querySelector('#__css-bg-color').value = rgbToHex(computed.backgroundColor);
+    cssPanel.querySelector('#__css-bg-color-val').value = rgbToHex(computed.backgroundColor);
+
+    cssPanel.querySelector('#__css-border-radius').value = parseInt(computed.borderRadius) || 0;
+    cssPanel.querySelector('#__css-border-radius-val').value = parseInt(computed.borderRadius) || 0;
+
+    // Parse padding
+    const paddings = computed.padding.split(' ').map(p => parseInt(p) || 0);
+    cssPanel.querySelector('#__css-padding-top').value = paddings[0] || '';
+    cssPanel.querySelector('#__css-padding-right').value = paddings[1] || paddings[0] || '';
+    cssPanel.querySelector('#__css-padding-bottom').value = paddings[2] || paddings[0] || '';
+    cssPanel.querySelector('#__css-padding-left').value = paddings[3] || paddings[1] || paddings[0] || '';
+
+    // Parse margin
+    const margins = computed.margin.split(' ').map(m => parseInt(m) || 0);
+    cssPanel.querySelector('#__css-margin-top').value = margins[0] || '';
+    cssPanel.querySelector('#__css-margin-right').value = margins[1] || margins[0] || '';
+    cssPanel.querySelector('#__css-margin-bottom').value = margins[2] || margins[0] || '';
+    cssPanel.querySelector('#__css-margin-left').value = margins[3] || margins[1] || margins[0] || '';
+
+    cssPanel.style.display = 'block';
+  }
 
   let selectionActive = false;
   let dragModeActive = false;
@@ -1048,7 +1354,7 @@ const SELECTOR_SCRIPT = `
     // Copy selector to clipboard automatically
     const selectorText = window.__claudeSelectedElement.selector;
     navigator.clipboard.writeText(selectorText).then(() => {
-      status.textContent = '📋 Copied! Ctrl+V to paste';
+      status.textContent = '📋 Copied! Click 🎨 to style';
       status.style.color = '#00ff00';
       setTimeout(() => updateStatus(), 2500);
 
@@ -1058,9 +1364,13 @@ const SELECTOR_SCRIPT = `
       notif.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#00ff00;color:#000;padding:10px 20px;border-radius:8px;font-family:monospace;font-size:12px;z-index:2147483647;max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 4px 20px rgba(0,255,0,0.4);';
       document.body.appendChild(notif);
       setTimeout(() => notif.remove(), 3000);
+
+      // Show style button when element is selected
+      styleBtn.style.display = '';
     }).catch(() => {
       status.textContent = el.tagName.toLowerCase();
       status.style.color = '#00ff00';
+      styleBtn.style.display = '';
     });
 
     console.log('[Claude Selector] Element selected:', window.__claudeSelectedElement);
@@ -1235,6 +1545,23 @@ const SELECTOR_SCRIPT = `
     updateStatus();
   };
 
+  // Style button - open CSS panel for selected element
+  styleBtn.onclick = () => {
+    if (!window.__claudeSelectedElement) {
+      status.textContent = 'Select element first!';
+      status.style.color = '#ff4444';
+      setTimeout(() => updateStatus(), 1500);
+      return;
+    }
+    // Find the actual DOM element from the selector
+    const selector = window.__claudeSelectedElement.selector;
+    const el = document.querySelector(selector);
+    if (el) {
+      openCssPanel(el);
+      updateButtonState(styleBtn, true, 'rgba(138, 43, 226, 0.3)');
+    }
+  };
+
   // Toggle drag mode
   dragBtn.onclick = () => {
     dragModeActive = !dragModeActive;
@@ -1263,19 +1590,46 @@ const SELECTOR_SCRIPT = `
     if (window.__claudeChanges.length === 0) return;
 
     // Generate prompt from changes
-    let prompt = 'Applica queste modifiche CSS:\\n\\n';
+    let prompt = 'Applica queste modifiche CSS ai seguenti elementi:\\n\\n';
 
     window.__claudeChanges.forEach((change, index) => {
       prompt += (index + 1) + '. Elemento: ' + change.selector + '\\n';
-      prompt += '   CSS da aggiungere:\\n';
-      if (change.css.position && change.css.position !== 'static') {
-        prompt += '   position: ' + change.css.position + ';\\n';
+      prompt += '   CSS da applicare:\\n';
+
+      // Handle all CSS properties
+      const css = change.css;
+      if (css.position && css.position !== 'static') {
+        prompt += '   position: ' + css.position + ';\\n';
       }
-      if (change.css.left) {
-        prompt += '   left: ' + change.css.left + ';\\n';
+      if (css.left && css.left !== 'auto') {
+        prompt += '   left: ' + css.left + ';\\n';
       }
-      if (change.css.top) {
-        prompt += '   top: ' + change.css.top + ';\\n';
+      if (css.top && css.top !== 'auto') {
+        prompt += '   top: ' + css.top + ';\\n';
+      }
+      if (css.fontSize) {
+        prompt += '   font-size: ' + css.fontSize + ';\\n';
+      }
+      if (css.lineHeight) {
+        prompt += '   line-height: ' + css.lineHeight + ';\\n';
+      }
+      if (css.fontWeight) {
+        prompt += '   font-weight: ' + css.fontWeight + ';\\n';
+      }
+      if (css.color) {
+        prompt += '   color: ' + css.color + ';\\n';
+      }
+      if (css.backgroundColor) {
+        prompt += '   background-color: ' + css.backgroundColor + ';\\n';
+      }
+      if (css.padding) {
+        prompt += '   padding: ' + css.padding + ';\\n';
+      }
+      if (css.margin) {
+        prompt += '   margin: ' + css.margin + ';\\n';
+      }
+      if (css.borderRadius) {
+        prompt += '   border-radius: ' + css.borderRadius + ';\\n';
       }
       prompt += '\\n';
     });
@@ -1304,6 +1658,8 @@ const SELECTOR_SCRIPT = `
     toolbar.remove();
     highlight.remove();
     tooltip.remove();
+    cssPanel.remove();
+    panelStyles.remove();
     document.removeEventListener('mousemove', handleSelectMouseMove, true);
     document.removeEventListener('click', handleSelectClick, true);
     document.removeEventListener('mousedown', handleDragMouseDown, true);
