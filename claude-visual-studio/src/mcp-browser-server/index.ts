@@ -143,12 +143,28 @@ async function getPage(): Promise<Page> {
     currentPage = await browser.newPage();
   }
 
-  // Set up console log capture
+  // Set up console log capture - save to array AND log to stderr
   currentPage.on('console', (msg) => {
+    const logEntry = {
+      type: msg.type(),
+      text: msg.text(),
+      timestamp: Date.now()
+    };
+    consoleLogs.push(logEntry);
+    // Limit logs to last 1000 entries to prevent memory issues
+    if (consoleLogs.length > 1000) {
+      consoleLogs = consoleLogs.slice(-1000);
+    }
     console.error(`[Browser Console] ${msg.type()}: ${msg.text()}`);
   });
 
   currentPage.on('pageerror', (error) => {
+    const logEntry = {
+      type: 'error',
+      text: error.message,
+      timestamp: Date.now()
+    };
+    consoleLogs.push(logEntry);
     console.error(`[Browser Error] ${error.message}`);
   });
 
