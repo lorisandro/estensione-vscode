@@ -985,8 +985,24 @@ const SELECTOR_SCRIPT = `
 
     highlight.style.border = '3px solid #00ff00';
     highlight.style.background = 'rgba(0, 255, 0, 0.2)';
-    status.textContent = 'Selected: ' + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '');
-    status.style.color = '#00ff00';
+
+    // Copy selector to clipboard automatically
+    const selectorText = window.__claudeSelectedElement.selector;
+    navigator.clipboard.writeText(selectorText).then(() => {
+      status.textContent = '📋 Copied! Ctrl+V to paste';
+      status.style.color = '#00ff00';
+      setTimeout(() => updateStatus(), 2500);
+
+      // Show floating notification
+      const notif = document.createElement('div');
+      notif.textContent = selectorText;
+      notif.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#00ff00;color:#000;padding:10px 20px;border-radius:8px;font-family:monospace;font-size:12px;z-index:2147483647;max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 4px 20px rgba(0,255,0,0.4);';
+      document.body.appendChild(notif);
+      setTimeout(() => notif.remove(), 3000);
+    }).catch(() => {
+      status.textContent = el.tagName.toLowerCase();
+      status.style.color = '#00ff00';
+    });
 
     console.log('[Claude Selector] Element selected:', window.__claudeSelectedElement);
   }
