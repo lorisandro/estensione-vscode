@@ -126,25 +126,34 @@ async function connectToBrowser(): Promise<Browser> {
   }
 }
 
+// Track which pages have listeners attached using a Map with page URL as identifier
+const pagesWithListeners = new Map<string, boolean>();
+
 /**
- * Get or create the current page
+ * Get a unique identifier for a page
  */
-async function getPage(): Promise<Page> {
-  const browser = await connectToBrowser();
+function getPageId(page: Page): string {
+  try {
+    // Use target ID if available, otherwise URL
+    return page.target()?.url() || page.url() || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
 
-  if (currentPage && !currentPage.isClosed()) {
-    return currentPage;
+/**
+ * Attach console log listeners to a page
+ */
+function attachConsoleListeners(page: Page, force: boolean = false): void {
+  const pageId = getPageId(page);
+
+  if (!force && pagesWithListeners.get(pageId)) {
+    return; // Already has listeners
   }
 
-  const pages = await browser.pages();
-  if (pages.length > 0) {
-    currentPage = pages[0];
-  } else {
-    currentPage = await browser.newPage();
-  }
+  console.error(`[MCP Browser] Attaching console listeners to page: ${pageId}`);
 
-  // Set up console log capture - save to array AND log to stderr
-  currentPage.on('console', (msg) => {
+  page.on('console', (msg) => {
     const logEntry = {
       type: msg.type(),
       text: msg.text(),
@@ -158,7 +167,7 @@ async function getPage(): Promise<Page> {
     console.error(`[Browser Console] ${msg.type()}: ${msg.text()}`);
   });
 
-  currentPage.on('pageerror', (error) => {
+  page.on('pageerror', (error) => {
     const logEntry = {
       type: 'error',
       text: error.message,
@@ -169,16 +178,70 @@ async function getPage(): Promise<Page> {
   });
 
   // Auto-inject selector toolbar on page load/navigation
-  currentPage.on('load', async () => {
+  page.on('load', async () => {
     try {
-      await currentPage?.evaluate(SELECTOR_SCRIPT);
+      await page?.evaluate(SELECTOR_SCRIPT);
       console.error('[MCP Browser] Selector toolbar auto-injected');
     } catch (e) {
       // Ignore errors during injection (page might be navigating)
     }
   });
 
-  // Inject immediately if page is already loaded
+  pagesWithListeners.set(pageId, true);
+}
+
+/**
+ * Check if a page is still valid and usable
+ */
+async function isPageValid(page: Page | null): Promise<boolean> {
+  if (!page) return false;
+  if (page.isClosed()) return false;
+
+  try {
+    // Try to access the page - this will throw if detached
+    await page.evaluate(() => true);
+    return true;
+  } catch (e) {
+    console.error('[MCP Browser] Page is no longer valid (detached frame)');
+    return false;
+  }
+}
+
+/**
+ * Get or create the current page with auto-reconnect
+ */
+async function getPage(): Promise<Page> {
+  const browser = await connectToBrowser();
+
+  // Check if current page is still valid
+  if (currentPage && await isPageValid(currentPage)) {
+    // Make sure listeners are attached
+    attachConsoleListeners(currentPage);
+    return currentPage;
+  }
+
+  console.error('[MCP Browser] Getting new page reference...');
+
+  const pages = await browser.pages();
+  if (pages.length > 0) {
+    // Find the first valid page
+    for (const page of pages) {
+      if (!page.isClosed()) {
+        currentPage = page;
+        break;
+      }
+    }
+    if (!currentPage || currentPage.isClosed()) {
+      currentPage = pages[0];
+    }
+  } else {
+    currentPage = await browser.newPage();
+  }
+
+  // Attach console listeners
+  attachConsoleListeners(currentPage);
+
+  // Inject selector toolbar immediately if page is already loaded
   try {
     const url = currentPage.url();
     if (url && url !== 'about:blank') {
@@ -712,6 +775,12 @@ const tools: Tool[] = [
       type: 'object',
       properties: {
         clear: { type: 'boolean', description: 'Clear logs after getting them (default: false)' },
+        limit: { type: 'number', description: 'Maximum number of logs to return (default: 100, max: 1000)' },
+        filter: {
+          type: 'string',
+          enum: ['all', 'log', 'error', 'warn', 'info', 'debug'],
+          description: 'Filter logs by type (default: all)'
+        },
       },
     },
   },
@@ -748,6 +817,11 @@ const tools: Tool[] = [
   {
     name: 'chrome_status',
     description: 'Get the browser connection status',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'chrome_reattach_listeners',
+    description: 'Force reattach console log listeners to current page. Use this if logs stopped working after manual navigation.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -2053,7 +2127,9 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       }
       currentPage = pages[index];
       await currentPage.bringToFront();
-      return { success: true, url: currentPage.url() };
+      // Attach console listeners to the new tab
+      attachConsoleListeners(currentPage);
+      return { success: true, url: currentPage.url(), listenersAttached: true };
     }
 
     // Cookies & Storage
@@ -2184,12 +2260,33 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
 
     // Console Logs
     case 'chrome_get_console_logs': {
-      const { clear = false } = args as { clear?: boolean };
-      const logs = [...consoleLogs];
+      const { clear = false, limit = 100, filter = 'all' } = args as {
+        clear?: boolean;
+        limit?: number;
+        filter?: 'all' | 'log' | 'error' | 'warn' | 'info' | 'debug';
+      };
+
+      // Filter logs by type if specified
+      let filteredLogs = filter === 'all'
+        ? [...consoleLogs]
+        : consoleLogs.filter(log => log.type === filter);
+
+      // Apply limit (max 1000)
+      const effectiveLimit = Math.min(limit, 1000);
+      const totalCount = filteredLogs.length;
+      filteredLogs = filteredLogs.slice(-effectiveLimit);
+
       if (clear) {
         consoleLogs = [];
       }
-      return { logs, count: logs.length };
+
+      return {
+        logs: filteredLogs,
+        count: filteredLogs.length,
+        totalCount,
+        filtered: filter !== 'all',
+        truncated: totalCount > effectiveLimit
+      };
     }
 
     // File Upload
@@ -2223,6 +2320,42 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
         debugPort,
         currentUrl: connected ? page.url() : null,
         currentTitle: connected ? await page.title() : null,
+        consoleLogs: consoleLogs.length,
+      };
+    }
+
+    case 'chrome_reattach_listeners': {
+      // Force invalidate current page reference and get fresh one
+      const oldPage = currentPage;
+      const oldUrl = oldPage?.url() || null;
+      currentPage = null;
+
+      // Clear the listeners tracking map
+      pagesWithListeners.clear();
+
+      const browser = await connectToBrowser();
+      const pages = await browser.pages();
+
+      // Find a valid page (preferably the one that's in front)
+      for (const p of pages) {
+        if (!p.isClosed()) {
+          currentPage = p;
+          // Force re-attach listeners
+          attachConsoleListeners(currentPage, true);
+          break;
+        }
+      }
+
+      if (!currentPage) {
+        throw new Error('No valid pages found in browser');
+      }
+
+      return {
+        success: true,
+        url: currentPage.url(),
+        message: 'Console listeners reattached to current page',
+        previousUrl: oldUrl,
+        listenersCleared: true
       };
     }
 
