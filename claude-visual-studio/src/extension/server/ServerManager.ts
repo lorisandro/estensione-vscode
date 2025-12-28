@@ -498,8 +498,12 @@ export class ServerManager {
               }
             }
 
-            // ECONNRESET and ETIMEDOUT are normal during HMR - don't log as errors
-            if (error.code !== 'ECONNRESET' && error.code !== 'ETIMEDOUT') {
+            // ECONNRESET, ETIMEDOUT, ECONNREFUSED, and AggregateError are normal during HMR or when server is down
+            const isTransientError = error.code === 'ECONNRESET' ||
+                                     error.code === 'ETIMEDOUT' ||
+                                     error.code === 'ECONNREFUSED' ||
+                                     error.name === 'AggregateError';
+            if (!isTransientError) {
               console.error('[ServerManager] Proxy error:', error);
             }
             const errorHtml = this.createErrorPage(
@@ -516,7 +520,14 @@ export class ServerManager {
           }
           proxyReq.end();
         } catch (error) {
-          console.error('[ServerManager] Proxy error:', error);
+          const err = error as NodeJS.ErrnoException;
+          const isTransientError = err.code === 'ECONNRESET' ||
+                                   err.code === 'ETIMEDOUT' ||
+                                   err.code === 'ECONNREFUSED' ||
+                                   err.name === 'AggregateError';
+          if (!isTransientError) {
+            console.error('[ServerManager] Proxy error:', error);
+          }
           const errorHtml = this.createErrorPage(
             `Failed to load ${url}`,
             (error as Error).message,
@@ -765,8 +776,12 @@ export class ServerManager {
         );
 
         proxyReq.on('error', (error: NodeJS.ErrnoException) => {
-          // ECONNRESET and ETIMEDOUT are normal during HMR - don't log as errors
-          if (error.code !== 'ECONNRESET' && error.code !== 'ETIMEDOUT') {
+          // Transient errors are normal during HMR or when server is down - don't log
+          const isTransientError = error.code === 'ECONNRESET' ||
+                                   error.code === 'ETIMEDOUT' ||
+                                   error.code === 'ECONNREFUSED' ||
+                                   error.name === 'AggregateError';
+          if (!isTransientError) {
             console.error('[ServerManager] Next.js proxy error:', error);
           }
           if (!res.headersSent) {
@@ -776,7 +791,14 @@ export class ServerManager {
 
         proxyReq.end();
       } catch (error) {
-        console.error('[ServerManager] Next.js proxy error:', error);
+        const err = error as NodeJS.ErrnoException;
+        const isTransientError = err.code === 'ECONNRESET' ||
+                                 err.code === 'ETIMEDOUT' ||
+                                 err.code === 'ECONNREFUSED' ||
+                                 err.name === 'AggregateError';
+        if (!isTransientError) {
+          console.error('[ServerManager] Next.js proxy error:', error);
+        }
         res.status(500).send(`Proxy error: ${(error as Error).message}`);
       }
     });
@@ -840,8 +862,12 @@ export class ServerManager {
         );
 
         proxyReq.on('error', (error: NodeJS.ErrnoException) => {
-          // ECONNRESET and ETIMEDOUT are normal during HMR - don't log as errors
-          if (error.code !== 'ECONNRESET' && error.code !== 'ETIMEDOUT') {
+          // Transient errors are normal during HMR or when server is down - don't log
+          const isTransientError = error.code === 'ECONNRESET' ||
+                                   error.code === 'ETIMEDOUT' ||
+                                   error.code === 'ECONNREFUSED' ||
+                                   error.name === 'AggregateError';
+          if (!isTransientError) {
             console.error('[ServerManager] Media proxy error:', error);
           }
           if (!res.headersSent) {
@@ -851,7 +877,14 @@ export class ServerManager {
 
         proxyReq.end();
       } catch (error) {
-        console.error('[ServerManager] Media proxy error:', error);
+        const err = error as NodeJS.ErrnoException;
+        const isTransientError = err.code === 'ECONNRESET' ||
+                                 err.code === 'ETIMEDOUT' ||
+                                 err.code === 'ECONNREFUSED' ||
+                                 err.name === 'AggregateError';
+        if (!isTransientError) {
+          console.error('[ServerManager] Media proxy error:', error);
+        }
         res.status(500).send(`Proxy error: ${(error as Error).message}`);
       }
     });
