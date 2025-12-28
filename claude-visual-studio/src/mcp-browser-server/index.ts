@@ -152,6 +152,27 @@ async function getPage(): Promise<Page> {
     console.error(`[Browser Error] ${error.message}`);
   });
 
+  // Auto-inject selector toolbar on page load/navigation
+  currentPage.on('load', async () => {
+    try {
+      await currentPage?.evaluate(SELECTOR_SCRIPT);
+      console.error('[MCP Browser] Selector toolbar auto-injected');
+    } catch (e) {
+      // Ignore errors during injection (page might be navigating)
+    }
+  });
+
+  // Inject immediately if page is already loaded
+  try {
+    const url = currentPage.url();
+    if (url && url !== 'about:blank') {
+      await currentPage.evaluate(SELECTOR_SCRIPT);
+      console.error('[MCP Browser] Selector toolbar injected on connect');
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+
   return currentPage;
 }
 
@@ -1165,7 +1186,9 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     case 'chrome_navigate': {
       const { url, waitUntil = 'load' } = args as { url: string; waitUntil?: string };
       await page.goto(url, { waitUntil: waitUntil as any });
-      return { success: true, url: page.url(), title: await page.title() };
+      // Auto-inject selector toolbar after navigation
+      await page.evaluate(SELECTOR_SCRIPT);
+      return { success: true, url: page.url(), title: await page.title(), selectorInjected: true };
     }
 
     case 'chrome_go_back': {
@@ -1185,7 +1208,9 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       } else {
         await page.reload();
       }
-      return { success: true, url: page.url() };
+      // Re-inject selector toolbar after reload
+      await page.evaluate(SELECTOR_SCRIPT);
+      return { success: true, url: page.url(), selectorInjected: true };
     }
 
     // Page Information
