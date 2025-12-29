@@ -89,7 +89,8 @@
       "mcp__claude-browser__chrome_press_key",
       "mcp__claude-browser__chrome_screenshot",
       "mcp__claude-browser__chrome_get_text",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(grep:*)"
     ]
   }
 }

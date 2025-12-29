@@ -72,7 +72,20 @@ function findChromePath(): string {
 }
 
 /**
- * Connect to existing Chrome browser, or launch a new one if not running
+ * Check if Chrome is responding on the debug port
+ */
+async function checkChromeResponding(port: number): Promise<boolean> {
+  try {
+    const response = await fetch(`http://localhost:${port}/json/version`);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Connect to existing Chrome browser with retry logic.
+ * Does NOT launch a new Chrome - only connects to existing one.
  */
 async function connectToBrowser(): Promise<Browser> {
   if (browser && browser.isConnected()) {
@@ -82,48 +95,56 @@ async function connectToBrowser(): Promise<Browser> {
   const debugPort = getChromeDebugPort();
   const browserURL = `http://localhost:${debugPort}`;
 
-  console.error(`[MCP Browser] Connecting to Chrome at ${browserURL}...`);
+  // Retry configuration
+  const MAX_RETRIES = 5;
+  const RETRY_DELAY_MS = 1500;
 
-  try {
-    // Try to connect to existing Chrome first
-    browser = await puppeteer.connect({
-      browserURL,
-      defaultViewport: null, // Use actual window size, don't resize
-    });
+  console.error(`[MCP Browser] Connecting to shared Chrome at ${browserURL}...`);
 
-    console.error('[MCP Browser] Connected to existing Chrome successfully');
-    return browser;
-  } catch (connectError) {
-    // Chrome not running, try to launch it
-    console.error('[MCP Browser] Chrome not running, launching new instance...');
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    console.error(`[MCP Browser] Connection attempt ${attempt}/${MAX_RETRIES}...`);
 
     try {
-      const chromePath = findChromePath();
-      console.error(`[MCP Browser] Using Chrome at: ${chromePath}`);
+      // First check if Chrome is responding on the port
+      const isResponding = await checkChromeResponding(debugPort);
 
-      browser = await puppeteer.launch({
-        executablePath: chromePath,
-        headless: false,
-        defaultViewport: null, // Use actual window size, not fixed viewport
-        args: [
-          `--remote-debugging-port=${debugPort}`,
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--start-maximized',
-          '--window-size=1920,1080',
-        ],
-      });
+      if (isResponding) {
+        browser = await puppeteer.connect({
+          browserURL,
+          defaultViewport: null, // Use actual window size, don't resize
+        });
 
-      console.error('[MCP Browser] Launched new Chrome instance successfully');
-      return browser;
-    } catch (launchError) {
-      throw new Error(
-        `Failed to connect or launch Chrome. ` +
-        `Connect error: ${connectError instanceof Error ? connectError.message : 'Unknown'}. ` +
-        `Launch error: ${launchError instanceof Error ? launchError.message : 'Unknown'}`
-      );
+        // Set up disconnection handler
+        browser.on('disconnected', () => {
+          console.error('[MCP Browser] Browser disconnected - will reconnect on next command');
+          browser = null;
+          currentPage = null;
+        });
+
+        console.error(`[MCP Browser] Connected to shared Chrome successfully (port ${debugPort})`);
+        return browser;
+      } else {
+        console.error(`[MCP Browser] Chrome not responding on port ${debugPort}`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[MCP Browser] Attempt ${attempt} failed: ${errorMsg}`);
+    }
+
+    // Wait before next retry (unless this is the last attempt)
+    if (attempt < MAX_RETRIES) {
+      console.error(`[MCP Browser] Waiting ${RETRY_DELAY_MS}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
     }
   }
+
+  // All retries failed - give helpful error message
+  throw new Error(
+    `Could not connect to Chrome on port ${debugPort} after ${MAX_RETRIES} attempts.\n` +
+    `Please ensure Chrome is running with remote debugging:\n` +
+    `1. Use VS Code command: "Claude Visual Studio: Open External Browser"\n` +
+    `2. Or start Chrome manually with: chrome --remote-debugging-port=${debugPort}`
+  );
 }
 
 // Track which pages have listeners attached using a Map with page URL as identifier
@@ -816,8 +837,21 @@ const tools: Tool[] = [
   // Connection Status
   {
     name: 'chrome_status',
-    description: 'Get the browser connection status',
+    description: 'Get the browser connection status including port, URL, and connection state',
     inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'chrome_connect',
+    description: 'Force reconnect to an existing Chrome browser. Use this if connection was lost or to connect to a Chrome started by another terminal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        port: {
+          type: 'number',
+          description: 'Chrome debug port (default: 9222 or from config file)',
+        },
+      },
+    },
   },
   {
     name: 'chrome_reattach_listeners',
@@ -2315,12 +2349,27 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
     case 'chrome_status': {
       const connected = browser?.isConnected() ?? false;
       const debugPort = getChromeDebugPort();
+      let currentUrl = null;
+      let currentTitle = null;
+
+      if (connected && currentPage && !currentPage.isClosed()) {
+        try {
+          currentUrl = currentPage.url();
+          currentTitle = await currentPage.title();
+        } catch {
+          // Page might be navigating
+        }
+      }
+
       return {
         connected,
-        debugPort,
-        currentUrl: connected ? page.url() : null,
-        currentTitle: connected ? await page.title() : null,
+        port: debugPort,
+        currentUrl,
+        currentTitle,
         consoleLogs: consoleLogs.length,
+        message: connected
+          ? `Connected to shared Chrome on port ${debugPort}`
+          : `Not connected. Use chrome_connect or VS Code command "Claude Visual Studio: Open External Browser" to start.`,
       };
     }
 
@@ -2366,6 +2415,51 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
         currentPage = null;
       }
       return { success: true, message: 'Disconnected from browser' };
+    }
+
+    case 'chrome_connect': {
+      // Disconnect existing connection if any
+      if (browser) {
+        try {
+          browser.disconnect();
+        } catch {
+          // Ignore disconnect errors
+        }
+        browser = null;
+        currentPage = null;
+      }
+
+      // Clear page listeners tracking
+      pagesWithListeners.clear();
+
+      try {
+        // Connect to browser with retry logic
+        const connectedBrowser = await connectToBrowser();
+        const pages = await connectedBrowser.pages();
+
+        // Get the active page
+        if (pages.length > 0) {
+          currentPage = pages[0];
+          attachConsoleListeners(currentPage);
+        }
+
+        const debugPort = getChromeDebugPort();
+        const pageUrl = currentPage ? currentPage.url() : null;
+
+        return {
+          success: true,
+          port: debugPort,
+          currentUrl: pageUrl,
+          message: `Successfully connected to shared Chrome on port ${debugPort}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          success: false,
+          error: errorMsg,
+          message: `Failed to connect: ${errorMsg}`,
+        };
+      }
     }
 
     // Element Selection Tools
