@@ -91,7 +91,9 @@
       "mcp__claude-browser__chrome_get_text",
       "Bash(where:*)",
       "Bash(grep:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "mcp__claude-browser__chrome_connect",
+      "mcp__claude-browser__chrome_enable_selector"
     ]
   }
 }

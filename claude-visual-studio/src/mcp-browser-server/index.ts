@@ -84,8 +84,60 @@ async function checkChromeResponding(port: number): Promise<boolean> {
 }
 
 /**
+ * Launch Chrome with remote debugging enabled
+ */
+async function launchChrome(port: number): Promise<boolean> {
+  const chromePath = findChromePath();
+  if (!fs.existsSync(chromePath)) {
+    console.error(`[MCP Browser] Chrome not found at: ${chromePath}`);
+    return false;
+  }
+
+  const { spawn } = await import('child_process');
+  const userDataDir = path.join(
+    process.env.TEMP || process.env.TMPDIR || '/tmp',
+    `claude-chrome-mcp-${Date.now()}`
+  );
+
+  const args = [
+    `--remote-debugging-port=${port}`,
+    '--no-first-run',
+    '--no-default-browser-check',
+    `--user-data-dir=${userDataDir}`,
+    'about:blank',
+  ];
+
+  console.error(`[MCP Browser] Launching Chrome: ${chromePath}`);
+  console.error(`[MCP Browser] Args: ${args.join(' ')}`);
+
+  const isWindows = process.platform === 'win32';
+
+  const chromeProcess = spawn(chromePath, args, {
+    detached: true,
+    stdio: 'ignore',
+    shell: isWindows,
+    windowsHide: false,
+  });
+
+  chromeProcess.unref();
+
+  // Wait for Chrome to start and verify it's listening
+  for (let i = 0; i < 15; i++) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const isReady = await checkChromeResponding(port);
+    if (isReady) {
+      console.error(`[MCP Browser] Chrome ready on port ${port} after ${i + 1} attempts`);
+      return true;
+    }
+  }
+
+  console.error('[MCP Browser] Chrome launched but not responding');
+  return false;
+}
+
+/**
  * Connect to existing Chrome browser with retry logic.
- * Does NOT launch a new Chrome - only connects to existing one.
+ * Will automatically launch Chrome if not running.
  */
 async function connectToBrowser(): Promise<Browser> {
   if (browser && browser.isConnected()) {
@@ -95,55 +147,59 @@ async function connectToBrowser(): Promise<Browser> {
   const debugPort = getChromeDebugPort();
   const browserURL = `http://localhost:${debugPort}`;
 
-  // Retry configuration
-  const MAX_RETRIES = 5;
-  const RETRY_DELAY_MS = 1500;
-
   console.error(`[MCP Browser] Connecting to shared Chrome at ${browserURL}...`);
+
+  // First check if Chrome is already running
+  let isResponding = await checkChromeResponding(debugPort);
+
+  // If not running, launch Chrome automatically
+  if (!isResponding) {
+    console.error(`[MCP Browser] Chrome not running on port ${debugPort}, launching automatically...`);
+    const launched = await launchChrome(debugPort);
+    if (!launched) {
+      throw new Error(
+        `Could not launch Chrome automatically.\n` +
+        `Please start Chrome manually with: chrome --remote-debugging-port=${debugPort}`
+      );
+    }
+    isResponding = true;
+  }
+
+  // Retry configuration for connection
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 1000;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     console.error(`[MCP Browser] Connection attempt ${attempt}/${MAX_RETRIES}...`);
 
     try {
-      // First check if Chrome is responding on the port
-      const isResponding = await checkChromeResponding(debugPort);
+      browser = await puppeteer.connect({
+        browserURL,
+        defaultViewport: null, // Use actual window size, don't resize
+      });
 
-      if (isResponding) {
-        browser = await puppeteer.connect({
-          browserURL,
-          defaultViewport: null, // Use actual window size, don't resize
-        });
+      // Set up disconnection handler
+      browser.on('disconnected', () => {
+        console.error('[MCP Browser] Browser disconnected - will reconnect on next command');
+        browser = null;
+        currentPage = null;
+      });
 
-        // Set up disconnection handler
-        browser.on('disconnected', () => {
-          console.error('[MCP Browser] Browser disconnected - will reconnect on next command');
-          browser = null;
-          currentPage = null;
-        });
-
-        console.error(`[MCP Browser] Connected to shared Chrome successfully (port ${debugPort})`);
-        return browser;
-      } else {
-        console.error(`[MCP Browser] Chrome not responding on port ${debugPort}`);
-      }
+      console.error(`[MCP Browser] Connected to shared Chrome successfully (port ${debugPort})`);
+      return browser;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[MCP Browser] Attempt ${attempt} failed: ${errorMsg}`);
-    }
 
-    // Wait before next retry (unless this is the last attempt)
-    if (attempt < MAX_RETRIES) {
-      console.error(`[MCP Browser] Waiting ${RETRY_DELAY_MS}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+      if (attempt < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+      }
     }
   }
 
-  // All retries failed - give helpful error message
   throw new Error(
-    `Could not connect to Chrome on port ${debugPort} after ${MAX_RETRIES} attempts.\n` +
-    `Please ensure Chrome is running with remote debugging:\n` +
-    `1. Use VS Code command: "Claude Visual Studio: Open External Browser"\n` +
-    `2. Or start Chrome manually with: chrome --remote-debugging-port=${debugPort}`
+    `Could not connect to Chrome on port ${debugPort}.\n` +
+    `Chrome was launched but connection failed.`
   );
 }
 
