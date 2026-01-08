@@ -2587,14 +2587,105 @@ class ElementInspector {
       this.overlay.style.backgroundColor = 'rgba(0, 255, 0, 0.1)';
     }
 
+    // Get element info (includes unique CSS selector)
+    const elementInfo = this.getElementInfo(element);
+
+    // Auto-copy unique CSS selector to clipboard
+    this.copyToClipboard(elementInfo.selector);
+
     // Send selection info to parent
     this.sendMessage({
       type: 'element-select',
-      data: this.getElementInfo(element),
+      data: elementInfo,
       timestamp: Date.now(),
     });
 
     console.log('[Element Inspector] Selected:', element);
+    console.log('[Element Inspector] Selector copied:', elementInfo.selector);
+  }
+
+  /**
+   * Copy text to clipboard and show visual feedback
+   */
+  private copyToClipboard(text: string): void {
+    navigator.clipboard.writeText(text).then(() => {
+      this.showCopyFeedback(text);
+    }).catch((error) => {
+      console.error('[Element Inspector] Failed to copy to clipboard:', error);
+      // Fallback for older browsers or restricted contexts
+      this.fallbackCopyToClipboard(text);
+    });
+  }
+
+  /**
+   * Fallback copy method using textarea
+   */
+  private fallbackCopyToClipboard(text: string): void {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      this.showCopyFeedback(text);
+    } catch (error) {
+      console.error('[Element Inspector] Fallback copy failed:', error);
+    }
+    document.body.removeChild(textarea);
+  }
+
+  /**
+   * Show visual feedback when selector is copied
+   */
+  private showCopyFeedback(selector: string): void {
+    // Create feedback toast
+    const toast = document.createElement('div');
+    toast.textContent = `✓ Copied: ${selector.length > 50 ? selector.substring(0, 50) + '...' : selector}`;
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e1e1e;
+      color: #00ff00;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      z-index: 2147483647;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 1px solid #00ff00;
+      animation: fadeInUp 0.3s ease-out;
+      pointer-events: none;
+    `;
+
+    // Add animation keyframes
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+      }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(toast);
+
+    // Remove toast after 2 seconds
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.3s ease-out forwards';
+      setTimeout(() => {
+        toast.remove();
+        style.remove();
+      }, 300);
+    }, 2000);
   }
 
   /**

@@ -1419,21 +1419,132 @@ const SELECTOR_SCRIPT = `
   let isDraggingElement = false;
 
   function getSelector(el) {
-    if (el.id) return '#' + el.id;
-    let path = [];
-    while (el && el.nodeType === 1) {
-      let selector = el.tagName.toLowerCase();
-      if (el.id) {
-        selector = '#' + el.id;
-        path.unshift(selector);
-        break;
-      } else if (el.className && typeof el.className === 'string') {
-        const classes = el.className.trim().split(/\\s+/).filter(c => !c.startsWith('__claude'));
-        if (classes.length) selector += '.' + classes.join('.');
-      }
-      path.unshift(selector);
-      el = el.parentElement;
+    // Helper: test if a selector uniquely matches the element
+    function isUnique(selector) {
+      try {
+        const matches = document.querySelectorAll(selector);
+        return matches.length === 1 && matches[0] === el;
+      } catch { return false; }
     }
+
+    // Helper: get clean classes (filter out internal ones)
+    function getClasses(element) {
+      if (!element.className || typeof element.className !== 'string') return [];
+      return element.className.trim().split(/\\s+/).filter(c => c && !c.startsWith('__claude'));
+    }
+
+    // Helper: escape special characters in selectors
+    function escapeSelector(str) {
+      return CSS.escape ? CSS.escape(str) : str.replace(/[^a-zA-Z0-9_-]/g, function(c) { return '\\\\' + c; });
+    }
+
+    const tag = el.tagName.toLowerCase();
+
+    // 1. Try ID first (most specific)
+    if (el.id) {
+      const idSelector = '#' + escapeSelector(el.id);
+      if (isUnique(idSelector)) return idSelector;
+    }
+
+    // 2. Try single unique class
+    const classes = getClasses(el);
+    for (const cls of classes) {
+      const classSelector = '.' + escapeSelector(cls);
+      if (isUnique(classSelector)) return classSelector;
+    }
+
+    // 3. Try tag + single class
+    for (const cls of classes) {
+      const tagClassSelector = tag + '.' + escapeSelector(cls);
+      if (isUnique(tagClassSelector)) return tagClassSelector;
+    }
+
+    // 4. Try tag + multiple classes (up to 2)
+    if (classes.length >= 2) {
+      for (let i = 0; i < classes.length - 1; i++) {
+        for (let j = i + 1; j < classes.length; j++) {
+          const twoClassSelector = tag + '.' + escapeSelector(classes[i]) + '.' + escapeSelector(classes[j]);
+          if (isUnique(twoClassSelector)) return twoClassSelector;
+        }
+      }
+    }
+
+    // 5. Try data-* attributes
+    for (const attr of el.attributes) {
+      if (attr.name.startsWith('data-') || attr.name === 'name' || attr.name === 'type' || attr.name === 'role') {
+        const attrSelector = tag + '[' + attr.name + '="' + escapeSelector(attr.value) + '"]';
+        if (isUnique(attrSelector)) return attrSelector;
+      }
+    }
+
+    // 6. Try tag + all classes
+    if (classes.length > 0) {
+      const fullClassSelector = tag + '.' + classes.map(c => escapeSelector(c)).join('.');
+      if (isUnique(fullClassSelector)) return fullClassSelector;
+    }
+
+    // 7. Try :nth-of-type with parent context
+    const parent = el.parentElement;
+    if (parent) {
+      const siblings = Array.from(parent.children).filter(c => c.tagName === el.tagName);
+      if (siblings.length > 1) {
+        const index = siblings.indexOf(el) + 1;
+
+        // Try with parent class context
+        const parentClasses = getClasses(parent);
+        for (const pCls of parentClasses) {
+          const nthSelector = '.' + escapeSelector(pCls) + ' > ' + tag + ':nth-of-type(' + index + ')';
+          if (isUnique(nthSelector)) return nthSelector;
+        }
+
+        // Try with parent ID
+        if (parent.id) {
+          const nthWithId = '#' + escapeSelector(parent.id) + ' > ' + tag + ':nth-of-type(' + index + ')';
+          if (isUnique(nthWithId)) return nthWithId;
+        }
+
+        // Try just tag:nth-of-type with element classes
+        if (classes.length > 0) {
+          const nthWithClass = tag + '.' + escapeSelector(classes[0]) + ':nth-of-type(' + index + ')';
+          if (isUnique(nthWithClass)) return nthWithClass;
+        }
+      }
+    }
+
+    // 8. Minimal path fallback - find shortest unique path
+    let current = el;
+    let path = [];
+    while (current && current.nodeType === 1 && current !== document.body) {
+      let part = current.tagName.toLowerCase();
+
+      if (current.id) {
+        path.unshift('#' + escapeSelector(current.id));
+        break;
+      }
+
+      const currentClasses = getClasses(current);
+      if (currentClasses.length > 0) {
+        part += '.' + escapeSelector(currentClasses[0]);
+      } else {
+        // Add nth-child if needed for disambiguation
+        const parent = current.parentElement;
+        if (parent) {
+          const siblings = Array.from(parent.children).filter(c => c.tagName === current.tagName);
+          if (siblings.length > 1) {
+            part += ':nth-of-type(' + (siblings.indexOf(current) + 1) + ')';
+          }
+        }
+      }
+
+      path.unshift(part);
+
+      // Check if current path is unique
+      const currentPath = path.join(' > ');
+      if (isUnique(currentPath)) return currentPath;
+
+      current = current.parentElement;
+    }
+
     return path.join(' > ');
   }
 
