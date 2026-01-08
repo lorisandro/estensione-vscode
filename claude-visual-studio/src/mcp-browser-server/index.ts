@@ -93,11 +93,11 @@ async function launchChrome(port: number): Promise<boolean> {
     return false;
   }
 
-  const { spawn } = await import('child_process');
-  const userDataDir = path.join(
-    process.env.TEMP || process.env.TMPDIR || '/tmp',
-    `claude-chrome-mcp-${Date.now()}`
-  );
+  const { execFile } = await import('child_process');
+
+  // Use forward slashes for Windows compatibility
+  const tempDir = (process.env.TEMP || process.env.TMPDIR || '/tmp').replace(/\\/g, '/');
+  const userDataDir = `${tempDir}/claude-chrome-mcp-${Date.now()}`;
 
   const args = [
     `--remote-debugging-port=${port}`,
@@ -110,29 +110,31 @@ async function launchChrome(port: number): Promise<boolean> {
   console.error(`[MCP Browser] Launching Chrome: ${chromePath}`);
   console.error(`[MCP Browser] Args: ${args.join(' ')}`);
 
-  const isWindows = process.platform === 'win32';
+  return new Promise((resolve) => {
+    const chromeProcess = execFile(chromePath, args, { windowsHide: false }, (error) => {
+      if (error) {
+        console.error(`[MCP Browser] Chrome process error: ${error.message}`);
+      }
+    });
 
-  const chromeProcess = spawn(chromePath, args, {
-    detached: true,
-    stdio: 'ignore',
-    shell: isWindows,
-    windowsHide: false,
+    chromeProcess.unref();
+
+    // Wait for Chrome to start and verify it's listening
+    let attempts = 0;
+    const checkInterval = setInterval(async () => {
+      attempts++;
+      const isReady = await checkChromeResponding(port);
+      if (isReady) {
+        clearInterval(checkInterval);
+        console.error(`[MCP Browser] Chrome ready on port ${port} after ${attempts} attempts`);
+        resolve(true);
+      } else if (attempts >= 15) {
+        clearInterval(checkInterval);
+        console.error('[MCP Browser] Chrome launched but not responding after 15 attempts');
+        resolve(false);
+      }
+    }, 500);
   });
-
-  chromeProcess.unref();
-
-  // Wait for Chrome to start and verify it's listening
-  for (let i = 0; i < 15; i++) {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const isReady = await checkChromeResponding(port);
-    if (isReady) {
-      console.error(`[MCP Browser] Chrome ready on port ${port} after ${i + 1} attempts`);
-      return true;
-    }
-  }
-
-  console.error('[MCP Browser] Chrome launched but not responding');
-  return false;
 }
 
 /**
