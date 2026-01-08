@@ -937,10 +937,17 @@ async function launchExternalChrome(): Promise<{ success: boolean; port?: number
   try {
     console.log(`[ExternalChrome] Launching Chrome from: ${chromePath}`);
     console.log(`[ExternalChrome] Debug port: ${debugPort}`);
+    console.log(`[ExternalChrome] User data dir: ${userDataDir}`);
+    console.log(`[ExternalChrome] Args: ${args.join(' ')}`);
+
+    // On Windows, use shell: true to properly launch Chrome
+    const isWindows = process.platform === 'win32';
 
     externalChromeProcess = spawn(chromePath, args, {
       detached: true,
       stdio: 'ignore',
+      shell: isWindows,
+      windowsHide: false,
     });
 
     externalChromePort = debugPort;
@@ -960,8 +967,37 @@ async function launchExternalChrome(): Promise<{ success: boolean; port?: number
     // Don't hold the parent process
     externalChromeProcess.unref();
 
-    // Wait a bit for Chrome to start
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Wait for Chrome to start and verify it's listening
+    console.log('[ExternalChrome] Waiting for Chrome to start...');
+    let chromeReady = false;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        // Try to connect to the debug port
+        const http = require('http');
+        const checkResponse = await new Promise<boolean>((resolve) => {
+          const req = http.get(`http://127.0.0.1:${debugPort}/json/version`, (res: any) => {
+            resolve(res.statusCode === 200);
+          });
+          req.on('error', () => resolve(false));
+          req.setTimeout(1000, () => {
+            req.destroy();
+            resolve(false);
+          });
+        });
+        if (checkResponse) {
+          console.log(`[ExternalChrome] Chrome ready on port ${debugPort} after ${attempt + 1} attempts`);
+          chromeReady = true;
+          break;
+        }
+      } catch {
+        // Continue waiting
+      }
+    }
+
+    if (!chromeReady) {
+      console.warn('[ExternalChrome] Chrome may not be ready, but continuing...');
+    }
 
     // Save the debug port info to workspace for Claude Code to find
     await saveChromeDebugPortToWorkspace(debugPort);

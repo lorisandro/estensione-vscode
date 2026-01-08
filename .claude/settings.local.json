@@ -90,7 +90,8 @@
       "mcp__claude-browser__chrome_screenshot",
       "mcp__claude-browser__chrome_get_text",
       "Bash(where:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(tasklist:*)"
     ]
   }
 }
