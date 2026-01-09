@@ -1,54 +1,26 @@
 {
   "name": "claude-visual-studio",
   "displayName": "Claude Visual Studio",
-  "description": "Visual web editor with browser preview, element selection, and Claude Code AI integration",
+  "description": "Dev server and MCP integration for Claude Code AI",
   "version": "0.1.0",
   "publisher": "your-publisher-name",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Visualization",
     "Other"
   ],
   "keywords": [
-    "visual editor",
-    "wysiwyg",
-    "browser preview",
     "claude",
-    "ai"
+    "ai",
+    "dev server"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onWebviewPanel:claudeVisualStudio"
+    "onStartupFinished"
   ],
   "main": "./dist/extension/index.js",
   "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "claude-visual-studio",
-          "title": "Claude Visual Studio",
-          "icon": "$(preview)"
-        }
-      ]
-    },
-    "views": {
-      "claude-visual-studio": [
-        {
-          "id": "claudeVisualStudio.welcome",
-          "name": "Visual Editor",
-          "type": "webview"
-        }
-      ]
-    },
     "commands": [
-      {
-        "command": "claudeVisualStudio.openPreview",
-        "title": "Open Visual Preview",
-        "category": "Claude Visual Studio",
-        "icon": "$(open-preview)"
-      },
       {
         "command": "claudeVisualStudio.openSettings",
         "title": "Settings",
@@ -60,66 +32,15 @@
         "title": "Reload Extension",
         "category": "Claude Visual Studio",
         "icon": "$(sync)"
-      },
-      {
-        "command": "claudeVisualStudio.toggleSelection",
-        "title": "Toggle Element Selection Mode",
-        "category": "Claude Visual Studio",
-        "icon": "$(search)"
-      },
-      {
-        "command": "claudeVisualStudio.refreshPreview",
-        "title": "Refresh Preview",
-        "category": "Claude Visual Studio",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "claudeVisualStudio.forceRecreate",
-        "title": "Force Recreate Panel",
-        "category": "Claude Visual Studio",
-        "icon": "$(debug-restart)"
-      },
-      {
-        "command": "claudeVisualStudio.openExternalBrowser",
-        "title": "Open External Chrome (MCP)",
-        "category": "Claude Visual Studio",
-        "icon": "$(globe)"
-      }
-    ],
-    "keybindings": [
-      {
-        "command": "claudeVisualStudio.openPreview",
-        "key": "ctrl+alt+b",
-        "mac": "cmd+alt+b"
-      },
-      {
-        "command": "claudeVisualStudio.toggleSelection",
-        "key": "ctrl+shift+s",
-        "mac": "cmd+shift+s"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "claudeVisualStudio.openPreview"
-        },
-        {
           "command": "claudeVisualStudio.openSettings"
         },
         {
           "command": "claudeVisualStudio.reloadExtension"
-        },
-        {
-          "command": "claudeVisualStudio.toggleSelection"
-        },
-        {
-          "command": "claudeVisualStudio.refreshPreview"
-        },
-        {
-          "command": "claudeVisualStudio.forceRecreate"
-        },
-        {
-          "command": "claudeVisualStudio.openExternalBrowser"
         }
       ]
     },
@@ -151,40 +72,31 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "npm run build:extension && npm run build:webview && npm run build:mcp && npm run build:mcp-browser && npm run build:injected",
+    "build": "npm run build:extension && npm run build:mcp && npm run build:mcp-browser && npm run build:injected",
     "build:extension": "esbuild src/extension/index.ts --bundle --outfile=dist/extension/index.js --external:vscode --format=cjs --platform=node",
-    "build:webview": "vite build",
     "build:mcp": "esbuild src/mcp-server/index.ts --bundle --outfile=dist/mcp-server/index.js --format=esm --platform=node --packages=external",
     "build:mcp-browser": "esbuild src/mcp-browser-server/index.ts --bundle --outfile=dist/mcp-browser-server/index.js --format=esm --platform=node --packages=external",
     "build:injected": "esbuild src/injected-scripts/element-inspector.ts --bundle --outfile=dist/injected-scripts/element-inspector.js --format=iife --platform=browser",
-    "watch": "concurrently \"npm run watch:extension\" \"npm run watch:webview\"",
+    "watch": "npm run watch:extension",
     "watch:extension": "esbuild src/extension/index.ts --bundle --outfile=dist/extension/index.js --external:vscode --format=cjs --platform=node --watch",
-    "watch:webview": "vite build --watch",
-    "dev:webview": "vite",
     "dev:server": "npm run build:extension && node dist/extension/server/test-server.js",
     "test:server": "npm run build:extension && node dist/extension/server/test-server.js .",
     "mcp:start": "node dist/mcp-server/index.js",
     "mcp:browser": "node dist/mcp-browser-server/index.js",
-    "lint": "eslint src --ext ts,tsx",
-    "typecheck": "npm run typecheck:extension && npm run typecheck:webview",
-    "typecheck:extension": "tsc -p tsconfig.extension.json --noEmit",
-    "typecheck:webview": "tsc -p tsconfig.webview.json --noEmit"
+    "lint": "eslint src --ext ts",
+    "typecheck": "tsc -p tsconfig.extension.json --noEmit"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
-    "@types/react": "^18.2.45",
-    "@types/react-dom": "^18.2.18",
     "@types/vscode": "^1.85.0",
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
-    "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^8.2.2",
     "esbuild": "^0.19.10",
     "eslint": "^8.56.0",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.10"
+    "typescript": "^5.3.3"
   },
   "dependencies": {
     "@babel/generator": "^7.23.6",
@@ -195,9 +107,6 @@
     "chokidar": "^3.5.3",
     "express": "^4.18.2",
     "puppeteer-core": "^24.34.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "ws": "^8.16.0",
-    "zustand": "^4.4.7"
+    "ws": "^8.16.0"
   }
 }

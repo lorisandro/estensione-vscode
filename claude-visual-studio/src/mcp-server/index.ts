@@ -20,8 +20,8 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY_MS = 2000;
 
-const WS_BASE_PORT = 3334; // Starting port for communication with VS Code extension
-const MAX_PORT_ATTEMPTS = 10; // Try up to 10 ports
+const WS_BASE_PORT = 3334;
+const MAX_PORT_ATTEMPTS = 10;
 const PORT_FILE_NAME = '.vscode/.claude-visual-studio-port';
 
 /**
@@ -36,7 +36,6 @@ function readPortFromWorkspace(): number | null {
       const content = fs.readFileSync(portFilePath, 'utf-8');
       const data = JSON.parse(content);
 
-      // Check if port file is not too old (max 1 hour)
       const maxAge = 60 * 60 * 1000; // 1 hour
       if (Date.now() - data.timestamp < maxAge) {
         console.error(`[MCP] Found port ${data.port} in workspace file`);
@@ -95,7 +94,6 @@ function tryConnectToPort(port: number): Promise<void> {
       console.error('[MCP] Disconnected from VS Code extension');
       wsConnection = null;
 
-      // Attempt auto-reconnect (extension might have restarted)
       if (!isReconnecting && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
         isReconnecting = true;
         reconnectAttempts++;
@@ -103,29 +101,26 @@ function tryConnectToPort(port: number): Promise<void> {
 
         setTimeout(async () => {
           isReconnecting = false;
-          // Clear connected port so we try workspace file and port scan
           connectedPort = null;
           try {
             await connectToExtension();
-            reconnectAttempts = 0; // Reset on success
+            reconnectAttempts = 0;
             console.error('[MCP] Auto-reconnect successful');
           } catch (error) {
             console.error('[MCP] Auto-reconnect failed:', (error as Error).message);
-            // Will retry on next command
           }
         }, RECONNECT_DELAY_MS);
       } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
         console.error('[MCP] Max reconnect attempts reached. Will retry on next command.');
-        reconnectAttempts = 0; // Reset for next round
+        reconnectAttempts = 0;
         connectedPort = null;
       }
     });
   });
 }
 
-// Connect to VS Code extension, trying multiple ports
+// Connect to VS Code extension
 async function connectToExtension(): Promise<void> {
-  // If we were previously connected, try that port first
   if (connectedPort) {
     try {
       await tryConnectToPort(connectedPort);
@@ -135,7 +130,6 @@ async function connectToExtension(): Promise<void> {
     }
   }
 
-  // Try to read port from workspace file first (most reliable)
   const workspacePort = readPortFromWorkspace();
   if (workspacePort) {
     try {
@@ -147,7 +141,6 @@ async function connectToExtension(): Promise<void> {
     }
   }
 
-  // Try ports starting from base port
   for (let i = 0; i < MAX_PORT_ATTEMPTS; i++) {
     const port = WS_BASE_PORT + i;
     try {
@@ -161,10 +154,9 @@ async function connectToExtension(): Promise<void> {
   throw new Error(`Could not connect to VS Code extension on ports ${WS_BASE_PORT}-${WS_BASE_PORT + MAX_PORT_ATTEMPTS - 1}. Make sure the extension is running.`);
 }
 
-// Send command to VS Code extension and wait for response
+// Send command to VS Code extension
 async function sendCommand(command: string, params: Record<string, any> = {}): Promise<any> {
   if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
-    // Try to reconnect
     try {
       await connectToExtension();
     } catch {
@@ -183,7 +175,6 @@ async function sendCommand(command: string, params: Record<string, any> = {}): P
       params,
     }));
 
-    // Timeout after 30 seconds
     setTimeout(() => {
       if (pendingRequests.has(id)) {
         pendingRequests.delete(id);
@@ -196,7 +187,7 @@ async function sendCommand(command: string, params: Record<string, any> = {}): P
 // Create MCP server
 const server = new Server(
   {
-    name: 'claude-visual-studio-browser',
+    name: 'claude-visual-studio',
     version: '1.0.0',
   },
   {
@@ -210,174 +201,6 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
-      {
-        name: 'browser_navigate',
-        description: 'Navigate the browser to a URL',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            url: {
-              type: 'string',
-              description: 'The URL to navigate to',
-            },
-          },
-          required: ['url'],
-        },
-      },
-      {
-        name: 'browser_get_url',
-        description: 'Get the current URL of the browser',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_get_html',
-        description: 'Get the HTML content of the current page',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            selector: {
-              type: 'string',
-              description: 'Optional CSS selector to get HTML of specific element',
-            },
-          },
-        },
-      },
-      {
-        name: 'browser_get_text',
-        description: 'Get the visible text content of the current page',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            selector: {
-              type: 'string',
-              description: 'Optional CSS selector to get text of specific element',
-            },
-          },
-        },
-      },
-      {
-        name: 'browser_screenshot',
-        description: 'Take a screenshot of the current page (returns base64 encoded image)',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_click',
-        description: 'Click on an element in the page',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            selector: {
-              type: 'string',
-              description: 'CSS selector of the element to click',
-            },
-          },
-          required: ['selector'],
-        },
-      },
-      {
-        name: 'browser_type',
-        description: 'Type text into an input field',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            selector: {
-              type: 'string',
-              description: 'CSS selector of the input element',
-            },
-            text: {
-              type: 'string',
-              description: 'Text to type',
-            },
-          },
-          required: ['selector', 'text'],
-        },
-      },
-      {
-        name: 'browser_refresh',
-        description: 'Refresh the current page',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_back',
-        description: 'Go back in browser history',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_forward',
-        description: 'Go forward in browser history',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_get_elements',
-        description: 'Get a list of elements matching a selector with their properties',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            selector: {
-              type: 'string',
-              description: 'CSS selector to find elements',
-            },
-          },
-          required: ['selector'],
-        },
-      },
-      {
-        name: 'browser_get_selected_element',
-        description: 'Get the currently selected element in selection mode. Returns element info including tag, id, classes, selector, xpath, attributes, bounding box, and computed styles.',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_open',
-        description: 'Open the Visual Preview panel in VS Code. Use this if the browser is not visible.',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_get_console_logs',
-        description: 'Get console logs from the browser preview. Captures console.log, console.error, console.warn, console.info, console.debug, uncaught errors, and unhandled promise rejections from the previewed page.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            filter: {
-              type: 'string',
-              description: 'Filter logs by type: "all", "log", "error", "warn", "info", "debug". Default is "all".',
-              enum: ['all', 'log', 'error', 'warn', 'info', 'debug'],
-            },
-            limit: {
-              type: 'number',
-              description: 'Maximum number of logs to return. Default is 100.',
-            },
-          },
-        },
-      },
-      {
-        name: 'browser_clear_console_logs',
-        description: 'Clear the console logs buffer in the browser preview.',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
       {
         name: 'backend_start_dev_server',
         description: 'Start a development server (Next.js, Vite, etc.) and capture its logs in real-time. The server output will be available via backend_get_logs.',
@@ -476,30 +299,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
         },
       },
-      {
-        name: 'browser_get_all_resources',
-        description: 'Extract ALL resources from the current page including stylesheets, scripts, images, fonts, videos, audio, iframes, links, and meta tags. Returns complete URLs and content where accessible.',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_get_all_styles',
-        description: 'Extract ALL CSS styles from the current page including external stylesheet rules, inline styles, and computed styles for key elements. Returns the actual CSS code.',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'browser_get_all_scripts',
-        description: 'Extract ALL JavaScript from the current page including external script URLs, inline script content, and event handlers (onclick, onload, etc.).',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
     ],
   };
 });
@@ -512,127 +311,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     let result: any;
 
     switch (name) {
-      case 'browser_navigate':
-        result = await sendCommand('navigate', { url: args?.url });
-        return { content: [{ type: 'text', text: `Navigated to: ${args?.url}` }] };
-
-      case 'browser_get_url':
-        result = await sendCommand('getUrl');
-        return { content: [{ type: 'text', text: `Current URL: ${result.url}` }] };
-
-      case 'browser_get_html':
-        result = await sendCommand('getHtml', { selector: args?.selector });
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        return { content: [{ type: 'text', text: result.html || '' }] };
-
-      case 'browser_get_text':
-        result = await sendCommand('getText', { selector: args?.selector });
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        return { content: [{ type: 'text', text: result.text || '' }] };
-
-      case 'browser_screenshot':
-        result = await sendCommand('screenshot');
-        // Return image if screenshot was captured successfully
-        if (result.screenshot) {
-          return {
-            content: [
-              {
-                type: 'image',
-                data: result.screenshot,
-                mimeType: 'image/png',
-              },
-            ],
-          };
-        } else if (result.error) {
-          return { content: [{ type: 'text', text: `Screenshot error: ${result.error}` }], isError: true };
-        } else {
-          return { content: [{ type: 'text', text: result.text || 'Screenshot not available' }] };
-        }
-
-      case 'browser_click':
-        result = await sendCommand('click', { selector: args?.selector });
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        return { content: [{ type: 'text', text: `Clicked element: ${args?.selector}` }] };
-
-      case 'browser_type':
-        result = await sendCommand('type', { selector: args?.selector, text: args?.text });
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        return { content: [{ type: 'text', text: `Typed "${args?.text}" into ${args?.selector}` }] };
-
-      case 'browser_refresh':
-        result = await sendCommand('refresh');
-        return { content: [{ type: 'text', text: 'Page refreshed' }] };
-
-      case 'browser_back':
-        result = await sendCommand('back');
-        return { content: [{ type: 'text', text: 'Navigated back' }] };
-
-      case 'browser_forward':
-        result = await sendCommand('forward');
-        return { content: [{ type: 'text', text: 'Navigated forward' }] };
-
-      case 'browser_get_elements':
-        result = await sendCommand('getElements', { selector: args?.selector });
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        return { content: [{ type: 'text', text: JSON.stringify(result.elements || [], null, 2) }] };
-
-      case 'browser_get_selected_element':
-        result = await sendCommand('getSelectedElement');
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        if (!result.element) {
-          return { content: [{ type: 'text', text: 'No element currently selected. Use selection mode to select an element first.' }] };
-        }
-        return { content: [{ type: 'text', text: JSON.stringify(result.element, null, 2) }] };
-
-      case 'browser_open':
-        result = await sendCommand('openBrowser');
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        return { content: [{ type: 'text', text: 'Visual Preview panel opened. You can now navigate to a URL.' }] };
-
-      case 'browser_get_console_logs':
-        result = await sendCommand('getConsoleLogs', {
-          filter: args?.filter || 'all',
-          limit: args?.limit || 100,
-        });
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        // Format logs for readability
-        const logs = result.logs || [];
-        if (logs.length === 0) {
-          return { content: [{ type: 'text', text: 'No console logs captured.' }] };
-        }
-        const formattedLogs = logs.map((log: any) => {
-          const time = new Date(log.timestamp).toISOString().split('T')[1].slice(0, 12);
-          const prefix = `[${time}] [${log.type.toUpperCase()}]`;
-          return `${prefix} ${log.message}${log.stack ? '\n' + log.stack : ''}`;
-        }).join('\n\n');
-        const summary = result.truncated
-          ? `Showing ${logs.length} of ${result.total} logs (truncated)\n\n`
-          : `${logs.length} log(s)\n\n`;
-        return { content: [{ type: 'text', text: summary + formattedLogs }] };
-
-      case 'browser_clear_console_logs':
-        result = await sendCommand('clearConsoleLogs');
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        return { content: [{ type: 'text', text: 'Console logs cleared.' }] };
-
       case 'backend_start_dev_server':
         result = await sendCommand('startDevServer', {
           command: args?.command,
@@ -663,7 +341,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (result.error) {
           return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
         }
-        // Build a comprehensive status message
         let statusText: string;
         if (result.running) {
           const parts: string[] = ['Server running'];
@@ -738,57 +415,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         return { content: [{ type: 'text', text: 'Extension host logs cleared.' }] };
 
-      case 'browser_get_all_resources':
-        result = await sendCommand('getAllResources');
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        // Format the output nicely
-        let resourceOutput = `# Page Resources\n\n`;
-        resourceOutput += `**URL:** ${result.url}\n`;
-        resourceOutput += `**Title:** ${result.title}\n\n`;
-        resourceOutput += `## Summary\n`;
-        resourceOutput += `- Stylesheets: ${result.counts.stylesheets}\n`;
-        resourceOutput += `- Scripts: ${result.counts.scripts}\n`;
-        resourceOutput += `- Images: ${result.counts.images}\n`;
-        resourceOutput += `- Fonts: ${result.counts.fonts}\n`;
-        resourceOutput += `- Videos: ${result.counts.videos}\n`;
-        resourceOutput += `- Audio: ${result.counts.audios}\n`;
-        resourceOutput += `- Iframes: ${result.counts.iframes}\n`;
-        resourceOutput += `- Links: ${result.counts.links}\n`;
-        resourceOutput += `- Meta tags: ${result.counts.meta}\n\n`;
-        resourceOutput += `## Full Data\n\`\`\`json\n${JSON.stringify(result.resources, null, 2)}\n\`\`\``;
-        return { content: [{ type: 'text', text: resourceOutput }] };
-
-      case 'browser_get_all_styles':
-        result = await sendCommand('getAllStyles');
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        let styleOutput = `# Page Styles\n\n`;
-        styleOutput += `**URL:** ${result.url}\n\n`;
-        styleOutput += `## Summary\n`;
-        styleOutput += `- External stylesheets: ${result.counts.externalSheets}\n`;
-        styleOutput += `- Elements with inline styles: ${result.counts.inlineStyles}\n`;
-        styleOutput += `- Computed style samples: ${result.counts.computedSamples}\n\n`;
-        styleOutput += `## Full CSS Data\n\`\`\`json\n${JSON.stringify(result.styles, null, 2)}\n\`\`\``;
-        return { content: [{ type: 'text', text: styleOutput }] };
-
-      case 'browser_get_all_scripts':
-        result = await sendCommand('getAllScripts');
-        if (result.error) {
-          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
-        }
-        let scriptOutput = `# Page Scripts\n\n`;
-        scriptOutput += `**URL:** ${result.url}\n\n`;
-        scriptOutput += `## Summary\n`;
-        scriptOutput += `- External scripts: ${result.counts.external}\n`;
-        scriptOutput += `- Inline scripts: ${result.counts.inline}\n`;
-        scriptOutput += `- Event handlers: ${result.counts.eventHandlers}\n`;
-        scriptOutput += `- Total inline code size: ${result.counts.totalInlineSize} bytes\n\n`;
-        scriptOutput += `## Full Script Data\n\`\`\`json\n${JSON.stringify(result.scripts, null, 2)}\n\`\`\``;
-        return { content: [{ type: 'text', text: scriptOutput }] };
-
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
@@ -802,7 +428,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Start the server
 async function main() {
-  // Try to connect to VS Code extension
   try {
     await connectToExtension();
   } catch {
@@ -811,7 +436,7 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[MCP] Browser control server running');
+  console.error('[MCP] Dev server control MCP running');
 }
 
 main().catch((error) => {

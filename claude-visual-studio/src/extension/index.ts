@@ -1,17 +1,13 @@
 /**
  * Extension Entry Point - Claude Visual Studio
  *
- * This is the main entry point for the VSCode extension. It handles:
- * - Extension activation and deactivation
- * - Command registration
- * - Service initialization
- * - Event listener setup
+ * This extension provides:
+ * - Development server for serving local files
+ * - MCP Bridge for Claude Code integration
+ * - Backend dev server management (npm run dev, etc.)
  */
 
 import * as vscode from 'vscode';
-import { WebviewPanelProvider } from './webview/WebviewPanelProvider';
-import { SidebarViewProvider } from './webview/SidebarViewProvider';
-import { OpenPreviewCommand } from './commands/OpenPreviewCommand';
 import { MCPBridge } from './mcp/MCPBridge';
 import { ServerManager } from './server/ServerManager';
 import { devServerRunner, type ServerLogEntry } from './server/DevServerRunner';
@@ -20,10 +16,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 // Extension-wide state
-let webviewProvider: WebviewPanelProvider | undefined;
-let sidebarProvider: SidebarViewProvider | undefined;
-let openPreviewCommand: OpenPreviewCommand | undefined;
-let fileWatcher: vscode.FileSystemWatcher | undefined;
 let mcpBridge: MCPBridge | undefined;
 let serverManager: ServerManager | undefined;
 let externalChromeProcess: ChildProcess | undefined;
@@ -63,22 +55,12 @@ function captureExtensionLog(type: string, args: unknown[]): void {
   if (extensionLogs.length > MAX_EXTENSION_LOGS) {
     extensionLogs.shift();
   }
-
-  // Send to webview if available AND visible (avoid spam when panel is closed)
-  if (webviewProvider && webviewProvider.isVisible()) {
-    webviewProvider.postMessage({
-      type: 'extensionLog',
-      payload: logEntry,
-    });
-  }
 }
 
 // Install console interceptors
 function installConsoleInterceptors(): void {
-  // Store a reference to check if interceptors are installed
   const interceptorMarker = Symbol.for('claude-vs-interceptors');
 
-  // Check if already installed (to avoid double interception)
   if ((console as any)[interceptorMarker]) {
     originalConsole.log('[ExtensionLogs] Interceptors already installed');
     return;
@@ -106,14 +88,8 @@ function installConsoleInterceptors(): void {
       captureExtensionLog('debug', args);
     };
 
-    // Mark as installed
     (console as any)[interceptorMarker] = true;
-
-    // Test that interception works by logging immediately
     originalConsole.log('[ExtensionLogs] Console interceptors installed successfully');
-
-    // This log should be captured by our new interceptor
-    console.log('[ExtensionLogs] Verification: interceptors are active');
   } catch (error) {
     originalConsole.error('[ExtensionLogs] Failed to install interceptors:', error);
   }
@@ -136,30 +112,27 @@ function clearExtensionLogs(): void {
   extensionLogs.length = 0;
 }
 
+// Store the actual server port
+let actualServerPort: number = 3333;
+
 /**
  * Extension activation function
- * Called when the extension is activated (first command execution or activation event)
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  // Install console interceptors early to capture all extension logs
   installConsoleInterceptors();
 
   console.log('Claude Visual Studio extension is now active');
 
   try {
-    // Initialize services
-    await initializeServices(context);
+    // Initialize development server
+    await initializeServer(context.extensionPath);
+
+    // Initialize MCP Bridge for Claude Code integration
+    await initializeMCPBridge();
 
     // Register commands
     registerCommands(context);
 
-    // Set up file watchers
-    setupFileWatchers(context);
-
-    // Set up configuration change listeners
-    setupConfigurationListeners(context);
-
-    // Show activation message
     if (context.extensionMode === vscode.ExtensionMode.Development) {
       vscode.window.showInformationMessage('Claude Visual Studio: Development mode active');
     }
@@ -177,13 +150,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 /**
  * Extension deactivation function
- * Called when the extension is deactivated
  */
 export function deactivate(): void {
   console.log('Claude Visual Studio extension is being deactivated');
 
   try {
-    // Clean up resources
     cleanupResources();
     console.log('Claude Visual Studio extension deactivated successfully');
   } catch (error) {
@@ -192,248 +163,32 @@ export function deactivate(): void {
 }
 
 /**
- * Initialize extension services
- */
-async function initializeServices(context: vscode.ExtensionContext): Promise<void> {
-  // Initialize webview provider
-  webviewProvider = new WebviewPanelProvider(context);
-
-  // Set callback to send server config when webview becomes ready
-  webviewProvider.onWebviewReady = () => {
-    sendServerConfigToWebview();
-  };
-
-  // Initialize sidebar provider
-  sidebarProvider = new SidebarViewProvider(context);
-
-  // Register sidebar view provider
-  const sidebarDisposable = vscode.window.registerWebviewViewProvider(
-    SidebarViewProvider.viewType,
-    sidebarProvider
-  );
-  context.subscriptions.push(sidebarDisposable);
-
-  // Register webview panel serializer for state restoration on VS Code restart
-  const serializerDisposable = vscode.window.registerWebviewPanelSerializer(
-    'claudeVisualStudio',
-    new ClaudeVisualStudioSerializer(context, webviewProvider)
-  );
-  context.subscriptions.push(serializerDisposable);
-
-  // Initialize commands
-  openPreviewCommand = new OpenPreviewCommand(webviewProvider);
-
-  // Initialize development server
-  await initializeServer(context.extensionPath);
-
-  // Initialize MCP Bridge for Claude Code integration
-  await initializeMCPBridge();
-
-  console.log('Services initialized');
-}
-
-// Store the actual server port (may differ from configured if port was in use)
-let actualServerPort: number = 3333;
-
-/**
- * Initialize the development server for serving preview content
- * @param extensionPath Path to the extension folder
+ * Initialize the development server
  */
 async function initializeServer(extensionPath: string): Promise<void> {
   const config = vscode.workspace.getConfiguration('claudeVisualStudio');
   const serverPort = config.get<number>('serverPort', 3333);
 
-  // Get workspace folder as root path
   const workspaceFolders = vscode.workspace.workspaceFolders;
   const rootPath = workspaceFolders?.[0]?.uri.fsPath || process.cwd();
 
   serverManager = new ServerManager();
 
-  // Connect callback to track served HTML files for Page Builder text editing
-  serverManager.onHtmlFileServed = (filePath: string) => {
-    if (webviewProvider) {
-      webviewProvider.setCurrentSourceFilePath(filePath);
-      console.log('[PageBuilder] Source file tracked:', filePath);
-    }
-  };
-
   try {
-    // Pass extensionPath to enable finding injected scripts
-    // start() now returns the actual port used (may differ if configured port was in use)
     actualServerPort = await serverManager.start(serverPort, rootPath, undefined, extensionPath);
     console.log(`[Server] Development server started on port ${actualServerPort}`);
   } catch (error) {
-    // Log but don't fail activation
     console.warn(`[Server] Could not start server:`, error);
   }
 }
 
 /**
- * Send server config to webview when it becomes ready
- */
-function sendServerConfigToWebview(): void {
-  if (webviewProvider && actualServerPort) {
-    webviewProvider.postMessage({
-      type: 'configUpdate',
-      payload: {
-        serverPort: actualServerPort,
-        serverBaseUrl: `http://localhost:${actualServerPort}`,
-      },
-    });
-    console.log(`[Server] Sent config to webview: port ${actualServerPort}`);
-  }
-}
-
-/**
- * Helper function to create a timeout-protected request to the webview
- * Properly handles cleanup to prevent memory leaks
- */
-function createWebviewRequest<T>(
-  command: string,
-  params: Record<string, unknown>,
-  timeoutMs: number
-): Promise<T> {
-  return new Promise((resolve, reject) => {
-    if (!webviewProvider) {
-      reject(new Error('Webview not initialized. Open Visual Preview first (Ctrl+Alt+B).'));
-      return;
-    }
-
-    if (!webviewProvider.isVisible()) {
-      reject(new Error('Visual Preview panel is not visible. Please open it first (Ctrl+Alt+B or click the Claude Visual Studio icon in the sidebar).'));
-      return;
-    }
-
-    let isSettled = false;
-    const timeoutId = setTimeout(() => {
-      if (!isSettled) {
-        isSettled = true;
-        reject(new Error(`MCP request '${command}' timed out after ${timeoutMs}ms. Make sure the page is loaded in Visual Preview.`));
-      }
-    }, timeoutMs);
-
-    webviewProvider.requestFromWebview(command, params, (result) => {
-      if (!isSettled) {
-        isSettled = true;
-        clearTimeout(timeoutId);
-
-        // Check if the result contains an error from webview disposal
-        if (result && typeof result === 'object' && 'error' in result) {
-          reject(new Error(result.error as string));
-        } else {
-          resolve(result as T);
-        }
-      }
-    });
-  });
-}
-
-/**
- * Initialize MCP Bridge for browser control
+ * Initialize MCP Bridge for backend control
  */
 async function initializeMCPBridge(): Promise<void> {
-  // MCP bridge port = actual server port + 1
   const mcpPort = actualServerPort + 1;
 
   mcpBridge = new MCPBridge(mcpPort);
-
-  // Register command handlers using the helper function for proper cleanup
-  mcpBridge.registerHandler('navigate', async (params) => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    await webviewProvider.postMessage({
-      type: 'navigate',
-      payload: { url: params.url },
-    });
-    return { success: true };
-  });
-
-  mcpBridge.registerHandler('getUrl', async () => {
-    return createWebviewRequest('getUrl', {}, 5000);
-  });
-
-  mcpBridge.registerHandler('getHtml', async (params) => {
-    return createWebviewRequest('getHtml', params, 10000);
-  });
-
-  mcpBridge.registerHandler('getText', async (params) => {
-    return createWebviewRequest('getText', params, 10000);
-  });
-
-  mcpBridge.registerHandler('screenshot', async () => {
-    return createWebviewRequest('screenshot', {}, 10000);
-  });
-
-  mcpBridge.registerHandler('click', async (params) => {
-    return createWebviewRequest('click', params, 5000);
-  });
-
-  mcpBridge.registerHandler('type', async (params) => {
-    return createWebviewRequest('type', params, 5000);
-  });
-
-  mcpBridge.registerHandler('refresh', async () => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    await webviewProvider.postMessage({
-      type: 'refreshPreview',
-      payload: { preserveScroll: false },
-    });
-    return { success: true };
-  });
-
-  mcpBridge.registerHandler('back', async () => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    await webviewProvider.postMessage({
-      type: 'navigate',
-      payload: { action: 'back' },
-    });
-    return { success: true };
-  });
-
-  mcpBridge.registerHandler('forward', async () => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    await webviewProvider.postMessage({
-      type: 'navigate',
-      payload: { action: 'forward' },
-    });
-    return { success: true };
-  });
-
-  mcpBridge.registerHandler('getElements', async (params) => {
-    return createWebviewRequest('getElements', params, 10000);
-  });
-
-  mcpBridge.registerHandler('getSelectedElement', async () => {
-    if (!webviewProvider) throw new Error('Webview not initialized');
-    const element = webviewProvider.getSelectedElement();
-    return { element };
-  });
-
-  mcpBridge.registerHandler('openBrowser', async () => {
-    console.log('[MCP] openBrowser handler called');
-    try {
-      // Execute the VS Code command to open the preview panel
-      await vscode.commands.executeCommand('claudeVisualStudio.openPreview');
-      console.log('[MCP] openPreview command executed');
-      // Wait a bit for the panel to initialize
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Check if panel is now visible
-      const isVisible = webviewProvider?.isVisible() ?? false;
-      console.log('[MCP] Panel visible after open:', isVisible);
-      return { success: true, panelVisible: isVisible };
-    } catch (error) {
-      console.error('[MCP] openBrowser error:', error);
-      throw error;
-    }
-  });
-
-  // Console logs handlers (browser logs are handled via webview postMessage)
-  mcpBridge.registerHandler('getConsoleLogs', async (params) => {
-    return createWebviewRequest('getConsoleLogs', params, 10000);
-  });
-
-  mcpBridge.registerHandler('clearConsoleLogs', async () => {
-    return createWebviewRequest('clearConsoleLogs', {}, 5000);
-  });
 
   // Backend dev server handlers
   mcpBridge.registerHandler('startDevServer', async (params) => {
@@ -457,7 +212,6 @@ async function initializeMCPBridge(): Promise<void> {
   });
 
   mcpBridge.registerHandler('getDevServerStatus', async () => {
-    // Refresh status by checking ports before returning
     await devServerRunner.refreshStatus();
     return devServerRunner.getStatus();
   });
@@ -501,22 +255,10 @@ async function initializeMCPBridge(): Promise<void> {
     return { success, message: success ? 'Chrome stopped' : 'No Chrome running' };
   });
 
-  // Listen for backend logs and send to webview in real-time (only if visible)
-  devServerRunner.on('log', (logEntry: ServerLogEntry) => {
-    if (webviewProvider && webviewProvider.isVisible()) {
-      webviewProvider.postMessage({
-        type: 'backendLog',
-        payload: logEntry,
-      });
-    }
-  });
-
   // Start the bridge
   try {
     const actualMcpPort = await mcpBridge.start();
     console.log(`[MCP] Bridge started on port ${actualMcpPort}`);
-
-    // Save port to workspace file so MCP server can find it
     await saveMcpPortToWorkspace(actualMcpPort);
   } catch (error) {
     console.error('[MCP] Failed to start bridge:', error);
@@ -524,7 +266,7 @@ async function initializeMCPBridge(): Promise<void> {
 }
 
 /**
- * Save MCP port to a file in the workspace so the MCP server can find it
+ * Save MCP port to workspace file
  */
 async function saveMcpPortToWorkspace(port: number): Promise<void> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -538,14 +280,12 @@ async function saveMcpPortToWorkspace(port: number): Promise<void> {
   const portFile = vscode.Uri.file(`${workspaceRoot}/.vscode/.claude-visual-studio-port`);
 
   try {
-    // Create .vscode directory if it doesn't exist
     try {
       await vscode.workspace.fs.stat(vscodeDir);
     } catch {
       await vscode.workspace.fs.createDirectory(vscodeDir);
     }
 
-    // Write port to file
     const content = Buffer.from(JSON.stringify({ port, timestamp: Date.now() }));
     await vscode.workspace.fs.writeFile(portFile, content);
     console.log(`[MCP] Saved port ${port} to ${portFile.fsPath}`);
@@ -555,78 +295,9 @@ async function saveMcpPortToWorkspace(port: number): Promise<void> {
 }
 
 /**
- * Webview Panel Serializer - Restores webview state when VS Code restarts
- */
-class ClaudeVisualStudioSerializer implements vscode.WebviewPanelSerializer {
-  constructor(
-    private readonly context: vscode.ExtensionContext,
-    private readonly provider: WebviewPanelProvider
-  ) {}
-
-  async deserializeWebviewPanel(
-    webviewPanel: vscode.WebviewPanel,
-    state: unknown
-  ): Promise<void> {
-    console.log('Deserializing webview panel with state:', state);
-
-    // Restore the webview panel through the provider
-    await this.provider.restoreWebviewPanel(webviewPanel, state);
-  }
-}
-
-/**
- * Register all extension commands
+ * Register extension commands
  */
 function registerCommands(context: vscode.ExtensionContext): void {
-  if (!webviewProvider) {
-    throw new Error('WebviewProvider not initialized');
-  }
-
-  // Command: Open Preview
-  const openPreviewDisposable = vscode.commands.registerCommand(
-    'claudeVisualStudio.openPreview',
-    async (uri?: vscode.Uri) => {
-      try {
-        await openPreviewCommand?.execute(uri);
-      } catch (error) {
-        console.error('Error executing openPreview command:', error);
-        vscode.window.showErrorMessage(
-          `Failed to open preview: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    }
-  );
-
-  // Command: Toggle Selection Mode
-  const toggleSelectionDisposable = vscode.commands.registerCommand(
-    'claudeVisualStudio.toggleSelection',
-    async () => {
-      try {
-        await handleToggleSelection();
-      } catch (error) {
-        console.error('Error executing toggleSelection command:', error);
-        vscode.window.showErrorMessage(
-          `Failed to toggle selection: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    }
-  );
-
-  // Command: Refresh Preview
-  const refreshPreviewDisposable = vscode.commands.registerCommand(
-    'claudeVisualStudio.refreshPreview',
-    async () => {
-      try {
-        await handleRefreshPreview();
-      } catch (error) {
-        console.error('Error executing refreshPreview command:', error);
-        vscode.window.showErrorMessage(
-          `Failed to refresh preview: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    }
-  );
-
   // Command: Open Settings
   const openSettingsDisposable = vscode.commands.registerCommand(
     'claudeVisualStudio.openSettings',
@@ -638,24 +309,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }
   );
 
-  // Command: Force Recreate Panel (for development)
-  const forceRecreateDisposable = vscode.commands.registerCommand(
-    'claudeVisualStudio.forceRecreate',
-    async () => {
-      try {
-        await webviewProvider?.forceRecreate();
-        vscode.window.showInformationMessage('Panel recreated successfully');
-      } catch (error) {
-        console.error('Error recreating panel:', error);
-        vscode.window.showErrorMessage(
-          `Failed to recreate panel: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    }
-  );
-  context.subscriptions.push(forceRecreateDisposable);
-
-  // Command: Reload Extension (reloads VS Code window)
+  // Command: Reload Extension
   const reloadExtensionDisposable = vscode.commands.registerCommand(
     'claudeVisualStudio.reloadExtension',
     async () => {
@@ -670,189 +324,16 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }
   );
 
-  // Command: Open External Chrome (MCP)
-  const openExternalBrowserDisposable = vscode.commands.registerCommand(
-    'claudeVisualStudio.openExternalBrowser',
-    async () => {
-      try {
-        const result = await launchExternalChrome();
-        if (!result.success) {
-          vscode.window.showErrorMessage(result.error || 'Failed to launch Chrome');
-        }
-      } catch (error) {
-        console.error('Error executing openExternalBrowser command:', error);
-        vscode.window.showErrorMessage(
-          `Failed to open external browser: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    }
-  );
-
-  // Register disposables
   context.subscriptions.push(
-    openPreviewDisposable,
-    toggleSelectionDisposable,
-    refreshPreviewDisposable,
     openSettingsDisposable,
-    reloadExtensionDisposable,
-    openExternalBrowserDisposable
+    reloadExtensionDisposable
   );
 
   console.log('Commands registered');
 }
 
 /**
- * Set up file watchers for auto-refresh functionality
- */
-function setupFileWatchers(context: vscode.ExtensionContext): void {
-  const config = vscode.workspace.getConfiguration('claudeVisualStudio');
-  const autoRefresh = config.get<boolean>('autoRefresh', true);
-
-  if (!autoRefresh) {
-    console.log('Auto-refresh is disabled');
-    return;
-  }
-
-  // Watch for changes in HTML, CSS, and JS files
-  fileWatcher = vscode.workspace.createFileSystemWatcher(
-    '**/*.{html,htm,css,js,jsx,ts,tsx}',
-    false,
-    false,
-    false
-  );
-
-  // Patterns to exclude from file watching (build outputs, dependencies, etc.)
-  const excludePatterns = [
-    /[/\\]\.next[/\\]/,           // Next.js build output
-    /[/\\]node_modules[/\\]/,     // Dependencies
-    /[/\\]dist[/\\]/,             // Build output
-    /[/\\]\.git[/\\]/,            // Git internals
-    /[/\\]\.turbo[/\\]/,          // Turbo cache
-    /[/\\]\.cache[/\\]/,          // Various caches
-    /[/\\]out[/\\]/,              // Common build output
-    /[/\\]build[/\\]/,            // Common build output
-    /\.d\.ts$/,                   // Type declaration files
-    /\.map$/,                     // Source maps
-  ];
-
-  // Handle file changes
-  fileWatcher.onDidChange(async (uri) => {
-    // Skip excluded paths
-    const filePath = uri.fsPath;
-    const shouldExclude = excludePatterns.some(pattern => pattern.test(filePath));
-
-    if (shouldExclude) {
-      // Silently ignore changes in excluded paths
-      return;
-    }
-
-    if (webviewProvider?.isVisible()) {
-      console.log('File changed, refreshing preview:', filePath);
-      await webviewProvider.postMessage({
-        type: 'refreshPreview',
-        payload: { preserveScroll: true },
-      });
-    }
-  });
-
-  // Handle file creation
-  fileWatcher.onDidCreate(async (uri) => {
-    console.log('File created:', uri.fsPath);
-  });
-
-  // Handle file deletion
-  fileWatcher.onDidDelete(async (uri) => {
-    console.log('File deleted:', uri.fsPath);
-  });
-
-  context.subscriptions.push(fileWatcher);
-  console.log('File watchers set up');
-}
-
-/**
- * Set up configuration change listeners
- */
-function setupConfigurationListeners(context: vscode.ExtensionContext): void {
-  const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(async (e) => {
-    if (e.affectsConfiguration('claudeVisualStudio')) {
-      console.log('Configuration changed');
-
-      const config = vscode.workspace.getConfiguration('claudeVisualStudio');
-
-      // Send updated configuration to webview
-      if (webviewProvider?.isVisible()) {
-        await webviewProvider.postMessage({
-          type: 'configUpdate',
-          payload: {
-            serverPort: config.get('serverPort'),
-            autoRefresh: config.get('autoRefresh'),
-          },
-        });
-      }
-
-      // Re-setup file watchers if autoRefresh setting changed
-      if (e.affectsConfiguration('claudeVisualStudio.autoRefresh')) {
-        fileWatcher?.dispose();
-        setupFileWatchers(context);
-      }
-    }
-  });
-
-  context.subscriptions.push(configChangeDisposable);
-  console.log('Configuration listeners set up');
-}
-
-/**
- * Handle toggle selection command
- */
-async function handleToggleSelection(): Promise<void> {
-  if (!webviewProvider) {
-    vscode.window.showWarningMessage('Please open the preview first');
-    return;
-  }
-
-  if (!webviewProvider.isVisible()) {
-    vscode.window.showWarningMessage('Preview is not visible');
-    return;
-  }
-
-  // Toggle selection mode (we'll track this in the webview)
-  const success = await webviewProvider.postMessage({
-    type: 'toggleSelectionMode',
-    payload: { enabled: true }, // The webview will toggle based on current state
-  });
-
-  if (success) {
-    vscode.window.showInformationMessage('Element selection mode toggled');
-  }
-}
-
-/**
- * Handle refresh preview command
- */
-async function handleRefreshPreview(): Promise<void> {
-  if (!webviewProvider) {
-    vscode.window.showWarningMessage('Please open the preview first');
-    return;
-  }
-
-  if (!webviewProvider.isVisible()) {
-    vscode.window.showWarningMessage('Preview is not visible');
-    return;
-  }
-
-  const success = await webviewProvider.postMessage({
-    type: 'refreshPreview',
-    payload: { preserveScroll: false },
-  });
-
-  if (success) {
-    vscode.window.showInformationMessage('Preview refreshed');
-  }
-}
-
-/**
- * Find Chrome executable path based on operating system
+ * Find Chrome executable path
  */
 function findChromePath(): string | undefined {
   const config = vscode.workspace.getConfiguration('claudeVisualStudio');
@@ -864,7 +345,6 @@ function findChromePath(): string | undefined {
 
   const platform = process.platform;
 
-  // Common Chrome paths by platform
   const chromePaths: { [key: string]: string[] } = {
     win32: [
       process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe',
@@ -898,11 +378,9 @@ function findChromePath(): string | undefined {
 }
 
 /**
- * Launch external Chrome with remote debugging enabled
- * This browser is accessible to all Claude Code terminals via MCP
+ * Launch external Chrome with remote debugging
  */
 async function launchExternalChrome(): Promise<{ success: boolean; port?: number; error?: string }> {
-  // Check if Chrome is already running
   if (externalChromeProcess && !externalChromeProcess.killed) {
     return {
       success: true,
@@ -920,7 +398,6 @@ async function launchExternalChrome(): Promise<{ success: boolean; port?: number
   const config = vscode.workspace.getConfiguration('claudeVisualStudio');
   const debugPort = config.get<number>('chromeDebugPort', 9222);
 
-  // Create a temporary user data directory for the debug session
   const userDataDir = path.join(
     process.env.TEMP || process.env.TMPDIR || '/tmp',
     `claude-vs-chrome-${Date.now()}`
@@ -937,10 +414,7 @@ async function launchExternalChrome(): Promise<{ success: boolean; port?: number
   try {
     console.log(`[ExternalChrome] Launching Chrome from: ${chromePath}`);
     console.log(`[ExternalChrome] Debug port: ${debugPort}`);
-    console.log(`[ExternalChrome] User data dir: ${userDataDir}`);
-    console.log(`[ExternalChrome] Args: ${args.join(' ')}`);
 
-    // On Windows, use shell: true to properly launch Chrome
     const isWindows = process.platform === 'win32';
 
     externalChromeProcess = spawn(chromePath, args, {
@@ -964,16 +438,14 @@ async function launchExternalChrome(): Promise<{ success: boolean; port?: number
       externalChromePort = undefined;
     });
 
-    // Don't hold the parent process
     externalChromeProcess.unref();
 
-    // Wait for Chrome to start and verify it's listening
+    // Wait for Chrome to start
     console.log('[ExternalChrome] Waiting for Chrome to start...');
     let chromeReady = false;
     for (let attempt = 0; attempt < 10; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 500));
       try {
-        // Try to connect to the debug port
         const http = require('http');
         const checkResponse = await new Promise<boolean>((resolve) => {
           const req = http.get(`http://127.0.0.1:${debugPort}/json/version`, (res: any) => {
@@ -986,7 +458,7 @@ async function launchExternalChrome(): Promise<{ success: boolean; port?: number
           });
         });
         if (checkResponse) {
-          console.log(`[ExternalChrome] Chrome ready on port ${debugPort} after ${attempt + 1} attempts`);
+          console.log(`[ExternalChrome] Chrome ready on port ${debugPort}`);
           chromeReady = true;
           break;
         }
@@ -999,7 +471,6 @@ async function launchExternalChrome(): Promise<{ success: boolean; port?: number
       console.warn('[ExternalChrome] Chrome may not be ready, but continuing...');
     }
 
-    // Save the debug port info to workspace for Claude Code to find
     await saveChromeDebugPortToWorkspace(debugPort);
 
     vscode.window.showInformationMessage(
@@ -1017,7 +488,7 @@ async function launchExternalChrome(): Promise<{ success: boolean; port?: number
 }
 
 /**
- * Save Chrome debug port to workspace file for Claude Code MCP to find
+ * Save Chrome debug port to workspace file
  */
 async function saveChromeDebugPortToWorkspace(port: number): Promise<void> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -1031,14 +502,12 @@ async function saveChromeDebugPortToWorkspace(port: number): Promise<void> {
   const portFile = vscode.Uri.file(`${workspaceRoot}/.vscode/.claude-chrome-debug-port`);
 
   try {
-    // Create .vscode directory if it doesn't exist
     try {
       await vscode.workspace.fs.stat(vscodeDir);
     } catch {
       await vscode.workspace.fs.createDirectory(vscodeDir);
     }
 
-    // Write port info to file
     const content = Buffer.from(JSON.stringify({
       port,
       timestamp: Date.now(),
@@ -1048,7 +517,6 @@ async function saveChromeDebugPortToWorkspace(port: number): Promise<void> {
     await vscode.workspace.fs.writeFile(portFile, content);
     console.log(`[ExternalChrome] Saved debug port ${port} to ${portFile.fsPath}`);
 
-    // Also save MCP server configuration for Claude Code
     await saveMcpBrowserConfig(workspaceRoot);
   } catch (error) {
     console.error('[ExternalChrome] Failed to save port file:', error);
@@ -1056,14 +524,12 @@ async function saveChromeDebugPortToWorkspace(port: number): Promise<void> {
 }
 
 /**
- * Save MCP browser server configuration for Claude Code
+ * Save MCP browser server configuration
  */
 async function saveMcpBrowserConfig(workspaceRoot: string): Promise<void> {
-  // Find the extension path to get the MCP server location
   const extensionPath = path.dirname(path.dirname(__dirname));
   const mcpServerPath = path.join(extensionPath, 'dist', 'mcp-browser-server', 'index.js');
 
-  // Create the MCP configuration
   const mcpConfig = {
     mcpServers: {
       'claude-browser': {
@@ -1074,21 +540,18 @@ async function saveMcpBrowserConfig(workspaceRoot: string): Promise<void> {
     },
   };
 
-  // Save to .vscode/mcp-browser.json for reference
   const mcpConfigFile = vscode.Uri.file(`${workspaceRoot}/.vscode/mcp-browser-config.json`);
   const configContent = Buffer.from(JSON.stringify(mcpConfig, null, 2));
   await vscode.workspace.fs.writeFile(mcpConfigFile, configContent);
 
   console.log(`[ExternalChrome] Saved MCP config to ${mcpConfigFile.fsPath}`);
 
-  // Try to add MCP server globally (silently, in background)
   const addCommand = `claude mcp add claude-browser -s user -- node "${mcpServerPath}"`;
 
   try {
     const { exec } = require('child_process');
     exec(addCommand, (error: Error | null, stdout: string, stderr: string) => {
       if (error) {
-        // Already exists or other error - just show info
         console.log('[ExternalChrome] MCP add result:', stderr || error.message);
         vscode.window.showInformationMessage(
           'Chrome browser ready! Use chrome_* tools (e.g., chrome_navigate, chrome_screenshot) to control it.',
@@ -1103,7 +566,6 @@ async function saveMcpBrowserConfig(workspaceRoot: string): Promise<void> {
       }
     });
   } catch (error) {
-    // Fallback: show copy option
     const action = await vscode.window.showInformationMessage(
       'Chrome browser ready! Copy command to add MCP server manually.',
       'Copy Command',
@@ -1144,50 +606,17 @@ function stopExternalChrome(): boolean {
  * Clean up extension resources
  */
 function cleanupResources(): void {
-  // Stop external Chrome browser
   stopExternalChrome();
 
-  // Stop development server
   if (serverManager) {
     serverManager.stop();
     serverManager = undefined;
   }
 
-  // Stop MCP bridge
   if (mcpBridge) {
     mcpBridge.stop();
     mcpBridge = undefined;
   }
 
-  // Dispose webview provider
-  if (webviewProvider) {
-    webviewProvider.dispose();
-    webviewProvider = undefined;
-  }
-
-  // Clear sidebar provider reference
-  sidebarProvider = undefined;
-
-  // Dispose commands
-  if (openPreviewCommand) {
-    openPreviewCommand.dispose();
-    openPreviewCommand = undefined;
-  }
-
-  // Dispose file watcher
-  if (fileWatcher) {
-    fileWatcher.dispose();
-    fileWatcher = undefined;
-  }
-
   console.log('Resources cleaned up');
-}
-
-// Export services for testing
-export function getWebviewProvider(): WebviewPanelProvider | undefined {
-  return webviewProvider;
-}
-
-export function getOpenPreviewCommand(): OpenPreviewCommand | undefined {
-  return openPreviewCommand;
 }

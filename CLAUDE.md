@@ -14,7 +14,11 @@ Then reload VS Code (Ctrl+Shift+P → "Reload Window").
 
 ## Repository Overview
 
-This repository contains **Claude Visual Studio**, a VS Code extension that provides a visual web editor with browser preview, element selection, and Claude Code AI integration. The extension allows users to preview HTML/web content directly in VS Code with live element inspection capabilities.
+This repository contains **Claude Visual Studio**, a VS Code extension that provides:
+- Development server for serving local HTML files
+- MCP integration for Claude Code AI
+- Backend dev server management (npm run dev, etc.)
+- External Chrome browser control via MCP (claude-browser)
 
 ## Build & Development Commands
 
@@ -22,70 +26,77 @@ This repository contains **Claude Visual Studio**, a VS Code extension that prov
 # Install dependencies
 cd claude-visual-studio && npm install
 
-# Build everything (extension + webview)
+# Build everything
 npm run build
 
 # Build components separately
 npm run build:extension    # Builds VS Code extension (esbuild)
-npm run build:webview      # Builds React webview (Vite)
+npm run build:mcp          # Builds MCP server
+npm run build:mcp-browser  # Builds Chrome MCP server
 
 # Development with watch mode
-npm run watch             # Watch both extension and webview
-npm run watch:extension   # Watch extension only
-npm run watch:webview     # Watch webview only
+npm run watch              # Watch extension
 
 # Run development server standalone (for testing)
-npm run dev:server        # Build and run test server
-npm run test:server       # Run test server in current directory
+npm run dev:server         # Build and run test server
+npm run test:server        # Run test server in current directory
 
 # Type checking and linting
-npm run typecheck         # TypeScript type check
-npm run lint              # ESLint
+npm run typecheck          # TypeScript type check
+npm run lint               # ESLint
 ```
 
 ## Architecture
 
-### Three-Part Structure
+### Structure
 
 1. **Extension** (`src/extension/`) - VS Code extension host code (Node.js)
-   - `index.ts` - Main entry point, handles activation, commands, and file watchers
-   - `commands/` - VS Code command implementations
-   - `webview/` - WebviewPanelProvider and SidebarViewProvider for VS Code panels
-   - `server/` - Express-based development server with HMR support
+   - `index.ts` - Main entry point, handles activation, commands, MCP bridge
+   - `mcp/` - MCPBridge for WebSocket communication with MCP server
+   - `server/` - Express-based development server, DevServerRunner
 
-2. **Webview UI** (`src/webview-ui/`) - React frontend running in VS Code webview
-   - `App.tsx` - Main React component
-   - `components/browser/` - BrowserFrame, NavigationBar, SelectionOverlay
-   - `state/stores.ts` - Zustand stores (navigation, selection, editor state)
-   - `hooks/useVSCodeApi.ts` - Bridge for extension-webview communication
+2. **MCP Server** (`src/mcp-server/`) - MCP server for backend control
+   - `index.ts` - Provides backend_* and extension_* tools
 
-3. **Shared** (`src/shared/types/`) - TypeScript types shared between extension and webview
-   - `inspector.ts` - ElementInfo, InspectorMessage, InspectorAPI types
-   - `server.ts` - Server-related types
-   - `MessageTypes.ts` - Message protocol between extension and webview
-
-### Key Communication Flows
-
-- **Extension <-> Webview**: Uses VS Code's postMessage API via `useVSCodeApi` hook
-- **Webview <-> Preview iframe**: Uses window.postMessage with `__claudeVSInspector__` API
-- **Server -> Browser**: WebSocket-based HMR for live reload (port = serverPort + 1)
+3. **MCP Browser Server** (`src/mcp-browser-server/`) - MCP server for Chrome control
+   - `index.ts` - Provides chrome_* tools for external browser automation
 
 ### Server Manager
 
 The `ServerManager` class (`src/extension/server/ServerManager.ts`) provides:
-- Express-based static file server for previewing HTML files
-- Automatic HTML injection of element inspector script
-- HMR client injection for live reload
+- Express-based static file server for serving HTML files on localhost
+- Automatic HTML injection of inspector scripts
 - Path traversal security protection
 
-### State Management
+### DevServerRunner
 
-Zustand stores in `src/webview-ui/state/stores.ts`:
-- `useNavigationStore` - URL, history, navigation actions
-- `useSelectionStore` - Element selection mode, selected/hovered elements
-- `useEditorStore` - Loading state, errors, inspector panel width
+The `DevServerRunner` class (`src/extension/server/DevServerRunner.ts`) provides:
+- Start/stop/restart development servers (Next.js, Vite, etc.)
+- Real-time log capture from server stdout/stderr
+- Port detection for running servers
 
 ## Configuration
 
 Default server port: `3333` (configurable via `claudeVisualStudio.serverPort`)
-Auto-refresh on file save: enabled by default (`claudeVisualStudio.autoRefresh`)
+Chrome debug port: `9222` (configurable via `claudeVisualStudio.chromeDebugPort`)
+
+## MCP Tools Available
+
+### Backend Tools (via claude-visual-studio MCP)
+- `backend_start_dev_server` - Start npm run dev or similar
+- `backend_stop_dev_server` - Stop the running dev server
+- `backend_restart_dev_server` - Restart dev server
+- `backend_get_status` - Get server status (running, ports, PID)
+- `backend_get_logs` - Get server stdout/stderr logs
+- `backend_clear_logs` - Clear log buffer
+
+### Extension Tools
+- `extension_get_logs` - Get VS Code extension host logs
+- `extension_clear_logs` - Clear extension logs
+
+### Chrome Browser Tools (via claude-browser MCP)
+- `chrome_navigate` - Navigate to URL
+- `chrome_screenshot` - Take screenshot
+- `chrome_click` - Click element
+- `chrome_type` - Type into input
+- And many more...
