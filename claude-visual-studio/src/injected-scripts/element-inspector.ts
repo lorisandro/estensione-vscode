@@ -2827,59 +2827,196 @@ class ElementInspector {
   }
 
   /**
-   * Generate CSS selector for an element
+   * Generate a clean, unique CSS selector for an element
+   * Priority: ID > data-testid > unique attribute > semantic class > nth-of-type
    */
   private getCSSSelector(element: HTMLElement): string {
+    // 1. Try ID first (most reliable)
     if (element.id) {
-      // Escape special characters in IDs too
       return `#${CSS.escape(element.id)}`;
     }
 
-    const parts: string[] = [];
+    // 2. Try unique attributes (data-testid, name, etc.)
+    const uniqueSelector = this.getUniqueAttributeSelector(element);
+    if (uniqueSelector) {
+      return uniqueSelector;
+    }
+
+    // 3. Build minimal path selector
+    return this.buildMinimalPathSelector(element);
+  }
+
+  /**
+   * Try to find a unique selector using meaningful attributes
+   */
+  private getUniqueAttributeSelector(element: HTMLElement): string | null {
+    const tag = element.tagName.toLowerCase();
+
+    // Priority list of attributes that are likely unique identifiers
+    const uniqueAttrs = [
+      'data-testid',
+      'data-test-id',
+      'data-cy',
+      'data-id',
+      'name',
+      'aria-label',
+      'title',
+      'alt',
+      'placeholder',
+      'href',
+      'src',
+      'action',
+      'for',
+      'type'
+    ];
+
+    for (const attr of uniqueAttrs) {
+      const value = element.getAttribute(attr);
+      if (value) {
+        const selector = `${tag}[${attr}="${CSS.escape(value)}"]`;
+        try {
+          if (document.querySelectorAll(selector).length === 1) {
+            return selector;
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    // Try semantic classes (not utility classes)
+    const semanticClass = this.getSemanticClass(element);
+    if (semanticClass) {
+      const selector = `${tag}.${CSS.escape(semanticClass)}`;
+      try {
+        if (document.querySelectorAll(selector).length === 1) {
+          return selector;
+        }
+      } catch {
+        // Continue to path-based selector
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get a semantic class name (not a utility/Tailwind class)
+   */
+  private getSemanticClass(element: HTMLElement): string | null {
+    if (element.classList.length === 0) return null;
+
+    // Patterns that indicate utility classes (skip these)
+    const utilityPatterns = [
+      /^[a-z]{1,3}-/,           // Tailwind prefixes: p-, m-, w-, h-, bg-, text-, etc.
+      /^-?[a-z]+:/,              // Responsive/state: md:, hover:, focus:, etc.
+      /^\[.+\]$/,                // Arbitrary values: [200px], [#fff], etc.
+      /^-?(?:top|left|right|bottom|inset)-/,
+      /^(?:flex|grid|block|inline|hidden)$/,
+      /^(?:absolute|relative|fixed|sticky|static)$/,
+      /^(?:overflow|z|opacity|cursor|pointer)-/,
+      /^(?:rounded|border|shadow|ring)-?/,
+      /^(?:transition|duration|ease|delay|animate)-/,
+      /^(?:font|leading|tracking|text)-/,
+      /^(?:justify|items|content|self|place)-/,
+      /^(?:gap|space)-/,
+      /^(?:col|row)-/,
+      /^(?:min|max)-/,
+      /^(?:aspect|object)-/,
+      /^(?:sr-only|not-sr-only)$/,
+      /^\d+$/,                   // Pure numbers
+      /^-?\d/,                   // Starts with number
+      /\//,                      // Contains slash (opacity modifiers)
+    ];
+
+    for (const cls of element.classList) {
+      const isUtility = utilityPatterns.some(pattern => pattern.test(cls));
+      if (!isUtility && cls.length > 2) {
+        return cls;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Build a minimal path-based selector using nth-of-type
+   */
+  private buildMinimalPathSelector(element: HTMLElement): string {
+    const path: string[] = [];
     let current: HTMLElement | null = element;
 
-    while (current && current !== document.body) {
-      let selector = current.tagName.toLowerCase();
+    while (current && current !== document.body && current !== document.documentElement) {
+      const selector = this.getElementSelector(current);
+      path.unshift(selector);
 
-      // Add classes with proper CSS escaping for special characters
-      // Tailwind classes like "hover:text-white", "md:text-7xl", "from-purple-900/20"
-      // contain special characters that need escaping in CSS selectors
-      if (current.classList.length > 0) {
-        const escapedClasses = Array.from(current.classList)
-          .map(cls => CSS.escape(cls))
-          .join('.');
-        selector += '.' + escapedClasses;
-      }
-
-      // Add nth-child if needed for uniqueness
-      if (current.parentElement) {
-        const siblings = Array.from(current.parentElement.children);
-        const sameTagSiblings = siblings.filter(
-          (sibling) => sibling.tagName === current!.tagName
-        );
-
-        if (sameTagSiblings.length > 1) {
-          const index = sameTagSiblings.indexOf(current) + 1;
-          selector += `:nth-child(${index})`;
-        }
-      }
-
-      parts.unshift(selector);
-
-      // Stop if we have a unique selector
+      // Check if current path is unique
       try {
-        if (document.querySelectorAll(parts.join(' > ')).length === 1) {
-          break;
+        const fullSelector = path.join(' > ');
+        if (document.querySelectorAll(fullSelector).length === 1) {
+          return fullSelector;
         }
-      } catch (e) {
-        // If selector is still invalid, continue building
-        console.warn('[Element Inspector] Selector validation failed:', parts.join(' > '));
+      } catch {
+        // Continue building path
       }
 
       current = current.parentElement;
     }
 
-    return parts.join(' > ');
+    return path.join(' > ');
+  }
+
+  /**
+   * Get selector for a single element (tag + position if needed)
+   */
+  private getElementSelector(element: HTMLElement): string {
+    const tag = element.tagName.toLowerCase();
+
+    // Skip html and body
+    if (tag === 'html' || tag === 'body') {
+      return tag;
+    }
+
+    // Try ID
+    if (element.id) {
+      return `#${CSS.escape(element.id)}`;
+    }
+
+    // Try unique attribute
+    const attrSelector = this.getUniqueAttributeSelector(element);
+    if (attrSelector) {
+      return attrSelector;
+    }
+
+    // Try semantic class
+    const semanticClass = this.getSemanticClass(element);
+    if (semanticClass) {
+      const selector = `${tag}.${CSS.escape(semanticClass)}`;
+      try {
+        // Check if unique among siblings
+        if (element.parentElement) {
+          const siblings = element.parentElement.querySelectorAll(`:scope > ${selector}`);
+          if (siblings.length === 1) {
+            return selector;
+          }
+        }
+      } catch {
+        // Fall through to nth-of-type
+      }
+    }
+
+    // Use nth-of-type as last resort
+    if (element.parentElement) {
+      const siblings = Array.from(element.parentElement.children).filter(
+        child => child.tagName === element.tagName
+      );
+      if (siblings.length > 1) {
+        const index = siblings.indexOf(element) + 1;
+        return `${tag}:nth-of-type(${index})`;
+      }
+    }
+
+    return tag;
   }
 
   /**
