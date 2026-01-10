@@ -227,6 +227,50 @@ async function initializeMCPBridge(): Promise<void> {
     return { success: true, message: 'Backend logs cleared' };
   });
 
+  mcpBridge.registerHandler('stopExternalServer', async (params) => {
+    const ports = params.ports || [3000, 3001, 5173, 5174, 8080, 8000];
+    const stoppedPorts: number[] = [];
+
+    for (const port of ports) {
+      try {
+        if (process.platform === 'win32') {
+          const { execSync } = await import('child_process');
+          const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, {
+            encoding: 'utf-8',
+            windowsHide: true,
+          });
+
+          const lines = result.trim().split('\n');
+          for (const line of lines) {
+            const parts = line.trim().split(/\s+/);
+            const pid = parts[parts.length - 1];
+            if (pid && /^\d+$/.test(pid) && pid !== '0') {
+              try {
+                execSync(`taskkill /F /PID ${pid}`, { windowsHide: true });
+                stoppedPorts.push(port);
+                console.log(`[MCP] Killed process ${pid} on port ${port}`);
+              } catch {
+                // Process might already be dead
+              }
+            }
+          }
+        } else {
+          const { execSync } = await import('child_process');
+          execSync(`lsof -ti :${port} | xargs kill -9 2>/dev/null || true`);
+          stoppedPorts.push(port);
+        }
+      } catch {
+        // No process on this port
+      }
+    }
+
+    if (stoppedPorts.length > 0) {
+      return { success: true, message: `Stopped processes on port(s): ${stoppedPorts.join(', ')}. Now use backend_start_dev_server to restart with log capture.` };
+    } else {
+      return { success: true, message: 'No external servers found on the specified ports.' };
+    }
+  });
+
   // Extension Host log handlers
   mcpBridge.registerHandler('getExtensionLogs', async (params) => {
     const filter = params.filter || 'all';

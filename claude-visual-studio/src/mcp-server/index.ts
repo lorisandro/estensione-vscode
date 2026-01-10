@@ -274,6 +274,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: 'backend_stop_external_server',
+        description: 'Stop a dev server that was started externally (not via this extension). This kills processes on common dev ports (3000, 3001, 5173, etc.) so you can restart with backend_start_dev_server to capture logs.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            ports: {
+              type: 'array',
+              items: { type: 'number' },
+              description: 'Specific ports to stop. Default: [3000, 3001, 5173, 5174, 8080, 8000]',
+            },
+          },
+        },
+      },
+      {
         name: 'extension_get_logs',
         description: 'Get logs from the VS Code Extension Host. This captures console.log, console.error, etc. from the extension itself, useful for debugging extension behavior.',
         inputSchema: {
@@ -369,7 +383,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         const backendLogs = result.logs || [];
         if (backendLogs.length === 0) {
-          return { content: [{ type: 'text', text: 'No backend logs captured. Start a dev server first with backend_start_dev_server.' }] };
+          // Check if server is running externally
+          const statusResult = await sendCommand('getDevServerStatus');
+          if (statusResult.running && statusResult.ports && statusResult.ports.length > 0) {
+            return { content: [{ type: 'text', text: `Server detected on port(s) ${statusResult.ports.join(', ')} but logs not captured.\n\nThe server was started externally (not via this extension).\nTo capture logs, use backend_stop_external_server to stop it, then backend_start_dev_server to restart with log capture.\n\nAll terminals will then see the logs.` }] };
+          }
+          return { content: [{ type: 'text', text: 'No backend logs captured. Start a dev server with backend_start_dev_server to capture logs.\n\nAll terminals connected to VS Code will see the same logs.' }] };
         }
         const formattedBackendLogs = backendLogs.map((log: any) => {
           const time = new Date(log.timestamp).toISOString().split('T')[1].slice(0, 12);
@@ -387,6 +406,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
         }
         return { content: [{ type: 'text', text: 'Backend logs cleared.' }] };
+
+      case 'backend_stop_external_server':
+        result = await sendCommand('stopExternalServer', {
+          ports: args?.ports || [3000, 3001, 5173, 5174, 8080, 8000],
+        });
+        if (result.error) {
+          return { content: [{ type: 'text', text: `Error: ${result.error}` }], isError: true };
+        }
+        return { content: [{ type: 'text', text: result.message || 'External server stopped. Now use backend_start_dev_server to restart with log capture.' }] };
 
       case 'extension_get_logs':
         result = await sendCommand('getExtensionLogs', {

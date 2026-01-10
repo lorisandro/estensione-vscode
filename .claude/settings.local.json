@@ -96,7 +96,9 @@
       "mcp__claude-browser__chrome_enable_selector",
       "Bash(timeout 10 node:*)",
       "Bash(test:*)",
-      "Bash(if not exist C:temp mkdir C:temp)"
+      "Bash(if not exist C:temp mkdir C:temp)",
+      "mcp__claude-browser__chrome_click",
+      "mcp__claude-visual-studio__extension_clear_logs"
     ]
   }
 }
