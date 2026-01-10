@@ -946,7 +946,30 @@ let consoleLogs: Array<{ type: string; text: string; timestamp: number }> = [];
 // Element selector injection script with selection and drag modes
 const SELECTOR_SCRIPT = `
 (function() {
-  if (window.__claudeSelectorActive) return;
+  // Check if toolbar already exists to prevent duplicates
+  const existingToolbar = document.getElementById('__claude-selector-toolbar');
+  if (existingToolbar && window.__claudeSelectorActive) {
+    // Already fully initialized, nothing to do
+    return;
+  }
+
+  // Cleanup any orphaned elements from previous injections
+  ['__claude-selector-toolbar', '__claude-selector-highlight', '__claude-selector-tooltip', '__claude-css-panel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
+
+  // Cleanup orphaned styles
+  const oldStyles = document.querySelector('style[data-claude-panel-styles]');
+  if (oldStyles) oldStyles.remove();
+
+  // Abort any previous event listeners
+  if (window.__claudeAbortController) {
+    window.__claudeAbortController.abort();
+  }
+  window.__claudeAbortController = new AbortController();
+  const abortSignal = window.__claudeAbortController.signal;
+
   window.__claudeSelectorActive = true;
   window.__claudeSelectedElement = null;
   window.__claudeDraggedElement = null;
@@ -1208,6 +1231,7 @@ const SELECTOR_SCRIPT = `
   \`;
 
   const panelStyles = document.createElement('style');
+  panelStyles.setAttribute('data-claude-panel-styles', 'true');
   panelStyles.textContent = \`
     #__claude-css-panel .panel-header {
       display: flex; justify-content: space-between; align-items: center;
@@ -1828,8 +1852,8 @@ const SELECTOR_SCRIPT = `
     updateButtonState(selectBtn, selectionActive, 'rgba(0, 212, 255, 0.3)');
 
     if (selectionActive) {
-      document.addEventListener('mousemove', handleSelectMouseMove, true);
-      document.addEventListener('click', handleSelectClick, true);
+      document.addEventListener('mousemove', handleSelectMouseMove, { capture: true, signal: abortSignal });
+      document.addEventListener('click', handleSelectClick, { capture: true, signal: abortSignal });
     } else {
       document.removeEventListener('mousemove', handleSelectMouseMove, true);
       document.removeEventListener('click', handleSelectClick, true);
@@ -1864,10 +1888,10 @@ const SELECTOR_SCRIPT = `
     updateButtonState(dragBtn, dragModeActive, 'rgba(255, 149, 0, 0.3)');
 
     if (dragModeActive) {
-      document.addEventListener('mousedown', handleDragMouseDown, true);
-      document.addEventListener('mousemove', handleDragMouseMove, true);
-      document.addEventListener('mousemove', handleDragHover, true);
-      document.addEventListener('mouseup', handleDragMouseUp, true);
+      document.addEventListener('mousedown', handleDragMouseDown, { capture: true, signal: abortSignal });
+      document.addEventListener('mousemove', handleDragMouseMove, { capture: true, signal: abortSignal });
+      document.addEventListener('mousemove', handleDragHover, { capture: true, signal: abortSignal });
+      document.addEventListener('mouseup', handleDragMouseUp, { capture: true, signal: abortSignal });
     } else {
       document.removeEventListener('mousedown', handleDragMouseDown, true);
       document.removeEventListener('mousemove', handleDragMouseMove, true);
@@ -1956,6 +1980,12 @@ const SELECTOR_SCRIPT = `
     tooltip.remove();
     cssPanel.remove();
     panelStyles.remove();
+    // Abort all event listeners at once
+    if (window.__claudeAbortController) {
+      window.__claudeAbortController.abort();
+      window.__claudeAbortController = null;
+    }
+    // Also remove manually in case some were added without signal
     document.removeEventListener('mousemove', handleSelectMouseMove, true);
     document.removeEventListener('click', handleSelectClick, true);
     document.removeEventListener('mousedown', handleDragMouseDown, true);
