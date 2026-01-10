@@ -2054,18 +2054,36 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       if (quality && type === 'jpeg') options.quality = quality;
       if (filePath) options.path = filePath;
 
-      let screenshot: string | Buffer;
+      // If path is specified, save to file and don't return base64 (to avoid token limit issues)
+      if (filePath) {
+        if (selector) {
+          const element = await page.$(selector);
+          if (!element) throw new Error(`Element not found: ${selector}`);
+          await element.screenshot({ ...options });
+        } else {
+          await page.screenshot({ ...options });
+        }
+        return {
+          success: true,
+          path: filePath,
+          message: `Screenshot saved to ${filePath}`,
+          type,
+        };
+      }
+
+      // No path specified, return base64
+      let screenshot: string;
       if (selector) {
         const element = await page.$(selector);
         if (!element) throw new Error(`Element not found: ${selector}`);
-        screenshot = await element.screenshot({ ...options, encoding: 'base64' });
+        screenshot = await element.screenshot({ ...options, encoding: 'base64' }) as string;
       } else {
-        screenshot = await page.screenshot({ ...options, encoding: 'base64' });
+        screenshot = await page.screenshot({ ...options, encoding: 'base64' }) as string;
       }
 
       return {
         success: true,
-        path: filePath || null,
+        path: null,
         base64: screenshot,
         type,
       };
