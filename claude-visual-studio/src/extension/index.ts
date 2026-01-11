@@ -33,6 +33,7 @@ const originalConsole = {
 // Store extension logs for retrieval
 const extensionLogs: Array<{ type: string; message: string; timestamp: number }> = [];
 const MAX_EXTENSION_LOGS = 500;
+const TRIM_BATCH_SIZE = 100; // Trim in batches for better performance
 
 function captureExtensionLog(type: string, args: unknown[]): void {
   const message = args.map(arg => {
@@ -52,8 +53,12 @@ function captureExtensionLog(type: string, args: unknown[]): void {
 
   // Store log
   extensionLogs.push(logEntry);
-  if (extensionLogs.length > MAX_EXTENSION_LOGS) {
-    extensionLogs.shift();
+
+  // Use batch trimming instead of per-item shift() for better O(n) performance
+  // Instead of shifting one at a time (O(n) per operation), we batch trim
+  if (extensionLogs.length > MAX_EXTENSION_LOGS + TRIM_BATCH_SIZE) {
+    // Remove oldest entries in one operation
+    extensionLogs.splice(0, extensionLogs.length - MAX_EXTENSION_LOGS);
   }
 }
 

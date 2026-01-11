@@ -30,12 +30,15 @@ export class ServerManager {
   // Track the last proxied page path for fallback asset resolution
   private lastProxiedBasePath: string | null = null;
 
-  // Store extracted styled-jsx CSS to inject into HTML
+  // Store extracted styled-jsx CSS to inject into HTML (with limit to prevent memory leaks)
   private extractedStyledJsxCss: Map<string, string> = new Map();
+  private readonly MAX_STYLED_JSX_ENTRIES = 50;
 
   // Cookie jar for maintaining session state across proxy requests
   // Map<domain, Map<cookieName, { value: string, attributes: string }>>
   private cookieJar: Map<string, Map<string, { value: string; attributes: string }>> = new Map();
+  private readonly MAX_COOKIE_DOMAINS = 50;
+  private readonly MAX_COOKIES_PER_DOMAIN = 100;
 
   // Track the current served HTML file for Page Builder text editing
   private currentServedFile: string | null = null;
@@ -2483,8 +2486,16 @@ export class ServerManager {
         .replace(/\\\\/g, '\\');
 
       if (!this.extractedStyledJsxCss.has(cssId)) {
+        // Enforce limit to prevent memory leaks
+        if (this.extractedStyledJsxCss.size >= this.MAX_STYLED_JSX_ENTRIES) {
+          // Remove oldest entry (first key in Map maintains insertion order)
+          const firstKey = this.extractedStyledJsxCss.keys().next().value;
+          if (firstKey) {
+            this.extractedStyledJsxCss.delete(firstKey);
+          }
+        }
         this.extractedStyledJsxCss.set(cssId, unescapedCss);
-        console.log(`[ServerManager] Extracted styled-jsx CSS: ${cssId} (${unescapedCss.length} chars)`);
+        console.log(`[ServerManager] Extracted styled-jsx CSS: ${cssId} (${unescapedCss.length} chars, ${this.extractedStyledJsxCss.size}/${this.MAX_STYLED_JSX_ENTRIES})`);
       }
     }
   }
@@ -2520,7 +2531,16 @@ ${allCss}
 
     const cookies = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
 
+    // Enforce domain limit to prevent memory leaks
     if (!this.cookieJar.has(domain)) {
+      if (this.cookieJar.size >= this.MAX_COOKIE_DOMAINS) {
+        // Remove oldest domain (first key in Map maintains insertion order)
+        const firstKey = this.cookieJar.keys().next().value;
+        if (firstKey) {
+          this.cookieJar.delete(firstKey);
+          console.log(`[ServerManager] Cookie jar overflow, removed oldest domain: ${firstKey}`);
+        }
+      }
       this.cookieJar.set(domain, new Map());
     }
     const domainCookies = this.cookieJar.get(domain)!;
@@ -2541,6 +2561,14 @@ ${allCss}
       if (lowerAttrs.includes('max-age=0') || lowerAttrs.includes('max-age=-')) {
         domainCookies.delete(name);
       } else {
+        // Enforce per-domain cookie limit
+        if (!domainCookies.has(name) && domainCookies.size >= this.MAX_COOKIES_PER_DOMAIN) {
+          // Remove oldest cookie in this domain
+          const firstCookieKey = domainCookies.keys().next().value;
+          if (firstCookieKey) {
+            domainCookies.delete(firstCookieKey);
+          }
+        }
         domainCookies.set(name, { value, attributes });
       }
     }

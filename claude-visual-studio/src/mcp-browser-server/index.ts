@@ -205,11 +205,41 @@ async function connectToBrowser(): Promise<Browser> {
   );
 }
 
-// Track which pages have listeners attached using a Map with page URL as identifier
-const pagesWithListeners = new Map<string, boolean>();
+// Track which pages have listeners attached using WeakMap to prevent memory leaks
+// WeakMap allows garbage collection when Page objects are destroyed
+interface PageListenerState {
+  attached: boolean;
+  handlers: {
+    console: (msg: any) => void;
+    pageerror: (error: Error) => void;
+    load: () => void;
+    close: () => void;
+  };
+}
+const pagesWithListeners = new WeakMap<Page, PageListenerState>();
+
+// Also track by URL for backward compatibility and debugging
+const pageUrlsTracked = new Map<string, number>(); // URL -> timestamp for cleanup
+const MAX_URL_TRACKING = 100; // Limit URL tracking to prevent memory leaks
 
 /**
- * Get a unique identifier for a page
+ * Clean up old URL tracking entries
+ */
+function cleanupOldUrlTracking(): void {
+  if (pageUrlsTracked.size > MAX_URL_TRACKING) {
+    // Remove oldest entries
+    const entries = Array.from(pageUrlsTracked.entries())
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, pageUrlsTracked.size - MAX_URL_TRACKING);
+
+    for (const [url] of entries) {
+      pageUrlsTracked.delete(url);
+    }
+  }
+}
+
+/**
+ * Get a unique identifier for a page (for logging purposes only)
  */
 function getPageId(page: Page): string {
   try {
@@ -221,52 +251,107 @@ function getPageId(page: Page): string {
 }
 
 /**
+ * Remove listeners from a page
+ */
+function removeConsoleListeners(page: Page): void {
+  const state = pagesWithListeners.get(page);
+  if (state && state.handlers) {
+    try {
+      page.off('console', state.handlers.console);
+      page.off('pageerror', state.handlers.pageerror);
+      page.off('load', state.handlers.load);
+      page.off('close', state.handlers.close);
+      console.error(`[MCP Browser] Removed listeners from page: ${getPageId(page)}`);
+    } catch (e) {
+      // Page might already be closed
+    }
+    pagesWithListeners.delete(page);
+  }
+}
+
+/**
  * Attach console log listeners to a page
  */
 function attachConsoleListeners(page: Page, force: boolean = false): void {
   const pageId = getPageId(page);
+  const existingState = pagesWithListeners.get(page);
 
-  if (!force && pagesWithListeners.get(pageId)) {
-    return; // Already has listeners
+  // If already has listeners and not forcing, skip
+  if (!force && existingState?.attached) {
+    return;
+  }
+
+  // If forcing, remove old listeners first to prevent duplicates
+  if (force && existingState) {
+    removeConsoleListeners(page);
   }
 
   console.error(`[MCP Browser] Attaching console listeners to page: ${pageId}`);
 
-  page.on('console', (msg) => {
+  // Create handler functions so we can remove them later
+  const consoleHandler = (msg: any) => {
     const logEntry = {
       type: msg.type(),
       text: msg.text(),
       timestamp: Date.now()
     };
     consoleLogs.push(logEntry);
-    // Limit logs to last 1000 entries to prevent memory issues
-    if (consoleLogs.length > 1000) {
-      consoleLogs = consoleLogs.slice(-1000);
+    // Trim logs more aggressively - keep last 500 to prevent memory issues
+    if (consoleLogs.length > 500) {
+      consoleLogs = consoleLogs.slice(-500);
     }
     console.error(`[Browser Console] ${msg.type()}: ${msg.text()}`);
-  });
+  };
 
-  page.on('pageerror', (error) => {
+  const pageerrorHandler = (error: Error) => {
     const logEntry = {
       type: 'error',
       text: error.message,
       timestamp: Date.now()
     };
     consoleLogs.push(logEntry);
+    // Trim here too
+    if (consoleLogs.length > 500) {
+      consoleLogs = consoleLogs.slice(-500);
+    }
     console.error(`[Browser Error] ${error.message}`);
-  });
+  };
 
-  // Auto-inject selector toolbar on page load/navigation
-  page.on('load', async () => {
+  const loadHandler = async () => {
     try {
       await page?.evaluate(SELECTOR_SCRIPT);
       console.error('[MCP Browser] Selector toolbar auto-injected');
     } catch (e) {
       // Ignore errors during injection (page might be navigating)
     }
+  };
+
+  const closeHandler = () => {
+    // Auto-cleanup when page closes
+    console.error(`[MCP Browser] Page closed, cleaning up listeners: ${pageId}`);
+    pagesWithListeners.delete(page);
+  };
+
+  // Attach handlers
+  page.on('console', consoleHandler);
+  page.on('pageerror', pageerrorHandler);
+  page.on('load', loadHandler);
+  page.on('close', closeHandler);
+
+  // Store state with handlers for later removal
+  pagesWithListeners.set(page, {
+    attached: true,
+    handlers: {
+      console: consoleHandler,
+      pageerror: pageerrorHandler,
+      load: loadHandler,
+      close: closeHandler
+    }
   });
 
-  pagesWithListeners.set(pageId, true);
+  // Track URL for debugging (with cleanup)
+  pageUrlsTracked.set(pageId, Date.now());
+  cleanupOldUrlTracking();
 }
 
 /**
@@ -2594,10 +2679,15 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       // Force invalidate current page reference and get fresh one
       const oldPage = currentPage;
       const oldUrl = oldPage?.url() || null;
+
+      // Remove listeners from old page before invalidating
+      if (oldPage) {
+        removeConsoleListeners(oldPage);
+      }
       currentPage = null;
 
-      // Clear the listeners tracking map
-      pagesWithListeners.clear();
+      // Clear the URL tracking map (WeakMap clears automatically via GC)
+      pageUrlsTracked.clear();
 
       const browser = await connectToBrowser();
       const pages = await browser.pages();
@@ -2638,6 +2728,10 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
       // Disconnect existing connection if any
       if (browser) {
         try {
+          // Remove listeners from current page before disconnecting
+          if (currentPage) {
+            removeConsoleListeners(currentPage);
+          }
           browser.disconnect();
         } catch {
           // Ignore disconnect errors
@@ -2646,8 +2740,8 @@ async function handleToolCall(name: string, args: Record<string, unknown>): Prom
         currentPage = null;
       }
 
-      // Clear page listeners tracking
-      pagesWithListeners.clear();
+      // Clear URL tracking map (WeakMap clears automatically via GC)
+      pageUrlsTracked.clear();
 
       try {
         // Connect to browser with retry logic

@@ -12,13 +12,41 @@ import * as path from 'path';
 
 // WebSocket connection to VS Code extension
 let wsConnection: WebSocket | null = null;
-let pendingRequests: Map<string, { resolve: (value: any) => void; reject: (error: any) => void }> = new Map();
+let pendingRequests: Map<string, { resolve: (value: any) => void; reject: (error: any) => void; timestamp: number }> = new Map();
 let requestId = 0;
 let connectedPort: number | null = null;
 let isReconnecting = false;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY_MS = 2000;
+const MAX_PENDING_REQUESTS = 100; // Prevent memory leaks from accumulated requests
+const REQUEST_TIMEOUT_MS = 30000;
+
+/**
+ * Clean up stale pending requests to prevent memory leaks
+ */
+function cleanupStalePendingRequests(): void {
+  const now = Date.now();
+  for (const [id, request] of pendingRequests.entries()) {
+    if (now - request.timestamp > REQUEST_TIMEOUT_MS * 2) {
+      // Request is very old, clean it up
+      request.reject(new Error('Request expired (cleanup)'));
+      pendingRequests.delete(id);
+    }
+  }
+
+  // If still too many requests, reject oldest ones
+  if (pendingRequests.size > MAX_PENDING_REQUESTS) {
+    const entries = Array.from(pendingRequests.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+    const toRemove = entries.slice(0, pendingRequests.size - MAX_PENDING_REQUESTS);
+    for (const [id, request] of toRemove) {
+      request.reject(new Error('Request queue overflow'));
+      pendingRequests.delete(id);
+    }
+  }
+}
 
 const WS_BASE_PORT = 3334;
 const MAX_PORT_ATTEMPTS = 10;
@@ -164,10 +192,14 @@ async function sendCommand(command: string, params: Record<string, any> = {}): P
     }
   }
 
+  // Clean up stale requests before adding new one
+  cleanupStalePendingRequests();
+
   const id = `req_${++requestId}`;
+  const timestamp = Date.now();
 
   return new Promise((resolve, reject) => {
-    pendingRequests.set(id, { resolve, reject });
+    pendingRequests.set(id, { resolve, reject, timestamp });
 
     wsConnection!.send(JSON.stringify({
       id,
@@ -180,7 +212,7 @@ async function sendCommand(command: string, params: Record<string, any> = {}): P
         pendingRequests.delete(id);
         reject(new Error('Request timeout'));
       }
-    }, 30000);
+    }, REQUEST_TIMEOUT_MS);
   });
 }
 

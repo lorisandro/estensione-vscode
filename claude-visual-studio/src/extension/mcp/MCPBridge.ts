@@ -24,9 +24,24 @@ export class MCPBridge {
   private clients: Set<WebSocket> = new Set();
   private commandHandlers: Map<string, CommandHandler> = new Map();
   private port: number;
+  private cleanupInterval: NodeJS.Timeout | null = null;
+  private readonly MAX_CLIENTS = 50; // Prevent memory leaks from accumulated connections
 
   constructor(port: number = 3334) {
     this.port = port;
+  }
+
+  /**
+   * Remove dead/invalid WebSocket clients to prevent memory leaks
+   */
+  private cleanupDeadClients(): void {
+    for (const client of this.clients) {
+      // WebSocket.OPEN = 1, remove any client not in OPEN state
+      if (client.readyState !== WebSocket.OPEN) {
+        this.clients.delete(client);
+        console.log('[MCPBridge] Removed dead client during cleanup');
+      }
+    }
   }
 
   /**
@@ -70,11 +85,34 @@ export class MCPBridge {
 
         this.wss.on('listening', () => {
           console.log(`[MCPBridge] WebSocket server listening on port ${port}`);
+
+          // Start periodic cleanup of dead clients (every 30 seconds)
+          if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+          }
+          this.cleanupInterval = setInterval(() => {
+            this.cleanupDeadClients();
+          }, 30000);
+
           resolve();
         });
 
         this.wss.on('connection', (ws) => {
           console.log('[MCPBridge] MCP client connected');
+
+          // Enforce client limit to prevent memory leaks
+          if (this.clients.size >= this.MAX_CLIENTS) {
+            // Clean up dead clients first
+            this.cleanupDeadClients();
+
+            // If still at limit, reject new connection
+            if (this.clients.size >= this.MAX_CLIENTS) {
+              console.warn('[MCPBridge] Max clients reached, rejecting connection');
+              ws.close(1013, 'Max clients reached');
+              return;
+            }
+          }
+
           this.clients.add(ws);
 
           ws.on('message', async (data) => {
@@ -121,6 +159,12 @@ export class MCPBridge {
    */
   stop(): Promise<void> {
     return new Promise((resolve) => {
+      // Stop cleanup interval
+      if (this.cleanupInterval) {
+        clearInterval(this.cleanupInterval);
+        this.cleanupInterval = null;
+      }
+
       if (this.wss) {
         // Close all client connections
         this.clients.forEach((client) => {
