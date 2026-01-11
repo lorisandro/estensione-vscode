@@ -130,20 +130,34 @@ export class DevServerRunner extends EventEmitter {
     }
 
     this.config = config;
-    const { command, args = [], cwd, env } = config;
+    let { command, args = [], cwd, env } = config;
+
+    // On Windows, use cmd /c to keep the process tree attached and capture output
+    // This fixes issues with npm/npx spawning child processes that detach
+    const isWindows = process.platform === 'win32';
+
+    let spawnCommand: string;
+    let spawnArgs: string[];
+
+    if (isWindows) {
+      // Use cmd /c to run the command - this keeps stdout/stderr connected
+      const fullCommand = `${command} ${args.join(' ')}`;
+      spawnCommand = 'cmd';
+      spawnArgs = ['/c', fullCommand];
+    } else {
+      spawnCommand = command;
+      spawnArgs = args;
+    }
 
     console.log(`[DevServerRunner] Starting: ${command} ${args.join(' ')} in ${cwd}`);
 
     try {
-      // Determine shell based on platform
-      const isWindows = process.platform === 'win32';
-      const shell = isWindows ? true : '/bin/sh';
-
-      this.process = spawn(command, args, {
+      this.process = spawn(spawnCommand, spawnArgs, {
         cwd,
-        shell,
+        shell: false, // Don't use shell since we're using cmd /c on Windows
         env: { ...process.env, ...env, FORCE_COLOR: '1' },
         stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: false,
       });
 
       this.isRunning = true;
@@ -272,22 +286,50 @@ export class DevServerRunner extends EventEmitter {
       return false;
     }
 
-    console.log(`[DevServerRunner] Stopping process PID ${this.process.pid}...`);
+    const pid = this.process.pid;
+    console.log(`[DevServerRunner] Stopping process PID ${pid}...`);
 
-    // Kill ONLY the process that this extension started
+    // Kill the process tree
     if (process.platform === 'win32') {
       try {
-        execSync(`taskkill /F /T /PID ${this.process.pid}`, { windowsHide: true });
-      } catch {
-        // Process might already be dead
+        // /T kills the entire process tree (cmd.exe and all child processes)
+        execSync(`taskkill /F /T /PID ${pid}`, { windowsHide: true, timeout: 10000 });
+        console.log(`[DevServerRunner] Killed process tree for PID ${pid}`);
+      } catch (error) {
+        // Process might already be dead, or taskkill failed
+        console.log(`[DevServerRunner] taskkill result:`, (error as Error).message);
+      }
+
+      // Also kill any processes on the ports we were using
+      // This ensures child processes spawned by concurrently are also killed
+      if (this.activePorts.length > 0) {
+        for (const port of this.activePorts) {
+          try {
+            const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, {
+              encoding: 'utf-8',
+              windowsHide: true,
+            });
+            const lines = result.trim().split('\n');
+            for (const line of lines) {
+              const parts = line.trim().split(/\s+/);
+              const childPid = parts[parts.length - 1];
+              if (childPid && /^\d+$/.test(childPid) && childPid !== '0') {
+                try {
+                  execSync(`taskkill /F /PID ${childPid}`, { windowsHide: true });
+                  console.log(`[DevServerRunner] Killed child process ${childPid} on port ${port}`);
+                } catch {
+                  // Already dead
+                }
+              }
+            }
+          } catch {
+            // No process on this port
+          }
+        }
       }
     } else {
       this.process.kill('SIGTERM');
     }
-
-    // DO NOT call killProcessesOnPorts() - this would kill user's external servers!
-    // The old code was terminating ANY process on ports 3000, 3001, etc.
-    // which could shut down the user's own Next.js/Vite servers
 
     this.isRunning = false;
     this.process = null;
